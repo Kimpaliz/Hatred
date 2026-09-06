@@ -60,12 +60,14 @@ Rechner der Wahrheit eines anderen glauben, statt sie nachzurechnen.
 | Funken, Blut, Staub | `runtime/partikel.js` |
 | Boden, Wände, Höhenkanten | `runtime/zeichnen.js` |
 | Lebensbalken, Punkteanzeige, Zugleiste | `runtime/oberflaeche.js` |
+| „Eine Bewegung läuft zu schnell/langsam ab" | `runtime/abspieler.js` → `TEMPO` |
 | „Man kommt nicht zusammen" | `netz/sitzung.mjs`, `netz/verbindung.mjs` |
 | Die Prüfkette | `werkzeuge/pruefe-alles.mjs` |
 
 ## Die Reihenfolge eines Bildes
 
-1. `runtime/start.js` fragt: Ist eine Ereignisliste in Arbeit?
+1. `runtime/start.js` fragt `runtime/abspieler.js`: Ist eine
+   Ereignisliste in Arbeit?
 2. Wenn ja: `runtime/zeichnen.js` spielt sie ab (Bewegung Feld für
    Feld, Schaden als Zahl, Sturz als Fall).
 3. `runtime/licht.js` legt die Lichtkarte darüber.

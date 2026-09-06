@@ -3,6 +3,59 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Umbau: der Abspieler zieht aus
+
+**Auftrag, wörtlich:** *„runtime/start.js aufteilen"*
+
+Ein **Umbau ohne sichtbare Änderung** — und deshalb einer, der sich
+beweisen lässt. Genau darum steht er in einem eigenen Eintrag und in
+einem eigenen Commit: Wäre gleichzeitig etwas am Verhalten geändert
+worden, ließe sich der Beweis nicht mehr führen.
+
+`runtime/start.js` stand bei **999** von 1000 erlaubten Zeilen
+(Regel 8). Der Abspieler ist der sauberste Schnitt: Er hängt an keiner
+Leinwand, an keinem Hörer und an keinem Spielstand — nur an den
+Ereignissen, die man ihm hinlegt, und an der Uhr, die man weiterstellt.
+
+**Was umgezogen ist** — nach `runtime/abspieler.js` (292 Zeilen):
+`macheAbspieler` samt `TEMPO`, `ZAHL_STEIGT`, `ZAHL_HOCH`,
+`SCHADEN_TEILCHEN` und `STILLE_EREIGNISSE`.
+
+| Datei | vorher | nachher |
+| --- | --- | --- |
+| `runtime/start.js` | 999 Zeilen | **753** |
+| `runtime/abspieler.js` | — | **292** |
+
+Vier Einfuhren waren danach in `start.js` tot und sind entfernt:
+`SCHLEIM_RAMPE`, `satzVon`, `richtungAus`, `ruestungVon`.
+`werkzeuge/pruefe-einstieg.mjs` holt `macheAbspieler` und `TEMPO` jetzt
+direkt aus der neuen Datei — ein Durchreichen über `start.js` wäre eine
+zweite Wahrheit über den Ort.
+
+**Der Beweis: gleiche Eingaben, byteweise gleiches Bild.** Fester
+Saatwert 7, dieselben getippten Knöpfe, 400 Bilder, dazwischen alle 37
+Bilder ein Tipp auf eine feste Stelle. Aufgezeichnet wird **jedes**
+gezeichnete Rechteck (Ort, Maße, Farbe) und daraus eine Prüfzahl
+gebildet:
+
+| Messung | vorher | nachher |
+| --- | --- | --- |
+| gezeichnete Rechtecke | 18.000.972 | **18.000.972** |
+| Prüfzahl über alle Rechtecke | `b1bd72fb` | **`b1bd72fb`** |
+| Zeichen in der Aufzeichnung | 456.052.592 | **456.052.592** |
+| Prüfzahl über alle Wesen | `856b53b3` | **`856b53b3`** |
+| Ebene / Runde / lebende Wesen | 1 / 1 / 5 | **1 / 1 / 5** |
+
+Vorweg wurde die Aufzeichnung **zweimal ohne jede Änderung** gefahren,
+denn ein Fingerabdruck, der von Lauf zu Lauf schwankt, beweist nichts:
+Beide Läufe ergaben dieselbe Zahl.
+
+Kette: **37 Prüfungen grün**, und die Einzeldatei bündelt jetzt
+**44** Module statt 43 — die neue Datei ist im Bündel angekommen, ohne
+dass jemand eine Liste pflegen musste.
+
+---
+
 ## 06.09.2026 — Auf dem Handy war nach der ersten Ebene Schluss
 
 **Gefunden beim Nachlesen der eigenen Texte**, nicht durch einen Absturz.
