@@ -270,6 +270,15 @@ function tippSauber(welt, x, y, knopf = 0) {
   welt.feuere("pointerup", ereignis(zeiger));
 }
 
+/* Und die Maus: dieselben Zeigerereignisse, nur mit `pointerType`
+   „mouse" — samt dem Schweben, das es am Finger gar nicht gibt. */
+function klickMaus(welt, x, y, knopf = 0) {
+  const zeiger = { clientX: x, clientY: y, button: knopf, pointerType: "mouse", pointerId: 1 };
+  welt.feuere("pointermove", ereignis(zeiger));
+  welt.feuere("pointerdown", ereignis(zeiger));
+  welt.feuere("pointerup", ereignis(zeiger));
+}
+
 /* Die Leiste im **fertigen Bild** wiederfinden: der einzige Kasten in
    `FARBEN.hudGrund`, der über die ganze Breite läuft und unten
    anstößt. Gemessen wird damit, was wirklich gezeichnet wurde, und
@@ -438,13 +447,25 @@ function tippeSaat(welt, tippeAuf) {
    Der Kerker, mit dem Daumen betreten
    ══════════════════════════════════════════════════════════════════ */
 
-function baueKerker(welt) {
+function baueKerker(welt, tipp = tippAndroid) {
   const lauf = starte(welt.blatt);
-  const tippeAuf = macheTipper(welt, lauf, tippAndroid);
+  const tippeAuf = macheTipper(welt, lauf, tipp);
   tippeAuf("allein");
   tippeSaat(welt, tippeAuf);
   tippeAuf("los");
   return lauf;
+}
+
+/* Die Leiste im **allerersten** Bild des Kerkers — bevor dort irgendwer
+   irgendetwas angefasst hat. Genau dieses eine Bild entscheidet, ob der
+   erste Tipp im Spiel trifft oder danebengeht. */
+function ersteLeiste(welt, tipp) {
+  const lauf = baueKerker(welt, tipp);
+  behaupte(lauf.spiel() !== null, "der Kerker steht");
+  if (!lauf.spiel()) return null;
+  welt.ctx.leere();
+  welt.naechstesBild(2000);
+  return leisteImBild(welt);
 }
 
 /* Bilder laufen lassen, bis die Abspielung leer ist und wirklich der
@@ -698,6 +719,44 @@ function knopfmasse(welt, spiel, zeit) {
   }
 }
 
+
+/* ══════════════════════════════════════════════════════════════════
+   4b · Das erste Bild im Kerker gehört schon dem Daumen
+   ══════════════════════════════════════════════════════════════════
+
+   Die Behauptung, die ohne den Merker in `runtime/start.js` falsch
+   wäre — und die einzige, die den Fehler dort trifft, wo er weh tut:
+   Wer sich mit dem Daumen durch den Vorlauf tippt, sieht im **ersten**
+   Bild des Kerkers schon die daumengroße Leiste. Sonst wären die
+   Knöpfe dort noch 13 Punkte hoch, und ausgerechnet der allererste
+   Tipp im Spiel — der, bei dem man noch nicht weiß, ob das Spiel
+   überhaupt auf den Finger hört — ginge daneben.
+
+   Die Gegenrichtung steht daneben, weil sie sonst mitkippt: Ein Merker,
+   der immer wahr ist, wäre genauso grün. Wer den Vorlauf mit der Maus
+   bedient, muss im ersten Bild die schmale Leiste bekommen. */
+{
+  abschnitt("Das erste Bild im Kerker gehört schon dem Daumen");
+  let mitDaumen = null;
+  let mitMaus = null;
+  {
+    const welt = macheWelt();
+    try { mitDaumen = ersteLeiste(welt, tippAndroid); } finally { welt.raeumeAuf(); }
+  }
+  {
+    const welt = macheWelt();
+    try { mitMaus = ersteLeiste(welt, klickMaus); } finally { welt.raeumeAuf(); }
+  }
+  behaupte(mitDaumen !== null && mitMaus !== null, "beide Male steht eine Leiste im Bild");
+  behaupte(mitDaumen >= FINGER_MINDESTMASS,
+    `nach dem Vorlauf am Daumen ist die Leiste im ersten Bild ${mitDaumen} Punkte hoch `
+    + `(>= ${FINGER_MINDESTMASS})`);
+  behaupte(mitMaus < FINGER_MINDESTMASS,
+    `nach dem Vorlauf an der Maus bleibt sie schmal: ${mitMaus} < ${FINGER_MINDESTMASS}`);
+  messungen.push(`Erstes Bild im Kerker, ohne dort etwas anzufassen: `
+    + `${mitDaumen} Punkte Leiste nach dem Vorlauf am Daumen, `
+    + `${mitMaus} nach dem Vorlauf an der Maus`);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    5 · Die Vergrößerung ist immer eine ganze Zahl
