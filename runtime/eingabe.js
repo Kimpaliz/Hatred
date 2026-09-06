@@ -81,7 +81,9 @@
    Wahrheiten, und die liefen auseinander (Fehlerbuch E2). Deshalb
    fragt sie `felderLesen()` — die Liste, die `runtime/oberflaeche.js`
    **beim Zeichnen** füllt — und trifft nur die Entscheidung, ob der
-   Punkt in einem wählbaren Feld liegt. `felderLesen` darf fehlen.
+   Punkt auf der Leiste liegt. Liegt er dort, gehört er ihr, auch wenn
+   das Feld ausgegraut ist: Sonst bewegte ein danebengegangener Daumen
+   die Figur unter dem toten Knopf. `felderLesen` darf fehlen.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
@@ -728,10 +730,12 @@ export function macheEingabe({
     let liste = null;
     try { liste = felderLesen(); } catch { return null; }
     if (!Array.isArray(liste)) return null;
-    /* Von hinten nach vorn: Was zuletzt gezeichnet wurde, liegt oben. */
+    /* Von hinten nach vorn: Was zuletzt gezeichnet wurde, liegt oben.
+       Gesucht wird **jedes** Feld, auch ein ausgegrautes: Ein Punkt, der
+       auf der Leiste liegt, gehört der Leiste und nicht der Karte. */
     for (let i = liste.length - 1; i >= 0; i--) {
       const f = liste[i];
-      if (!f || f.aktiv !== true) continue;
+      if (!f) continue;
       if (!Number.isFinite(f.x) || !Number.isFinite(f.y)) continue;
       if (px < f.x || py < f.y) continue;
       if (px >= f.x + f.breite || py >= f.y + f.hoehe) continue;
@@ -745,6 +749,13 @@ export function macheEingabe({
      wird gar nicht erst gesucht: Sonst liefe die Figur los, während der
      Spieler „Zug beenden" gedrückt hat. */
   function drueckeKnopf(knopfFeld) {
+    /* Ausgegraut heißt für den Spieler „hier passiert nichts" — nicht
+       „hier passiert etwas anderes". Der Daumen ist ungenau, und ein
+       Fehlgriff auf einen toten Knopf dürfte sonst die Figur bewegen,
+       die zufällig darunter steht: Aktionspunkte weg, im Zweifel der
+       Zug. Das Ereignis ist verbraucht, geändert wird nichts —
+       eine abgelehnte Aktion ändert nichts (Fehlerbuch E2). */
+    if (knopfFeld.aktiv !== true) return null;
     anwahl = null;
     anwahlStufe = 0;
     if (knopfFeld.aktion) return sendeAktion(knopfFeld.aktion);

@@ -1,6 +1,12 @@
-/* [Aufgabe: Prüfwesen] Prüft `runtime/eingabe.js` — ohne Browser, ohne
-   Zeichenblatt, mit einem nachgebauten Blatt, das jeden Anmeldevorgang
-   mitschreibt.
+/* [Aufgabe: Prüfwesen] Prüft `runtime/eingabe.js` an **Maus und
+   Tastatur** — ohne Browser, ohne Zeichenblatt, mit einem nachgebauten
+   Blatt, das jeden Anmeldevorgang mitschreibt.
+
+   Was die Eingabe aus einem **Finger** macht — Zeigerereignisse, die
+   zwei Schritte, die Knopfleiste —, steht in
+   `werkzeuge/pruefe-eingabe-finger.mjs`. Das sind zwei Sachen und
+   nicht dieselbe mit anderem Gerät; von dort kommt auch die Werkbank,
+   die beide brauchen.
 
    ── Warum genau diese Fälle ────────────────────────────────────────
 
@@ -33,7 +39,9 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/eingabe.js` (das Geprüfte), `runtime/kamera.js` (rechnet
+   `runtime/eingabe.js` (das Geprüfte),
+   `werkzeuge/pruefe-eingabe-finger.mjs` (der Finger; liefert die
+   Werkbank), `runtime/kamera.js` (rechnet
    Bildpunkte in Felder), `spiel/gitter.mjs`, `spiel/wegfindung.mjs`,
    `spiel/hoehen.mjs`, `spiel/aktionen.mjs`, `spiel/lauf.mjs`
    (`macheLauf`, `zustandsSumme`), `werkzeuge/helfer.mjs`,
@@ -54,164 +62,23 @@ import { gegner } from "../spiel/katalog/gegner.mjs";
 import { wesenMitId } from "../spiel/zug.mjs";
 import { macheLauf, zustandsSumme } from "../spiel/lauf.mjs";
 import { macheKamera } from "../runtime/kamera.js";
-import { KACHEL } from "../runtime/licht.js";
 import {
   KNOPF_LINKS, KNOPF_RECHTS, MODUS, WARNUNG, macheEingabe
 } from "../runtime/eingabe.js";
 
-/* ══════════════════════════════════════════════════════════════════
-   Werkbank
-   ══════════════════════════════════════════════════════════════════ */
-
-const BREITE = 20;
-const HOEHE = 16;
+/* Die Werkbank — von Hand gebaute Karte, Spielstand, mitschreibendes
+   Blatt — steht in `pruefe-eingabe-finger.mjs`, weil **beide**
+   Prüfungen sie brauchen und es sie nur einmal geben darf. Zweimal
+   aufgebaut wären es zwei Karten, und sobald jemand eine davon ändert,
+   prüfte diese Datei stillschweigend etwas anderes als die andere. */
+import {
+  BREITE, HOEHE, abbild, baueZustand, klickeAuf, macheEreignis,
+  macheLeinwandErsatz, macheProbe, punktVon, zeigeAuf
+} from "./pruefe-eingabe-finger.mjs";
 
 /* Gemessene Zahlen, am Ende gedruckt. Eine Behauptung sagt nur „größer
    als" — hier steht, wie groß wirklich. */
 const berichte = [];
-
-/* Eine Karte von Hand: ein Plateau auf Ebene 3 (x 3..7, y 3..6),
-   ringsum Ebene 1, im Osten zwei Felder Grube auf Ebene 0, an einer
-   Nordkante eine Wand. Diese Form ist der ganze Sinn der Prüfung —
-   jede Kante des Plateaus beantwortet eine andere Frage. */
-function baueKarte() {
-  const karte = macheKarte(BREITE, HOEHE);
-  for (const { x, y } of alleFelder(karte)) {
-    if (x === 0 || y === 0 || x === BREITE - 1 || y === HOEHE - 1) {
-      karte.setze(x, y, { hindernis: HINDERNIS.wand });
-    }
-  }
-  for (let y = 3; y <= 6; y++) {
-    for (let x = 3; x <= 7; x++) karte.setze(x, y, { ebene: 3 });
-  }
-  karte.setze(8, 4, { ebene: 0 });
-  karte.setze(8, 5, { ebene: 0 });
-  karte.setze(3, 2, { hindernis: HINDERNIS.wand });
-  karte.starts = [{ x: 5, y: 4 }];
-  return karte;
-}
-
-/* Ein Spielstand ohne `macheLauf`: Er soll genau so aussehen, wie er
-   hier gebraucht wird, und nicht so, wie ihn eine Saat auswürfelt. */
-function baueZustand({ brutBei = { x: 12, y: 12 }, heldBei = { x: 5, y: 4 }, ap = 20 } = {}) {
-  const karte = baueKarte();
-  const heldWesen = macheWesen(held("spaeher"), {
-    id: 1, seite: "jaeger", x: heldBei.x, y: heldBei.y, spielerPlatz: 1
-  });
-  heldWesen.ap = ap;
-  heldWesen.apMax = ap;
-  heldWesen.traenke = 2;
-  const brutWesen = macheWesen(gegner("kraetzling"), {
-    id: 11, seite: "brut", x: brutBei.x, y: brutBei.y
-  });
-  const zustand = {
-    saat: 7, tiefe: 1, karte, zufall: macheZufall(7),
-    wesen: [heldWesen, brutWesen],
-    nachId: new Map([[1, heldWesen], [11, brutWesen]]),
-    runde: 1, ordnung: [1, 11], amZug: 0, seiteDran: "jaeger",
-    spieler: [{ platz: 1, name: "Spieler 1", wesenId: 1 }],
-    vorbei: null, protokoll: []
-  };
-  return zustand;
-}
-
-function macheProbe(angaben = {}) {
-  const zustand = angaben.zustand || baueZustand(angaben);
-  const kamera = macheKamera({ fensterBreite: 640, fensterHoehe: 480, karte: zustand.karte });
-  const geschickt = [];
-  const eingabe = macheEingabe({
-    leinwand: angaben.leinwand || null,
-    kamera,
-    zustand,
-    felderLesen: angaben.felderLesen || null,
-    sende: (aktion) => {
-      geschickt.push(aktion);
-      return angaben.annehmen === false ? false : true;
-    }
-  });
-  return { zustand, kamera, eingabe, geschickt };
-}
-
-/* Der Bildpunkt in der Mitte einer Kachel. Nicht die Ecke: Ein Fehler
-   um einen halben Bildpunkt fiele an der Ecke nicht auf. */
-function punktVon(kamera, x, y) {
-  const ecke = kamera.feldNachBild(x, y);
-  const halb = Math.floor((kamera.vergroesserung * KACHEL) / 2);
-  return { x: ecke.x + halb, y: ecke.y + halb };
-}
-
-function zeigeAuf(probe, x, y) {
-  const p = punktVon(probe.kamera, x, y);
-  return probe.eingabe.beiZeiger(p.x, p.y);
-}
-
-function klickeAuf(probe, x, y, knopf = KNOPF_LINKS, art = "mouse") {
-  const p = punktVon(probe.kamera, x, y);
-  return probe.eingabe.beiKlick(p.x, p.y, knopf, art);
-}
-
-/* Derselbe Punkt, aber mit dem Finger getippt. */
-const tippeAuf = (probe, x, y, knopf) => klickeAuf(probe, x, y, knopf, "touch");
-
-/* Die Reichweitenkarte ist ein `Map`; `JSON.stringify` machte daraus
-   ein leeres Objekt und der Vergleich prüfte nichts. Deshalb ein
-   Abbild, in dem jedes Stück wirklich steht. */
-function abbild(ansicht) {
-  return {
-    zeigerFeld: ansicht.zeigerFeld,
-    wegVorschau: ansicht.wegVorschau,
-    reichweite: [...ansicht.reichweite.keys()].sort((a, b) => a - b),
-    ziel: ansicht.ziel,
-    modus: ansicht.modus,
-    schluessel: ansicht.schluessel,
-    kosten: ansicht.kosten,
-    warnung: ansicht.warnung,
-    ganzeKarte: ansicht.ganzeKarte,
-    gesperrt: ansicht.gesperrt
-  };
-}
-
-/* Ein Zeichenblatt-Ersatz für die Anmeldung der Hörer: Er zeichnet
-   nichts, er schreibt mit, wer sich wo anmeldet — und lässt die Hörer
-   danach von Hand feuern. Ohne ihn bliebe der ganze Weg vom
-   Browser-Ereignis bis zur Aktion ungeprüft. */
-function macheLeinwandErsatz() {
-  const hoerer = [];
-  const melde = (wo, name, fn) => { hoerer.push({ wo, name, fn }); };
-  const nimm = (wo, name, fn) => {
-    const stelle = hoerer.findIndex((h) => h.wo === wo && h.name === name && h.fn === fn);
-    if (stelle >= 0) hoerer.splice(stelle, 1);
-  };
-  const schriftstueck = {
-    addEventListener: (name, fn) => melde("schrift", name, fn),
-    removeEventListener: (name, fn) => nimm("schrift", name, fn)
-  };
-  const blatt = {
-    width: 640,
-    height: 480,
-    ownerDocument: schriftstueck,
-    getBoundingClientRect: () => ({ left: 0, top: 0, width: 640, height: 480 }),
-    addEventListener: (name, fn) => melde("blatt", name, fn),
-    removeEventListener: (name, fn) => nimm("blatt", name, fn),
-    anzahl: () => hoerer.length,
-    namen: () => hoerer.map((h) => `${h.wo}:${h.name}`).sort(),
-    feuere(name, ereignis) {
-      let getroffen = 0;
-      for (const h of [...hoerer]) {
-        if (h.name !== name) continue;
-        getroffen++;
-        h.fn(ereignis);
-      }
-      return getroffen;
-    }
-  };
-  return blatt;
-}
-
-function macheEreignis(zusatz = {}) {
-  let gehalten = 0;
-  return { preventDefault: () => { gehalten++; }, gehalten: () => gehalten, ...zusatz };
-}
 
 /* ══════════════════════════════════════════════════════════════════
    1 · Das Gerüst
@@ -833,137 +700,6 @@ abschnitt("Leinwand");
     clientX: ziel.x, clientY: ziel.y, button: 0, pointerType: "mouse", pointerId: 1
   }));
   gleich(probe.geschickt.length, nachher, "danach kommt über das Blatt nichts mehr an");
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   12b · Ein Tipp ist genau eine Aktion — die wichtigste Behauptung
-   ══════════════════════════════════════════════════════════════════ */
-
-abschnitt("Ein Tipp, eine Aktion");
-{
-  /* Die Folge, die ein Android-Browser wirklich schickt: Nach `touchend`
-     kommen `mousedown` und `click` hinterher — wer beide Wege hört, geht
-     zwei Felder weit statt einem. */
-  const blatt = macheLeinwandErsatz();
-  const android = macheProbe({ leinwand: blatt });
-  const ziel = punktVon(android.kamera, 6, 4);
-  const folge = () => ["pointerdown", "pointerup", "mousedown", "click"].reduce(
-    (summe, name) => summe + blatt.feuere(name, macheEreignis({ clientX: ziel.x,
-      clientY: ziel.y, button: 0, pointerType: "touch", pointerId: 5 })), 0);
-  gleich(folge(), 2, "von der Android-Folge erreichen nur die zwei Zeigerereignisse einen Hörer");
-  gleich(android.geschickt.length, 0, "die erste Folge wählt nur an und schickt nichts");
-  gleich(folge(), 2, "auch beim zweiten Mal hört niemand auf `mousedown` oder `click`");
-  gleich(android.geschickt.length, 1, "zwei volle Android-Folgen ergeben genau eine Aktion");
-  tiefGleich(android.geschickt[0], { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
-    "und zwar die auf das angetippte Feld");
-
-  const zwei = macheProbe();
-  const p = punktVon(zwei.kamera, 6, 4);
-  const druck = (nummer) => zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer });
-  druck(1); druck(2); druck(2);
-  gleich(zwei.geschickt.length, 0, "solange ein Finger unten ist, zählt kein zweiter");
-  behaupte(zwei.eingabe.istFinger(), "nach einem Tipp meldet istFinger() den Finger");
-  zwei.eingabe.beiZeigerEnde(1);
-  druck(9);
-  gleich(zwei.geschickt.length, 1, "nach dem Loslassen wird der nächste Finger angenommen");
-
-  /* Der erste Tipp ersetzt das Schweben: Er zeigt Weg und Preis und
-     schickt nichts. Der zweite bestätigt genau das, was er sah. */
-  const probe = macheProbe();
-  gleich(tippeAuf(probe, 6, 4), null, "der erste Tipp gibt keine Aktion zurück");
-  gleich(probe.geschickt.length, 0, "und schickt nichts");
-  const erst = probe.eingabe.ansicht();
-  tiefGleich(erst.zeigerFeld, { x: 6, y: 4 }, "er wählt das Feld an");
-  gleich(erst.kosten, 1, "die Vorschau nennt den Preis: 1 Punkt");
-  behaupte(Array.isArray(erst.wegVorschau) && erst.wegVorschau.length > 0,
-    "und zeigt den Weg — genau das, was die Maus beim Schweben zeigt");
-  probe.eingabe.beiTaste("ArrowUp", true);
-  tiefGleich(tippeAuf(probe, 6, 4), { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
-    "der zweite Tipp führt das angetippte Feld aus, auch wenn eine Pfeiltaste dazwischenkam");
-  gleich(probe.geschickt.length, 1, "und zwar genau einmal");
-
-  const maus = macheProbe();
-  tiefGleich(klickeAuf(maus, 6, 4), { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
-    "mit der Maus führt ein einziger Klick aus");
-  gleich(maus.geschickt.length, 1, "die zwei Schritte gelten für sie nicht");
-  behaupte(!maus.eingabe.istFinger(), "und istFinger() bleibt bei der Maus falsch");
-
-  const kampf = macheProbe({ brutBei: { x: 6, y: 4 } });
-  kampf.eingabe.beiTaste("2", true);
-  gleich(tippeAuf(kampf, 6, 4), null, "der erste Tipp auf den Gegner greift nicht an");
-  tiefGleich(kampf.eingabe.ansicht().ziel, { id: 11, x: 6, y: 4 },
-    "sondern nennt das Ziel — daran hängt die Trefferchance");
-  tiefGleich(tippeAuf(kampf, 6, 4), { typ: AKTION.angriff, wer: 1, ziel: 11 },
-    "der zweite Tipp greift an");
-  gleich(tippeAuf(kampf, 6, 4), null, "danach wählt ein Tipp wieder an, statt gleich zu schlagen");
-  tiefGleich(kampf.eingabe.ansicht().zeigerFeld, { x: 6, y: 4 },
-    "und zwar von vorn: Eine angenommene Aktion nimmt die Anwahl mit");
-
-  const fern = macheProbe();
-  tippeAuf(fern, 14, 10);
-  gleich(tippeAuf(fern, 14, 10), null, "auch zweimal getippt geht es nicht dorthin");
-  gleich(fern.geschickt.length, 0, "und geschickt wird dabei nichts");
-  gleich((fern.eingabe.ansicht().warnung || {}).art, WARNUNG.abgelehnt, "der Grund steht da");
-  const still = macheProbe();
-  tippeAuf(still, 6, 4); still.eingabe.sperre(true);
-  tippeAuf(still, 6, 4); tippeAuf(still, 6, 4); still.eingabe.sperre(false);
-  gleich(still.geschickt.length, 0, "bei gesperrter Eingabe schickt auch ein Tipp nichts");
-  gleich(tippeAuf(still, 6, 4), null, "und nach dem Entsperren wählt der Tipp wieder nur an");
-
-  /* Jedes Feld einmal antippen: Der Finger erreicht dieselbe Karte wie oben
-     die Tastatur — und führt nie aus, weil immer ein anderes Feld kommt. */
-  const feld = macheProbe();
-  const abweichend = [...alleFelder(feld.zustand.karte)].filter(({ x, y }) => {
-    tippeAuf(feld, x, y);
-    const a = feld.eingabe.ansicht().zeigerFeld;
-    return !a || a.x !== x || a.y !== y;
-  }).length;
-  gleich(abweichend, 0, `der Finger wählt alle ${BREITE * HOEHE} Felder richtig an`);
-  gleich(feld.geschickt.length, 0,
-    `und keiner der ${BREITE * HOEHE} Tipps auf je ein anderes Feld führt aus`);
-
-  /* Die Leiste: Ihre Maße kommen von der Anzeige — zwei Rechnungen wären
-     zwei Wahrheiten (Fehlerbuch E2). Ohne sie wäre (10,10) ein Feld. */
-  const knopf = (zusatz = {}) => [{
-    id: "zugEnde", art: "zugEnde", x: 0, y: 0, breite: 60, hoehe: 60, taste: " ",
-    aktion: { typ: AKTION.zugEnde, wer: 1 }, beschriftung: "Zug beenden", aktiv: true, ...zusatz
-  }];
-  gleich(macheProbe().eingabe.beiTipp(10, 10), null, "ohne Leiste ist (10,10) ein Feld");
-  const mit = macheProbe({ felderLesen: () => knopf() });
-  tiefGleich(mit.eingabe.beiTipp(10, 10), { typ: AKTION.zugEnde, wer: 1 },
-    "ein Tipp auf ein aktives Feld schickt dessen Aktion");
-  gleich(mit.geschickt.length, 1, "sofort und ohne zweiten Tipp — ein Knopf ist eindeutig");
-  gleich(mit.geschickt.filter((a) => a.typ === AKTION.gehen).length, 0,
-    "und das Kartenfeld darunter wird gar nicht erst angefasst");
-  gleich(mit.eingabe.beiTipp(70, 70), null, "ein Tipp neben den Knopf geht wieder an die Karte");
-  const grau = macheProbe({ felderLesen: () => knopf({ aktiv: false }) });
-  grau.eingabe.beiTipp(10, 10);
-  gleich(grau.geschickt.length, 0, "ein Feld ohne `aktiv` ist kein Knopf und schickt nichts");
-
-  /* `felderLesen` darf fehlen und darf werfen — sonst wäre die Eingabe
-     ohne fertig gezeichnete Leiste unbrauchbar. */
-  const kaputt = macheProbe({ felderLesen: () => { throw new Error("nichts"); } });
-  kaputt.eingabe.beiTipp(10, 10);
-  gleich(kaputt.geschickt.length, 0, "wirft `felderLesen`, geht der Tipp nicht verloren");
-  behaupte(kaputt.eingabe.ansicht().zeigerFeld !== null, "sondern an die Karte");
-
-  /* Der Ausweg: kein `Esc` auf dem Handy. Verglichen wird Feld für Feld. */
-  const soll = abbild(macheProbe().eingabe.ansicht());
-  const raus = macheProbe();
-  raus.eingabe.beiTaste("4", true);
-  raus.eingabe.beiTaste("Tab", true);
-  tippeAuf(raus, 14, 10); tippeAuf(raus, 14, 10);
-  behaupte(raus.eingabe.ansicht().warnung !== null, "vor dem Abbrechen steht eine Warnung");
-  tippeAuf(raus, 14, 10);
-  tiefGleich(abbild(raus.eingabe.ansicht()), soll,
-    "der dritte Tipp auf dasselbe Feld räumt so auf wie eine frische Eingabe");
-  gleich(raus.geschickt.length, 0, "und geschickt wurde bei alledem nichts");
-  const daneben = macheProbe();
-  daneben.eingabe.beiTaste("4", true); tippeAuf(daneben, 6, 4);
-  daneben.eingabe.beiTipp(-500, -500);
-  tiefGleich(abbild(daneben.eingabe.ansicht()), soll,
-    "ein Tipp neben die Karte hebt die Anwahl ebenso auf");
-  gleich(tippeAuf(daneben, 6, 4), null, "und der nächste Tipp dorthin wählt wieder nur an");
 }
 /* ══════════════════════════════════════════════════════════════════
    13 · Zweimal dasselbe gibt zweimal dasselbe
