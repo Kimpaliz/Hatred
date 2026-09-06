@@ -856,7 +856,6 @@ abschnitt("Ein Tipp, eine Aktion");
   gleich(android.geschickt.length, 1, "zwei volle Android-Folgen ergeben genau eine Aktion");
   tiefGleich(android.geschickt[0], { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
     "und zwar die auf das angetippte Feld");
-  berichte.push("Android-Folge: 2× pointerdown+pointerup+mousedown+click = 1 Aktion");
 
   const zwei = macheProbe();
   const p = punktVon(zwei.kamera, 6, 4);
@@ -906,8 +905,10 @@ abschnitt("Ein Tipp, eine Aktion");
   gleich(fern.geschickt.length, 0, "und geschickt wird dabei nichts");
   gleich((fern.eingabe.ansicht().warnung || {}).art, WARNUNG.abgelehnt, "der Grund steht da");
   const still = macheProbe();
-  still.eingabe.sperre(true); tippeAuf(still, 6, 4); tippeAuf(still, 6, 4);
+  tippeAuf(still, 6, 4); still.eingabe.sperre(true);
+  tippeAuf(still, 6, 4); tippeAuf(still, 6, 4); still.eingabe.sperre(false);
   gleich(still.geschickt.length, 0, "bei gesperrter Eingabe schickt auch ein Tipp nichts");
+  gleich(tippeAuf(still, 6, 4), null, "und nach dem Entsperren wählt der Tipp wieder nur an");
 
   /* Jedes Feld einmal antippen: Der Finger erreicht dieselbe Karte wie oben
      die Tastatur — und führt nie aus, weil immer ein anderes Feld kommt. */
@@ -921,8 +922,8 @@ abschnitt("Ein Tipp, eine Aktion");
   gleich(feld.geschickt.length, 0,
     `und keiner der ${BREITE * HOEHE} Tipps auf je ein anderes Feld führt aus`);
 
-  /* Die Leiste: Ihre Maße kommen von der Anzeige und werden hier nicht
-     nachgerechnet — zwei Rechnungen sind zwei Wahrheiten (Fehlerbuch E2). */
+  /* Die Leiste: Ihre Maße kommen von der Anzeige — zwei Rechnungen wären
+     zwei Wahrheiten (Fehlerbuch E2). Ohne sie wäre (10,10) ein Feld. */
   const knopf = (zusatz = {}) => [{
     id: "zugEnde", art: "zugEnde", x: 0, y: 0, breite: 60, hoehe: 60, taste: " ",
     aktion: { typ: AKTION.zugEnde, wer: 1 }, beschriftung: "Zug beenden", aktiv: true, ...zusatz
@@ -946,8 +947,7 @@ abschnitt("Ein Tipp, eine Aktion");
   gleich(kaputt.geschickt.length, 0, "wirft `felderLesen`, geht der Tipp nicht verloren");
   behaupte(kaputt.eingabe.ansicht().zeigerFeld !== null, "sondern an die Karte");
 
-  /* Der Ausweg: Auf dem Handy gibt es kein `Esc`. Verglichen wird Feld für
-     Feld — ein halb geräumter Zustand bliebe sonst unsichtbar. */
+  /* Der Ausweg: kein `Esc` auf dem Handy. Verglichen wird Feld für Feld. */
   const soll = abbild(macheProbe().eingabe.ansicht());
   const raus = macheProbe();
   raus.eingabe.beiTaste("4", true);

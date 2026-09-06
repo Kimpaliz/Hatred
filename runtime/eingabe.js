@@ -846,6 +846,10 @@ export function macheEingabe({
        Ein Zeiger, der als unten gilt, machte die Eingabe für immer
        taub — und das fiele erst im Spiel auf. */
     aktiverZeiger = null;
+    /* Und aus demselben Grund die Anwahl: Der zweite Tipp bestätigte
+       sonst eine Vorschau von vor den Ereignissen. */
+    anwahl = null;
+    anwahlStufe = 0;
     rechne();
     return false;
   }
