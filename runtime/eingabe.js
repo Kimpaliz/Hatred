@@ -37,6 +37,21 @@
    Stift zugleich, und der Nachschlag aus dem Browser findet keinen
    Hörer mehr vor. `pointerType` sagt, womit gerade bedient wird.
 
+   ── Warum der Finger zwei Schritte braucht ─────────────────────────
+
+   Es gibt keinen Finger, der über einem Feld **schwebt**. Alles, was
+   die Maus beim Schweben zeigt — Weg, Kosten, Höhe, Sturzwarnung,
+   Trefferchance —, wäre auf dem Handy leer, und man liefe blind.
+   Deshalb übernimmt der **erste** Tipp die Rolle des Schwebens: Er
+   wählt an und zeigt, er tut nichts. Erst der **zweite** Tipp auf
+   dasselbe Feld führt aus, und ein **dritter** hebt die Anwahl wieder
+   auf — auf einem Handy gibt es kein `Esc`, und ohne diesen Ausgang
+   steckte man in einem Modus fest.
+
+   Für die Maus ändert sich dadurch nichts: Sie schwebt und klickt wie
+   bisher. Die zwei Schritte gelten nur, wenn zuletzt mit dem Finger
+   bedient wurde — `istFinger()` sagt es auch nach außen.
+
    ── Warum die Tastatur allein reichen muss ─────────────────────────
 
    Ein Spiel, das ohne Maus unbedienbar ist, schließt Leute aus. Die
@@ -172,6 +187,12 @@ export function macheEingabe({
      nicht angenommen — auf einem Handy liegt schnell ein Daumen mit auf
      dem Blatt, und zwei Zeiger hießen zwei Aktionen. */
   let aktiverZeiger = null;
+
+  /* Das Feld, das der Finger angewählt hat, und der wievielte Tipp
+     darauf gerade gezählt wurde: 1 wählt an, 2 führt aus, 3 hebt auf.
+     Die Maus benutzt beides nicht — sie schwebt. */
+  let anwahl = null;
+  let anwahlStufe = 0;
 
   /* Die gemerkte Lage. Sie hängt an einem Schlüssel aus allem, was sie
      ungültig machen kann; ändert sich einer der Werte, wird neu
@@ -430,6 +451,10 @@ export function macheEingabe({
     wegVorschau = null;
     kosten = null;
     ziel = null;
+    /* Auch die Anwahl des Fingers: Sonst führte der nächste Tipp auf
+       dasselbe Feld sofort aus, statt erst wieder zu zeigen. */
+    anwahl = null;
+    anwahlStufe = 0;
     return aktion;
   }
 
@@ -567,6 +592,8 @@ export function macheEingabe({
     modus = MODUS.gehen;
     schluessel = null;
     ganzeKarte = false;
+    anwahl = null;
+    anwahlStufe = 0;
     const w = eigenesWesen();
     zeigerFeld = w ? { x: w.x, y: w.y } : null;
     rechne();
@@ -674,7 +701,39 @@ export function macheEingabe({
     zeigerArt = art;
     if (gesperrt) return null;
     const feld = feldAus(px, py);
-    if (!feld) return null;
+    if (!feld) {
+      /* Neben die Karte getippt. Auf dem Handy ist das das einzige
+         `Esc`, das es gibt — also räumt es auf statt nichts zu tun. */
+      if (art === ZEIGER_FINGER) raeumeAuf();
+      return null;
+    }
+    if (art === ZEIGER_FINGER) return fingerTipp(feld, knopf);
+    /* Die Maus hat gerade das Kommando übernommen: Eine Anwahl vom
+       Finger, die liegen bliebe, verschluckte sonst den nächsten Klick. */
+    anwahl = null;
+    anwahlStufe = 0;
+    zeigerFeld = feld;
+    rechne();
+    return bestaetige(knopf === KNOPF_RECHTS);
+  }
+
+  /* Zwei Schritte statt Schweben — siehe Kopfnotiz. Der erste Tipp
+     rechnet nur die Vorschau, der zweite bestätigt sie, der dritte
+     nimmt zurück. Der dritte kommt nur vor, wenn der zweite abgelehnt
+     wurde: Eine angenommene Aktion räumt die Anwahl selbst weg. */
+  function fingerTipp(feld, knopf) {
+    if (!anwahl || anwahl.x !== feld.x || anwahl.y !== feld.y) {
+      anwahl = { x: feld.x, y: feld.y };
+      anwahlStufe = 1;
+      zeigerFeld = feld;
+      rechne();
+      return null;
+    }
+    anwahlStufe++;
+    if (anwahlStufe >= 3) { raeumeAuf(); return null; }
+    /* Zwischen den beiden Tipps kann eine Pfeiltaste den Zeiger woanders
+       hingestellt haben. Bestätigt wird, was angetippt wurde — sonst
+       führte der zweite Tipp eine Aktion auf einem fremden Feld aus. */
     zeigerFeld = feld;
     rechne();
     return bestaetige(knopf === KNOPF_RECHTS);

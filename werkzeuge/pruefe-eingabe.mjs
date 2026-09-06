@@ -123,6 +123,7 @@ function macheProbe(angaben = {}) {
     leinwand: angaben.leinwand || null,
     kamera,
     zustand,
+    felderLesen: angaben.felderLesen || null,
     sende: (aktion) => {
       geschickt.push(aktion);
       return angaben.annehmen === false ? false : true;
@@ -144,10 +145,13 @@ function zeigeAuf(probe, x, y) {
   return probe.eingabe.beiZeiger(p.x, p.y);
 }
 
-function klickeAuf(probe, x, y, knopf = KNOPF_LINKS) {
+function klickeAuf(probe, x, y, knopf = KNOPF_LINKS, art = "mouse") {
   const p = punktVon(probe.kamera, x, y);
-  return probe.eingabe.beiKlick(p.x, p.y, knopf);
+  return probe.eingabe.beiKlick(p.x, p.y, knopf, art);
 }
+
+/* Derselbe Punkt, aber mit dem Finger getippt. */
+const tippeAuf = (probe, x, y, knopf) => klickeAuf(probe, x, y, knopf, "touch");
 
 /* Die Reichweitenkarte ist ein `Map`; `JSON.stringify` machte daraus
    ein leeres Objekt und der Vergleich prüfte nichts. Deshalb ein
@@ -788,8 +792,6 @@ abschnitt("Leinwand");
       "schrift:keydown", "schrift:keyup",
       "schrift:pointercancel", "schrift:pointerup"].sort(),
     "die Eingabe meldet sich für sieben Ereignisse an");
-  gleich(blatt.namen().filter((n) => /mouse|click/.test(n)).length, 0,
-    "und für kein einziges Mausereignis — sonst käme der Nachschlag vom Finger an");
 
   /* Die Leinwand ist 640×480 groß und wird auch so angezeigt — also
      ist ein Fensterpunkt ein Blattpunkt. */
@@ -834,57 +836,112 @@ abschnitt("Leinwand");
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   12b · Die wichtigste Behauptung dieser Datei: ein Tipp ist eine
-   Aktion. Android schickt nach `touchend` **zusätzlich** `mousedown`
-   und `click` hinterher. Wer beide Wege hört, geht zwei Felder weit —
-   und der zweite Zug geht ins Leere, weil die Punkte weg sind.
+   12b · Ein Tipp ist genau eine Aktion — die wichtigste Behauptung
    ══════════════════════════════════════════════════════════════════ */
 
 abschnitt("Ein Tipp, eine Aktion");
 {
+  /* Die Folge, die ein Android-Browser wirklich schickt: Nach `touchend`
+     kommen `mousedown` und `click` hinterher — wer beide Wege hört, geht
+     zwei Felder weit statt einem. */
   const blatt = macheLeinwandErsatz();
-  const probe = macheProbe({ leinwand: blatt });
-  const ziel = punktVon(probe.kamera, 6, 4);
-  const tipp = (name, zusatz = {}) => blatt.feuere(name, macheEreignis({
-    clientX: ziel.x, clientY: ziel.y, button: 0, pointerType: "touch", pointerId: 5, ...zusatz
-  }));
+  const android = macheProbe({ leinwand: blatt });
+  const ziel = punktVon(android.kamera, 6, 4);
+  const folge = () => ["pointerdown", "pointerup", "mousedown", "click"].reduce(
+    (summe, name) => summe + blatt.feuere(name, macheEreignis({ clientX: ziel.x,
+      clientY: ziel.y, button: 0, pointerType: "touch", pointerId: 5 })), 0);
+  gleich(folge(), 2, "von der Android-Folge erreichen nur die zwei Zeigerereignisse einen Hörer");
+  gleich(android.geschickt.length, 0, "die erste Folge wählt nur an und schickt nichts");
+  gleich(folge(), 2, "auch beim zweiten Mal hört niemand auf `mousedown` oder `click`");
+  gleich(android.geschickt.length, 1, "zwei volle Android-Folgen ergeben genau eine Aktion");
+  tiefGleich(android.geschickt[0], { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
+    "und zwar die auf das angetippte Feld");
+  berichte.push("Android-Folge: 2× pointerdown+pointerup+mousedown+click = 1 Aktion");
 
-  /* Die Folge, die ein Android-Browser wirklich schickt — in dieser
-     Reihenfolge, mit dem Nachschlag am Ende. */
-  tipp("pointerdown");
-  tipp("pointerup");
-  const nachZeiger = probe.geschickt.length;
-  gleich(tipp("mousedown"), 0, "auf `mousedown` hört niemand mehr");
-  gleich(tipp("click"), 0, "auf `click` auch nicht");
-  gleich(probe.geschickt.length, nachZeiger,
-    "der Nachschlag aus dem Browser erzeugt keine zweite Aktion");
-  berichte.push(`Android-Folge: ${probe.geschickt.length} Aktion(en) aus `
-    + "pointerdown+pointerup+mousedown+click");
-
-  /* Und ein zweiter Finger, der danebenliegt, ist kein zweiter Befehl. */
+  /* Ein zweiter Finger auf dem Blatt ist kein zweiter Befehl. */
   const zwei = macheProbe();
   const p = punktVon(zwei.kamera, 6, 4);
-  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 1 });
-  const nachErstem = zwei.geschickt.length;
-  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 2 });
-  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 2 });
-  gleich(zwei.geschickt.length, nachErstem,
-    "solange ein Finger unten ist, wird kein zweiter angenommen");
+  const druck = (nummer) => zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer });
+  druck(1); druck(2); druck(2);
+  gleich(zwei.geschickt.length, 0, "solange ein Finger unten ist, zählt kein zweiter");
   behaupte(zwei.eingabe.istFinger(), "nach einem Tipp meldet istFinger() den Finger");
-
-  /* Und ein `pointercancel` — der Browser nimmt die Geste an sich —
-     lässt die Eingabe nicht taub zurück. */
   zwei.eingabe.beiZeigerEnde(1);
-  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 9 });
-  behaupte(zwei.geschickt.length >= nachErstem,
-    "nach dem Loslassen wird der nächste Finger wieder angenommen");
+  druck(9);
+  gleich(zwei.geschickt.length, 1, "nach dem Loslassen wird der nächste Finger angenommen");
+
+  /* Der erste Tipp ersetzt das Schweben: Er zeigt Weg und Preis und
+     schickt nichts. Der zweite bestätigt genau das, was er sah. */
+  const probe = macheProbe();
+  gleich(tippeAuf(probe, 6, 4), null, "der erste Tipp gibt keine Aktion zurück");
+  gleich(probe.geschickt.length, 0, "und schickt nichts");
+  const erst = probe.eingabe.ansicht();
+  tiefGleich(erst.zeigerFeld, { x: 6, y: 4 }, "er wählt das Feld an");
+  gleich(erst.kosten, 1, "die Vorschau nennt den Preis: 1 Punkt");
+  behaupte(Array.isArray(erst.wegVorschau) && erst.wegVorschau.length > 0,
+    "und zeigt den Weg — genau das, was die Maus beim Schweben zeigt");
+  probe.eingabe.beiTaste("ArrowUp", true);
+  tiefGleich(tippeAuf(probe, 6, 4), { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
+    "der zweite Tipp führt das angetippte Feld aus, auch wenn eine Pfeiltaste dazwischenkam");
+  gleich(probe.geschickt.length, 1, "und zwar genau einmal");
 
   const maus = macheProbe();
-  behaupte(!maus.eingabe.istFinger(), "eine frische Eingabe steht auf Maus, nicht auf Finger");
-  klickeAuf(maus, 6, 4);
-  behaupte(!maus.eingabe.istFinger(), "und ein Mausklick lässt sie dort");
-}
+  tiefGleich(klickeAuf(maus, 6, 4), { typ: AKTION.gehen, wer: 1, nach: { x: 6, y: 4 } },
+    "mit der Maus führt ein einziger Klick aus");
+  gleich(maus.geschickt.length, 1, "die zwei Schritte gelten für sie nicht");
+  behaupte(!maus.eingabe.istFinger(), "und istFinger() bleibt bei der Maus falsch");
 
+  const kampf = macheProbe({ brutBei: { x: 6, y: 4 } });
+  kampf.eingabe.beiTaste("2", true);
+  gleich(tippeAuf(kampf, 6, 4), null, "der erste Tipp auf den Gegner greift nicht an");
+  tiefGleich(kampf.eingabe.ansicht().ziel, { id: 11, x: 6, y: 4 },
+    "sondern nennt das Ziel — daran hängt die Trefferchance");
+  tiefGleich(tippeAuf(kampf, 6, 4), { typ: AKTION.angriff, wer: 1, ziel: 11 },
+    "der zweite Tipp greift an");
+  gleich(tippeAuf(kampf, 6, 4), null, "danach wählt ein Tipp wieder an, statt gleich zu schlagen");
+  tiefGleich(kampf.eingabe.ansicht().zeigerFeld, { x: 6, y: 4 },
+    "und zwar von vorn: Eine angenommene Aktion nimmt die Anwahl mit");
+
+  /* Unerreichbar bleibt unerreichbar, gesperrt bleibt taub. */
+  const fern = macheProbe();
+  tippeAuf(fern, 14, 10);
+  gleich(tippeAuf(fern, 14, 10), null, "auch zweimal getippt geht es nicht dorthin");
+  gleich(fern.geschickt.length, 0, "und geschickt wird dabei nichts");
+  gleich((fern.eingabe.ansicht().warnung || {}).art, WARNUNG.abgelehnt, "der Grund steht da");
+  const still = macheProbe();
+  still.eingabe.sperre(true); tippeAuf(still, 6, 4); tippeAuf(still, 6, 4);
+  gleich(still.geschickt.length, 0, "bei gesperrter Eingabe schickt auch ein Tipp nichts");
+
+  /* Jedes Feld einmal antippen: Der Finger erreicht dieselbe Karte wie oben
+     die Tastatur — und führt nie aus, weil immer ein anderes Feld kommt. */
+  const feld = macheProbe();
+  const abweichend = [...alleFelder(feld.zustand.karte)].filter(({ x, y }) => {
+    tippeAuf(feld, x, y);
+    const a = feld.eingabe.ansicht().zeigerFeld;
+    return !a || a.x !== x || a.y !== y;
+  }).length;
+  gleich(abweichend, 0, `der Finger wählt alle ${BREITE * HOEHE} Felder richtig an`);
+  gleich(feld.geschickt.length, 0,
+    `und keiner der ${BREITE * HOEHE} Tipps auf je ein anderes Feld führt aus`);
+
+  /* Der Ausweg: Auf dem Handy gibt es kein `Esc`. Verglichen wird Feld
+     für Feld — ein halb geräumter Zustand bliebe sonst unsichtbar. */
+  const soll = abbild(macheProbe().eingabe.ansicht());
+  const raus = macheProbe();
+  raus.eingabe.beiTaste("4", true);
+  raus.eingabe.beiTaste("Tab", true);
+  tippeAuf(raus, 14, 10); tippeAuf(raus, 14, 10);
+  behaupte(raus.eingabe.ansicht().warnung !== null, "vor dem Abbrechen steht eine Warnung");
+  tippeAuf(raus, 14, 10);
+  tiefGleich(abbild(raus.eingabe.ansicht()), soll,
+    "der dritte Tipp auf dasselbe Feld räumt so auf wie eine frische Eingabe");
+  gleich(raus.geschickt.length, 0, "und geschickt wurde bei alledem nichts");
+  const daneben = macheProbe();
+  daneben.eingabe.beiTaste("4", true); tippeAuf(daneben, 6, 4);
+  daneben.eingabe.beiTipp(-500, -500);
+  tiefGleich(abbild(daneben.eingabe.ansicht()), soll,
+    "ein Tipp neben die Karte hebt die Anwahl ebenso auf");
+  gleich(tippeAuf(daneben, 6, 4), null, "und der nächste Tipp dorthin wählt wieder nur an");
+}
 /* ══════════════════════════════════════════════════════════════════
    13 · Zweimal dasselbe gibt zweimal dasselbe
    ══════════════════════════════════════════════════════════════════ */
