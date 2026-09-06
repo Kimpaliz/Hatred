@@ -39,7 +39,8 @@
 /* Ganzzahliger Streuwert aus zwei Koordinaten und einer Saat.
    Liefert gleichverteilt 0…1. */
 export function hash(x, y, s) {
-  let n = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(s | 0, 0x9e3779b1);
+  let n = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^
+    Math.imul(s | 0, 0x9e3779b1);
   n ^= n >>> 15; n = Math.imul(n, 0x2c1b3c6d);
   n ^= n >>> 12; n = Math.imul(n, 0x297a2d39);
   n ^= n >>> 15;

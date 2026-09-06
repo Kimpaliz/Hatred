@@ -161,8 +161,10 @@ export function macheWeltfeld(saat, bauart) {
     const wB = (6.2 + 5.6 * h(12)) * p.gangBreite;
     for (let i = 0; i < N; i++) {
       const t = i / (N - 1), it = 1 - t;
-      pts[i * 3] = it * it * it * A.x + 3 * it * it * t * c1x + 3 * it * t * t * c2x + t * t * t * B.x;
-      pts[i * 3 + 1] = it * it * it * A.y + 3 * it * it * t * c1y + 3 * it * t * t * c2y + t * t * t * B.y;
+      pts[i * 3] = it * it * it * A.x + 3 * it * it * t * c1x +
+        3 * it * t * t * c2x + t * t * t * B.x;
+      pts[i * 3 + 1] = it * it * it * A.y + 3 * it * it * t * c1y +
+        3 * it * t * t * c2y + t * t * t * B.y;
       /* Die Breite atmet. Ein Gang gleicher Breite über seine ganze
          Länge liest sich als Band, nicht als Höhlengang. Zwei Wellen:
          eine lange für „hier wird es zur Halle", eine kurze für die
