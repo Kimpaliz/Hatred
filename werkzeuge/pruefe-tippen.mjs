@@ -56,7 +56,7 @@
    `werkzeuge/pruefe-alles.mjs`, das diese Datei als eigenen Prozess
    startet. */
 
-import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
+import { abschnitt, behaupte, gleich, ende, liesDatei } from "./helfer.mjs";
 import {
   atemzug, ereignis, klickMaus, leisteImBild, macheErsatzflaeche, macheWelt,
   punktVon, tippAndroid, tippSauber
@@ -66,7 +66,7 @@ import * as schrift from "../runtime/schrift.js";
 import { vergroesserungFuer } from "../runtime/kamera.js";
 import { FINGER_MINDESTMASS, macheOberflaeche } from "../runtime/oberflaeche.js";
 import { AKTION } from "../spiel/aktionen.mjs";
-import { amZugWesen } from "../spiel/zug.mjs";
+import { amZugWesen, laufEndeEintragen } from "../spiel/zug.mjs";
 
 /* Was dieser Lauf gemessen hat — am Schluss gedruckt, damit jede Zahl
    ihren Befehl hat: `node werkzeuge/pruefe-tippen.mjs`. */
@@ -799,6 +799,101 @@ function knopfmasse(welt, spiel, zeit) {
   } finally {
     welt.raeumeAuf();
   }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   9 · Eine geschaffte Ebene führt auch ohne Tastatur weiter
+   ══════════════════════════════════════════════════════════════════
+
+   Der Fall, der ohne diese Arbeit falsch wäre — und zwar endgültig:
+   Wer eine Ebene schafft, las bisher „Ebene geschafft - Leertaste:
+   tiefer hinab". Auf einem Handy gibt es keine Leertaste. Das Spiel
+   war damit auf Android **nach der ersten geschafften Ebene zu Ende**,
+   ohne dass irgendetwas abstürzte oder eine Prüfung rot wurde: Der
+   einzige Weg tiefer hing an einer Taste, die das Gerät nicht hat.
+
+   Geprüft wird die Wirkung, nicht die Absicht: Der Sieg wird über die
+   Funktion des Spiels selbst herbeigeführt (`laufEndeEintragen` aus
+   `spiel/zug.mjs`, dieselbe, die ihn im Lauf einträgt), dann wird
+   getippt, und danach muss eine **neue, tiefere** Sitzung stehen. Eine
+   Prüfung, die nur nachsähe, ob `tieferMoeglich()` aufgerufen wird,
+   bliebe grün, wenn der Aufruf ins Leere ginge.
+
+   Mitgeprüft: Es geht **eine** Ebene tiefer, nicht zwei. Am Blatt
+   hängen zwei Hörer — der des Vorlaufs und der des Kerkers —, und
+   beide bekommen denselben `pointerdown`. Ein doppelter Abstieg wäre
+   derselbe Fehler wie der doppelt ausgelöste Tipp aus Abschnitt 1,
+   nur eine Ebene weiter. */
+{
+  abschnitt("Eine geschaffte Ebene führt auch ohne Tastatur weiter");
+  const welt = macheWelt();
+  try {
+    const lauf = baueKerker(welt);
+    const spiel = lauf.spiel();
+    behaupte(!!spiel, "der Kerker steht");
+    if (spiel) {
+      const zustand = spiel.zustand();
+      const tiefeVorher = zustand.tiefe;
+
+      /* Erst der Beweis, dass ohne Sieg nichts passiert: Sonst wäre
+         unklar, ob der Tipp gleich die Ebene wechselt oder ob er das
+         immer tut. */
+      welt.naechstesBild(4000);
+      tippAndroid(welt, 40, 40);
+      welt.naechstesBild(4016);
+      behaupte(lauf.spiel() === spiel, "ohne Sieg wechselt ein Tipp die Ebene nicht");
+
+      /* Jetzt der Sieg — über die Funktion des Spiels, nicht als Flagge. */
+      let gefallen = 0;
+      for (const w of zustand.wesen) if (w.seite !== "jaeger") { w.lebt = false; gefallen++; }
+      behaupte(gefallen > 0, `es gab Gegner, die fallen konnten: ${gefallen}`);
+      const ereignisse = laufEndeEintragen(zustand);
+      gleich(zustand.vorbei, "sieg", "der Lauf steht auf Sieg");
+      gleich(ereignisse.length, 1, "und meldet das Laufende genau einmal");
+
+      welt.naechstesBild(4032);
+      tippAndroid(welt, 40, 40);
+      welt.naechstesBild(4048);
+
+      const nachher = lauf.spiel();
+      behaupte(nachher !== null && nachher !== spiel,
+        "ein Tipp nach dem Sieg baut eine neue Sitzung");
+      if (nachher) {
+        gleich(nachher.zustand().tiefe, tiefeVorher + 1,
+          "und zwar genau eine Ebene tiefer");
+        gleich(nachher.zustand().vorbei, null, "die neue Ebene läuft wieder");
+      }
+      messungen.push(`Sieg ohne Tastatur: ein Tipp führt von Ebene ${tiefeVorher} `
+        + `auf ${nachher ? nachher.zustand().tiefe : "?"} — ${gefallen} Gegner gefallen`);
+    }
+  } finally {
+    welt.raeumeAuf();
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   10 · Kein Text verlangt etwas, das ein Handy nicht hat
+   ══════════════════════════════════════════════════════════════════
+
+   Zwei Sätze standen im Bild und meinten eine Maus und eine Tastatur:
+   „Pause - klick ins Bild" und „Ebene geschafft - Leertaste: tiefer
+   hinab". Beide waren auf dem Gerät, für das gebaut wurde, schlicht
+   falsch. Geprüft wird der Quelltext, weil beide Sätze Zeichenketten
+   ohne Verzweigung sind — es gibt keinen Zustand, in dem sie anders
+   lauteten, also gibt es auch nichts zu spielen. */
+{
+  abschnitt("Kein Text verlangt etwas, das ein Handy nicht hat");
+  const quelle = liesDatei("runtime/start.js");
+  const saetze = [...quelle.matchAll(/"([^"]*(?:Pause|Ebene geschafft)[^"]*)"/g)]
+    .map((t) => t[1]);
+  behaupte(saetze.length >= 2, `es gibt die Sätze im Bild: ${saetze.length}`);
+  for (const satz of saetze) {
+    const nurMaus = /\bklick\b/i.test(satz) && !/tipp/i.test(satz);
+    const nurTaste = /Leertaste|Taste drücken/i.test(satz) && !/tipp/i.test(satz);
+    behaupte(!nurMaus, `„${satz}" nennt nicht nur die Maus`);
+    behaupte(!nurTaste, `„${satz}" nennt nicht nur die Tastatur`);
+  }
+  messungen.push(`Sätze im Bild ohne Handy-Sackgasse: ${saetze.length} geprüft`);
 }
 
 /* Die Versprechen, die dieser Lauf angestoßen hat, laufen erst nach

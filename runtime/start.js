@@ -851,7 +851,7 @@ export function starte(blatt) {
 
   function pausenbild() {
     const gross = Math.max(1, Math.floor(blatt.width / 320));
-    const text = "Pause - klick ins Bild";
+    const text = "Pause - tippen oder klicken";
     ctx.fillStyle = FARBEN.kontur;
     ctx.fillRect(0, 0, blatt.width, blatt.height);
     schrift.zeichne(ctx, text,
@@ -865,7 +865,7 @@ export function starte(blatt) {
     if (!stand.vorbei) return;
     const gross = Math.max(1, Math.floor(blatt.width / 320));
     const text = stand.vorbei === "sieg"
-      ? (tieferMoeglich() ? "Ebene geschafft - Leertaste: tiefer hinab" : "Ebene geschafft.")
+      ? (tieferMoeglich() ? "Ebene geschafft - tippen oder Leertaste" : "Ebene geschafft.")
       : "Die Truppe ist gefallen.";
     schrift.zeichne(ctx, lesbar(text),
       Math.round((blatt.width - schrift.breiteVon(lesbar(text)) * gross) / 2),
@@ -919,7 +919,7 @@ export function starte(blatt) {
        wieder zurück, wenn jemand im Spiel zur Maus greift. */
     if (fund.pointerType) zuletztFinger = fund.pointerType === ZEIGER_FINGER;
     if (pausiert) { pausiert = false; return; }
-    if (!lobby) return;
+    if (!lobby) { if (tieferMoeglich()) tiefer(); return; }
     const punkt = punktAus(fund);
     if (lobby.beiKlick(punkt.x, punkt.y) === "vollbild") vollbild();
   }

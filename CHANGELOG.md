@@ -3,6 +3,73 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Auf dem Handy war nach der ersten Ebene Schluss
+
+**Gefunden beim Nachlesen der eigenen Texte**, nicht durch einen Absturz.
+Genau darum war es unsichtbar.
+
+Wer eine Ebene schaffte, las im Bild:
+
+    Ebene geschafft - Leertaste: tiefer hinab
+
+Auf einem Handy gibt es keine Leertaste. Und der Weg tiefer hing an
+**genau** dieser Taste (`runtime/start.js`, der `keydown`-Hörer). Das
+Spiel war auf Android also nach der ersten geschafften Ebene zu Ende —
+ohne Fehlermeldung, ohne rote Prüfung, ohne dass irgendetwas kaputt
+aussah. Es ging einfach nicht weiter.
+
+Dasselbe eine Stufe kleiner auf dem Pausenbild: *„Pause - klick ins
+Bild"* — auf einem Gerät ohne Maus.
+
+**Drei geänderte Zeilen, keine neue.** `runtime/start.js` steht bei
+**999** von 1000 Zeilen (Regel 8); jede zusätzliche Zeile erzwingt die
+Aufteilung. Deshalb ersetzt jede Änderung genau eine Zeile:
+
+- `if (!lobby) return;` → `if (!lobby) { if (tieferMoeglich()) tiefer(); return; }`
+- `"Pause - klick ins Bild"` → `"Pause - tippen oder klicken"`
+- `"Ebene geschafft - Leertaste: tiefer hinab"` → `"Ebene geschafft - tippen oder Leertaste"`
+
+Die neuen Sätze nennen beide Wege. Das ist kein Kompromiss, sondern die
+Wahrheit: Am Rechner geht beides, am Handy geht der eine.
+
+*Warum der Tipp im Vorlauf-Hörer landet und nicht in einem neuen Knopf:*
+Ein Knopf müsste in die Leiste, die Leiste gehört
+`runtime/oberflaeche-leiste.js`, und ein Sieg ist kein Zug. Der
+Vorlauf-Hörer ist ohnehin der einzige, der den Fall „gerade läuft kein
+Spiel" schon kennt — er trägt bereits das Aufwecken aus der Pause.
+
+**Zwei neue Abschnitte in `werkzeuge/pruefe-tippen.mjs`** (jetzt 285
+Behauptungen, vorher 253):
+
+- *„Eine geschaffte Ebene führt auch ohne Tastatur weiter."* Der Sieg
+  wird über die Funktion des Spiels selbst herbeigeführt
+  (`laufEndeEintragen` aus `spiel/zug.mjs` — dieselbe, die ihn im Lauf
+  einträgt), dann wird getippt. Danach muss eine neue Sitzung stehen,
+  **eine** Ebene tiefer. Vorweg steht die Gegenprobe: Ohne Sieg wechselt
+  derselbe Tipp die Ebene nicht — sonst bliebe unklar, ob der Tipp den
+  Sieg erkennt oder ob er das immer tut.
+- *„Kein Text verlangt etwas, das ein Handy nicht hat."* Holt die Sätze
+  aus dem Quelltext und schlägt an, wenn einer nur die Maus (`klick`
+  ohne `tipp`) oder nur die Tastatur (`Leertaste` ohne `tipp`) nennt.
+
+**Rotprobe — 3 von 3:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| Tipp-Weg zurückgenommen | **3 Behauptungen** fielen: „ein Tipp nach dem Sieg baut eine neue Sitzung", „genau eine Ebene tiefer: ist 1, soll 2", „die neue Ebene läuft wieder: ist ‚sieg', soll null" |
+| alter Leertasten-Satz zurück | „„Ebene geschafft - Leertaste: tiefer hinab" nennt nicht nur die Tastatur" |
+| alter Klick-Satz zurück | „„Pause - klick ins Bild" nennt nicht nur die Maus" |
+
+Gemessen im Ersatzbrowser: Ebene 1 → 2, vier Gegner gefallen, vier Sätze
+geprüft. **Ein** Abstieg je Tipp, nicht zwei — am Blatt hängen zwei
+Hörer, und beide bekommen denselben `pointerdown`.
+
+*Was daran hängen bleibt:* `runtime/start.js` ist mit 999 Zeilen voll.
+Die nächste Änderung dort muss die Datei erst teilen. Der saubere
+Schnitt liegt bei `macheAbspieler` → `runtime/abspieler.js`.
+
+---
+
 ## 06.09.2026 — Die Einzeldatei war tot, und die Kette war grün
 
 **Gefunden beim Ausliefern**, nicht durch eine Prüfung. Und das ist der
