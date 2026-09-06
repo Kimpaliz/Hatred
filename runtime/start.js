@@ -365,6 +365,14 @@ export function macheSpiel({
   const eingabe = macheEingabe({
     leinwand, kamera, platz,
     zustand: () => zustand,
+    /* Wo die Knöpfe der Leiste liegen, weiß nur die Anzeige, die sie
+       gezeichnet hat. Ohne diese Zeile sind sie zwar zu sehen, aber
+       kein Tipp findet sie — er ginge als Gehbefehl auf das Kartenfeld
+       darunter. Gefragt wird bei jedem Tipp neu, weil `felder()` beim
+       Zeichnen gefüllt wird: Sie ist damit die Leiste, die gerade
+       wirklich auf dem Schirm steht, und keine zweite Rechnung
+       (Fehlerbuch E2). */
+    felderLesen: () => flaeche.felder(),
     /* Der einzige Ausgang. Alles, was ein Mensch anklickt, geht hier
        hinaus und kommt als Ereignis zurück. */
     sende: (aktion) => sitzung.willAktion(aktion)
@@ -554,7 +562,13 @@ export function macheSpiel({
        Feldern — mitten in einer Bewegung steht eine Figur aber auf
        einer Zwischenstelle. Wer hier die Abspielung hineinreicht,
        bekommt keinen schiefen Text, sondern einen geworfenen Fehler
-       und ein stehendes Bild. */
+       und ein stehendes Bild.
+
+       `finger` sagt der Anzeige, womit zuletzt bedient wurde. Die Antwort
+       kommt aus der Eingabe und nicht aus einer eigenen Erkennung: Es gibt
+       genau eine Stelle, die es weiß, und eine zweite liefe auseinander.
+       Wer mit der Maus spielt, behält die schmale Leiste; wer tippt,
+       bekommt die 48 Punkte. */
     flaeche.zeichne(zustand, {
       schau: schauZustand,
       geplant: null,
@@ -565,7 +579,7 @@ export function macheSpiel({
       sichtbar: alles ? null : sichtbareWesenIds(),
       zeit,
       rundeSeit
-    });
+    }, { finger: eingabe.istFinger() });
     return zeichner.anzahlRechtecke();
   }
 
