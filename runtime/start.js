@@ -823,7 +823,7 @@ export function starte(blatt) {
 
   /* ── Hörer ──────────────────────────────────────────────────────
 
-     Die Lobby bekommt Maus und Tastatur, solange sie da ist; sobald
+     Die Lobby bekommt Zeiger und Tastatur, solange sie da ist; sobald
      das Spiel läuft, hört `runtime/eingabe.js` selbst mit. Doppelt
      angemeldet ist hier nichts: Die Lobby fragt vorher, ob sie noch
      dran ist. */
@@ -834,18 +834,42 @@ export function starte(blatt) {
     return { x, y };
   }
 
-  blatt.addEventListener("mousemove", (fund) => {
+  function beiVorlaufZeiger(fund) {
     if (!lobby) return;
     const punkt = punktAus(fund);
     lobby.beiZeiger(punkt.x, punkt.y);
-  });
-  blatt.addEventListener("mousedown", (fund) => {
+  }
+
+  function beiVorlaufDruck(fund) {
+    /* Zuerst und immer: Der abgeschnittene Weg ist der zweite Lauf.
+       Danach erst die Frage, wer gerade dran ist. */
+    if (typeof fund.preventDefault === "function") fund.preventDefault();
     if (pausiert) { pausiert = false; return; }
     if (!lobby) return;
-    fund.preventDefault();
     const punkt = punktAus(fund);
     if (lobby.beiKlick(punkt.x, punkt.y) === "vollbild") vollbild();
-  });
+  }
+
+  /* Entweder Zeigerereignisse **oder** Mausereignisse, nie beide.
+
+     Ein Tipp auf Android erzeugt nach `pointerup` noch einmal
+     `mousedown` und `click` — dieselbe Stelle, dasselbe Ereignis, nur
+     als Maus verkleidet. Wer beide Wege anmeldet, drückt „Los" zweimal
+     und startet zwei Läufe oder wählt zwei Helden. Deshalb entscheidet
+     eine einzige Frage, welcher Weg angemeldet wird, und der andere
+     bleibt leer: `preventDefault` allein wäre die zweite Absicherung,
+     nicht die erste (`.claude/subagent-profile.md`, Falle 3).
+
+     Der Mausweg ist kein Rückschritt, sondern die Rückfalltür für
+     Umgebungen ohne `PointerEvent` — sehr alte Browser und jedes
+     nachgestellte Blatt in `werkzeuge/`. */
+  if (globalThis.PointerEvent !== undefined) {
+    blatt.addEventListener("pointermove", beiVorlaufZeiger);
+    blatt.addEventListener("pointerdown", beiVorlaufDruck);
+  } else {
+    blatt.addEventListener("mousemove", beiVorlaufZeiger);
+    blatt.addEventListener("mousedown", beiVorlaufDruck);
+  }
 
   globalThis.document.addEventListener("keydown", (fund) => {
     if (fund.ctrlKey || fund.metaKey || fund.altKey) return;
