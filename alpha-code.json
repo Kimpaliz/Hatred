@@ -1,0 +1,29 @@
+{
+  "hauptzweig": "main",
+  "quellordner": ["spiel", "netz", "runtime", "werkzeuge"],
+  "endungen": [".js", ".mjs"],
+  "ausnahmen": ["node_modules", ".git", "vendor", "dist", "build"],
+  "zeilengrenze": 1000,
+  "spaltengrenze": 100,
+  "sprache": {
+    "bezeichner": "deutsch",
+    "texte": "deutsch",
+    "umlaute": "echt"
+  },
+  "kopfnotiz": {
+    "pflicht": true,
+    "tags": ["Regelkern", "Bild", "Netz", "Prüfwesen", "Oberfläche", "Werkzeug"],
+    "abschnitte": ["Arbeitet zusammen mit"]
+  },
+  "browserfrei": {
+    "ordner": ["spiel"],
+    "verboten": ["window", "document", "canvas", "Date", "performance",
+                 "Math.random", "setTimeout", "requestAnimationFrame",
+                 "localStorage"]
+  },
+  "vorgaenge": {
+    "repo": "Kimpaliz/hatred",
+    "roadmap": "docs/ROADMAP.md",
+    "sammel_label": "track"
+  }
+}
