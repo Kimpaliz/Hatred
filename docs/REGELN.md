@@ -17,15 +17,20 @@ Zwei Änderungen an verschiedenen Systemen gehören in zwei Zweige, auch
 wenn sie am selben Tag entstehen. Sonst lässt sich die eine nicht
 annehmen und die andere verwerfen.
 
-| System | Zweigname | Ordner |
-| --- | --- | --- |
-| Regelkern | `kern/<kurz>` | `spiel/` |
-| Landschaft | `land/<kurz>` | `spiel/landschaft.mjs`, `spiel/rauschen.mjs` |
-| Bild | `bild/<kurz>` | `runtime/zeichnen.js`, `licht.js`, `partikel.js`, `sprites*.js`, `palette.js` |
-| Oberfläche | `flaeche/<kurz>` | `runtime/oberflaeche.js`, `eingabe.js`, `lobby.js` |
-| Netz | `netz/<kurz>` | `netz/` |
-| Prüfwesen | `pruef/<kurz>` | `werkzeuge/` |
-| Doku | `doku/<kurz>` | `docs/`, `*.md` |
+| System | Tag | Zweig | Bereiche |
+| --- | --- | --- | --- |
+| Regelkern | `Regelkern` | `kern/…` | `spiel/` — Höhen, Sicht, Wege, Kampf, Züge, KI, Lauf, Katalog |
+| Bild | `Bild` | `bild/…` | `runtime/zeichnen.js`, `licht.js`, `partikel.js`, `sprite*.js`, `palette.js`, `kamera.js`, `schrift.js` |
+| Oberfläche | `Oberfläche` | `flaeche/…` | `runtime/oberflaeche.js`, `eingabe.js`, `lobby.js`, `start.js`, `index.html` |
+| Netz | `Netz` | `netz/…` | `netz/` |
+| Prüfwesen | `Prüfwesen` | `pruef/…` | `werkzeuge/pruefe-*.mjs`, `werkzeuge/helfer.mjs` |
+| Werkzeug | `Werkzeug` | `werk/…` | `werkzeuge/` ohne die Prüfungen — Vorschau, Kartenansicht, Bündler |
+| Doku | `Doku` | `doku/…` | `docs/`, alle `*.md` in der Wurzel |
+
+Die **Landschaft** hat bewusst keinen eigenen Zweignamen: Sie ist Teil
+des Regelkerns (`spiel/welt-feld.mjs`, `landschaft.mjs`, `bauart.mjs`),
+weil ihre Ausgabe eine Spielregel ist und keine Zierde — eine Karte, auf
+der der Ausgang nicht erreichbar ist, ist ein unspielbarer Lauf.
 
 Arbeiten mehrere Agenten gleichzeitig, hilft zusätzlich ein Präfix je
 Agent (`claude/<thema>`). Das beantwortet aber eine andere Frage — „wer"

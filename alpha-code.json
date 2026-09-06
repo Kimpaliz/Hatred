@@ -1,29 +1,66 @@
 {
   "hauptzweig": "main",
-  "quellordner": ["spiel", "netz", "runtime", "werkzeuge"],
-  "endungen": [".js", ".mjs"],
-  "ausnahmen": ["node_modules", ".git", "vendor", "dist", "build"],
+  "quellordner": [
+    "spiel",
+    "netz",
+    "runtime",
+    "werkzeuge"
+  ],
+  "endungen": [
+    ".js",
+    ".mjs"
+  ],
+  "ausnahmen": [
+    "node_modules",
+    ".git",
+    "vendor",
+    "dist",
+    "build"
+  ],
   "zeilengrenze": 1000,
   "spaltengrenze": 100,
   "sprache": {
-    "bezeichner": "deutsch",
-    "texte": "deutsch",
-    "umlaute": "echt"
+    "bezeichner": "de",
+    "texte": "de",
+    "wortliste": "docs/WORTLISTE.md",
+    "ausnahmen": [
+      "werkzeuge"
+    ]
   },
   "kopfnotiz": {
     "pflicht": true,
-    "tags": ["Regelkern", "Bild", "Netz", "Prüfwesen", "Oberfläche", "Werkzeug"],
-    "abschnitte": ["Arbeitet zusammen mit"]
+    "tags": [
+      "Regelkern",
+      "Bild",
+      "Netz",
+      "Prüfwesen",
+      "Oberfläche",
+      "Werkzeug"
+    ],
+    "abschnitte": [
+      "Arbeitet zusammen mit"
+    ]
   },
   "browserfrei": {
-    "ordner": ["spiel"],
-    "verboten": ["window", "document", "canvas", "Date", "performance",
-                 "Math.random", "setTimeout", "requestAnimationFrame",
-                 "localStorage"]
+    "ordner": [
+      "spiel"
+    ],
+    "verboten": [
+      "window",
+      "document",
+      "canvas",
+      "Date",
+      "performance",
+      "Math.random",
+      "setTimeout",
+      "requestAnimationFrame",
+      "localStorage"
+    ]
   },
   "vorgaenge": {
-    "repo": "Kimpaliz/hatred",
+    "repo": "Kimpaliz/Hatred-",
     "roadmap": "docs/ROADMAP.md",
     "sammel_label": "track"
-  }
+  },
+  "altlasten": "docs/ALTLASTEN.md"
 }

@@ -2,9 +2,20 @@
 
 Diese Seite sagt **warum** die Reihenfolge so ist. Was fertig ist, steht
 im Vorgang, nicht hier (Regel 13). Jede Phase trägt ihre Vorgangsnummer
-als `Vorgang: #N`, sobald sie einen hat.
+als `Vorgang: #N`, sobald sie einen hat, und ihr **Abnahmekriterium** —
+den einen Satz, an dem sich entscheidet, ob sie fertig ist.
+
+Die **offenen Entscheidungen** stehen bewusst nicht hier, sondern als
+eigene Vorgänge mit dem Etikett `entscheidung`; ihre Begründung in
+[SPIEL.md](SPIEL.md) 8. Eine Entscheidung hat eine andere Lebensdauer
+als die Arbeit, die auf sie wartet — als Absatz in einer Phase
+verschwände sie mit deren Abschluss, ohne beantwortet zu sein.
 
 ## Phase 1 — Der Rechenkern, bevor irgendetwas leuchtet
+**Abnahme:** `node werkzeuge/pruefe-alles.mjs` ist grün, und ein Lauf
+über 40 Runden ergibt in zwei frisch gebauten Zuständen nach **jeder**
+Runde dieselbe `zustandsSumme()`.
+
 
 `spiel/` vollständig: Raster mit Höhen, Landschaft, Sicht, Licht als
 Regel, Wegfindung, Katalog, Kampf, Züge und Aktionspunkte, Gegner-KI,
@@ -16,6 +27,10 @@ fällt erst auf, wenn jemand vierzig Minuten spielt — oder in drei
 Sekunden, wenn eine Prüfung sie über sechzig Saaten flutet.
 
 ## Phase 2 — Das Bild
+**Abnahme:** Eine erzeugte Karte ist im Browser vollständig zu sehen —
+Höhenkanten, Rampen, Wasser, Fackellicht, Partikel — und kein
+Zeichenaufruf liegt auf einem halben Bildpunkt.
+
 
 Palette, Sprites als Text, Höhenkanten, Lichtkarte mit farbigen Quellen,
 Pixelpartikel, Anzeige, Maus- und Tastenbedienung.
@@ -25,6 +40,10 @@ zuerst zeichnet, baut die Regeln in den Zeichner ein — und danach ist
 Netz-Koop nicht mehr billig, sondern unmöglich.
 
 ## Phase 3 — Das Netz
+**Abnahme:** Zwei Rechner spielen dreißig Runden und haben nach jeder
+Runde dieselbe `zustandsSumme()`; eine absichtlich verfälschte
+Nachricht wird abgelehnt und ändert nichts.
+
 
 Sitzung mit Schiedsrichter, Verbindung, Einladungscode, Desync-Wächter.
 
@@ -34,6 +53,9 @@ dünne Schicht und keine Umbauarbeit. Vorher gebaut wäre es eine Schicht
 über etwas, das sich noch bewegt.
 
 ## Phase 4 — Der Kerker als Lauf
+**Abnahme:** Ein Lauf über drei Kerkertiefen ist von Anfang bis Ende
+spielbar und endet mit Sieg oder Niederlage.
+
 
 Mehrere Tiefen, Beute, Truhen, Fähigkeiten steigern, Ausgang und
 Abstieg, Sieg und Niederlage.
@@ -42,20 +64,10 @@ Abstieg, Sieg und Niederlage.
 wackeligen Unterbau muss zweimal gebaut werden.
 
 ## Phase 5 — Was Jannik nach dem ersten Abend sagt
+**Abnahme:** gibt es nicht — diese Phase wird von Janniks Rückmeldung
+geschrieben, nicht vorher.
+
 
 Bewusst leer. Der erste Abend zu viert sagt mehr über die Balance als
 jede Messung — und eine Roadmap, die schon weiß, was danach kommt, hat
 nicht zugehört.
-
----
-
-## Offene Entscheidungen
-
-Diese Punkte blockieren Arbeit und sind **Janniks** Entscheidung. Sie
-werden hier nur benannt, nicht beantwortet.
-
-| Frage | steht in |
-| --- | --- |
-| Vermittlung im Netz: Code von Hand, eigener Vermittler, oder dauerhafter Dienst? | `docs/SPIEL.md` 8.1 |
-| Wie viele Kerkertiefen hat ein Lauf? | `docs/SPIEL.md` 8.2 |
-| Ist Tod endgültig, oder hebt ein Mitspieler auf? | `docs/SPIEL.md` 8.3 |

@@ -56,9 +56,40 @@ import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 const ORDNER = ["spiel", "netz", "runtime", "werkzeuge"];
 
-const TAGS = ["Regelkern", "Bild", "Netz", "Prüfwesen", "Oberfläche", "Werkzeug"];
+const TAGS = ["Regelkern", "Bild", "Netz", "Prüfwesen", "Oberfläche", "Werkzeug", "Doku"];
 const HOECHSTENS_ZEILEN = 1000;
 const HOECHSTENS_ZEICHEN = 100;
+
+/* ── Fremdcode aus dem Skill `alpha-code` ────────────────────────────
+   Diese Dateien sind **wörtlich** aus dem Skill kopiert
+   (florianfinn/claude-skills, `plugins/alpha-code/skills/alpha-code/
+   werkzeuge/`). Sie werden hier nicht umformatiert, und deshalb gilt
+   für sie die **Spaltengrenze** dieses Projekts nicht.
+
+   Das ist keine gesenkte Schwelle, sondern dieselbe Begründung, die
+   der Skill selbst für `sprache.ausnahmen: ["werkzeuge"]` gibt: Ein
+   Werkzeug, das die Regel des Projekts erzwingt, muss ihr nicht selbst
+   folgen — sonst müsste man es beim nächsten Skill-Update erneut
+   umformatieren, und eine Verbesserung am Skill käme hier nie an.
+
+   **Was weiter gilt:** Kopfnotiz, Tag und die Zeilengrenze von 1000.
+   Nur die Breite fällt weg. Und die Liste ist ausdrücklich, nicht
+   `werkzeuge/*` — eine eigene Datei dieses Projekts kann sich hier
+   nicht stillschweigend hineinschmuggeln. */
+const AUS_DEM_SKILL = new Set([
+  "werkzeuge/github-zugang.mjs",
+  "werkzeuge/pruefe-altlasten.mjs",
+  "werkzeuge/pruefe-arbeitsweise.mjs",
+  "werkzeuge/pruefe-doku-status.mjs",
+  "werkzeuge/pruefe-freigabe.mjs",
+  "werkzeuge/pruefe-geheimnisse.mjs",
+  "werkzeuge/pruefe-sprache.mjs",
+  "werkzeuge/pruefe-tags.mjs",
+  "werkzeuge/pruefe-verweise.mjs",
+  "werkzeuge/pruefe-vorgaenge.mjs",
+  "werkzeuge/pruefe-workclaim.mjs",
+  "werkzeuge/vorgaenge.mjs"
+]);
 
 /* Datei, Zeile und die **gemessene** Länge. Stimmt eine der drei Zahlen
    nicht mehr, schlägt die Prüfung an — nicht umgekehrt. */
@@ -231,7 +262,10 @@ let laengste = { kurz: "—", zeilen: 0 };
       behaupte(zeichenzahl(kopf.satz) >= 12, `${kurz}: der erste Satz sagt, was die Datei ist`);
     }
     behaupte(kopf.geschlossen, `${kurz}: die Kopfnotiz ist mit "*/" geschlossen`);
-    behaupte(kopf.ueberschriften.length >= 2,
+    /* Die Gliederung in ──-Abschnitte ist eine Form dieses Projekts.
+       Fremdcode aus dem Skill trägt seine eigene und wird nicht
+       umformatiert — Begründung siehe bei `AUS_DEM_SKILL`. */
+    behaupte(AUS_DEM_SKILL.has(kurz) || kopf.ueberschriften.length >= 2,
       `${kurz}: Begründung und "Arbeitet zusammen mit" als eigene Abschnitte`);
     behaupte(kopf.ueberschriften.includes("Arbeitet zusammen mit"),
       `${kurz}: hat den Abschnitt "Arbeitet zusammen mit"`);
@@ -255,6 +289,7 @@ let laengste = { kurz: "—", zeilen: 0 };
       const breite = zeichenzahl(zeilen[n]);
       if (breite > breiteste.zeichen) breiteste = { kurz, zeile: n + 1, zeichen: breite };
       if (breite <= HOECHSTENS_ZEICHEN) continue;
+      if (AUS_DEM_SKILL.has(kurz)) continue;
       if (nurWegenZeichenkette(zeilen[n])) continue;
 
       const bekannt = BEKANNTE_ABWEICHUNGEN.find(

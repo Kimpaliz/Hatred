@@ -1,19 +1,24 @@
-# Wer arbeitet gerade woran
+# Workclaim — wer arbeitet gerade woran
 
-Erst lesen, dann eintragen, dann schreiben. Wer hier nicht steht, hat
-keinen Bereich; wer einen fremden Bereich anfasst, macht den Zweig
-unannehmbar.
+**Vor jedem Schreiben lesen. Vor jedem eigenen Schreiben eintragen.**
+Ein Bereich unter fremdem Besitz wird nicht angefasst — Zugriff nur mit
+ausdrücklicher Erlaubnis des Besitzers oder des Auftraggebers. Nach getaner
+Arbeit wird die eigene Zeile auf `frei` gesetzt oder entfernt.
 
-Ein Eintrag verfällt, wenn sein Zweig zusammengeführt oder verworfen ist
-— dann wird die Zeile **gelöscht**, nicht abgehakt.
+Warum es diese Datei gibt: Am 02.09.2026 hat eine zweite Sitzung mitten
+im Checkout einer ersten einen Merge gestartet — sieben Dateien voller
+Konfliktmarker. Chatverläufe sind nicht geteilt; diese Datei ist die
+einzige Stelle, an der sich zwei Sitzungen sehen.
 
-| Bereich (Ordner oder Datei) | Zweig | seit |
-| --- | --- | --- |
-| — | — | — |
+| Bereich | Besitzer | Ziel | Seit |
+| --- | --- | --- | --- |
+| frei | frei | – | – |
 
-## So trägt man ein
+## Format
 
-1. Zeile mit dem **engsten** Bereich, der reicht. Nicht `spiel/`, wenn
-   `spiel/kampf.mjs` gemeint ist.
-2. Zweigname aus der Systemtabelle in [docs/REGELN.md](docs/REGELN.md).
-3. Datum als `TT.MM.JJJJ`.
+- **Bereich:** Ordner oder Dateien, so eng wie möglich (`werkzeuge/`,
+  `docs/WEGWEISER.md`). Ein Anspruch auf „alles" blockiert alle.
+- **Besitzer:** wer schreibt — `Claude (Sitzung X)`, `Codex`, `der Auftraggeber`.
+- **Ziel:** ein Satz, was dort entsteht.
+- **Seit:** Datum und Uhrzeit. Ein Anspruch, der älter als ein Tag ist,
+  darf hinterfragt werden — nachfragen statt überschreiben.
