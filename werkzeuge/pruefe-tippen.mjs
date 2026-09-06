@@ -57,10 +57,12 @@
    startet. */
 
 import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
+import {
+  atemzug, ereignis, klickMaus, leisteImBild, macheErsatzflaeche, macheWelt,
+  punktVon, tippAndroid, tippSauber
+} from "./buehne-browser.mjs";
 import { macheSpiel, starte } from "../runtime/start.js";
-import { FARBEN } from "../runtime/palette.js";
 import * as schrift from "../runtime/schrift.js";
-import { KACHEL } from "../runtime/licht.js";
 import { vergroesserungFuer } from "../runtime/kamera.js";
 import { FINGER_MINDESTMASS, macheOberflaeche } from "../runtime/oberflaeche.js";
 import { AKTION } from "../spiel/aktionen.mjs";
@@ -78,229 +80,9 @@ const messungen = [];
 const unaufgefangen = [];
 process.on("unhandledRejection", (grund) => { unaufgefangen.push(String(grund)); });
 
-/* Das Handy, an dem gemessen wird: Pixel 7 im Querformat, wie ihn
-   Chromium nachstellt. Die krumme Zahl ist der ganze Punkt. */
-const HANDY = { breite: 915, hoehe: 412, dpr: 2.625 };
+/* Die Saat. Sie steht hier und nicht auf der Bühne: Mit einer anderen
+   käme ein anderer Kerker und damit jede Zahl weiter unten anders. */
 const SAAT = 3;
-
-/* ══════════════════════════════════════════════════════════════════
-   Das mitschreibende Blatt
-   ══════════════════════════════════════════════════════════════════
-
-   Es malt nichts, es schreibt mit. `frisch` heißt: Die Blattmaße wurden
-   gesetzt und die Glättung seither nicht wieder abgeschaltet — wer in
-   diesem Zustand zeichnet, zeichnet weich (Fehlerbuch D1). */
-function macheErsatzflaeche(breite, hoehe) {
-  let blattBreite = breite;
-  let blattHoehe = hoehe;
-  let farbe = "#000000";
-  let frisch = false;
-  let weich = null;
-  let masseBruch = null;
-  let masseGesetzt = 0;
-  let rechtecke = [];
-
-  function merke(art, wert) {
-    if (art === "masse") {
-      frisch = true;
-      masseGesetzt++;
-      if (masseBruch === null && !Number.isInteger(wert)) masseBruch = wert;
-      return;
-    }
-    if (art === "glaettung") { if (wert === false) frisch = false; return; }
-  }
-
-  const canvas = {
-    get width() { return blattBreite; },
-    set width(wert) { blattBreite = wert; merke("masse", wert); },
-    get height() { return blattHoehe; },
-    set height(wert) { blattHoehe = wert; merke("masse", wert); }
-  };
-
-  return {
-    canvas,
-    leere() { rechtecke = []; },
-    rechtecke: () => rechtecke,
-    /* `true` heißt: Die Maße wurden gesetzt und die Glättung ist seither
-       nicht wieder abgeschaltet worden. Wer erst beim nächsten Bild
-       zurückschaltet, hat Glück gehabt — nicht recht. */
-    frisch: () => frisch,
-    anzahl: () => rechtecke.length,
-    weich: () => weich,
-    masseBruch: () => masseBruch,
-    masseGesetzt: () => masseGesetzt,
-    set imageSmoothingEnabled(wert) { merke("glaettung", wert); },
-    get imageSmoothingEnabled() { return false; },
-    set fillStyle(wert) { farbe = wert; },
-    get fillStyle() { return farbe; },
-    set globalCompositeOperation(wert) { void wert; },
-    get globalCompositeOperation() { return "source-over"; },
-    fillRect(x, y, b, h) {
-      if (frisch && weich === null) weich = { x, y, b, h, farbe };
-      rechtecke.push({ x, y, b, h, farbe });
-    }
-  };
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   Der Browser-Ersatz
-   ══════════════════════════════════════════════════════════════════ */
-
-function macheWelt({
-  breite = HANDY.breite, hoehe = HANDY.hoehe, dpr = HANDY.dpr,
-  schirm = { orientation: { lock: () => Promise.resolve() } },
-  vollbildVersprechen = true, vollbildGelingt = true
-} = {}) {
-  const ctx = macheErsatzflaeche(breite, hoehe);
-  const hoerer = [];
-  const melde = (wo, name, fn) => hoerer.push({ wo, name, fn });
-  const nimm = (wo, name, fn) => {
-    const stelle = hoerer.findIndex((h) => h.wo === wo && h.name === name && h.fn === fn);
-    if (stelle >= 0) hoerer.splice(stelle, 1);
-  };
-  const gedreht = [];
-  const schriftstueck = {
-    visibilityState: "visible",
-    fullscreenElement: null,
-    addEventListener: (name, fn) => melde("schrift", name, fn),
-    removeEventListener: (name, fn) => nimm("schrift", name, fn),
-    getElementById: () => null,
-    exitFullscreen: () => { schriftstueck.fullscreenElement = null; }
-  };
-  const blatt = {
-    get width() { return ctx.canvas.width; },
-    set width(wert) { ctx.canvas.width = wert; },
-    get height() { return ctx.canvas.height; },
-    set height(wert) { ctx.canvas.height = wert; },
-    clientWidth: breite,
-    clientHeight: hoehe,
-    ownerDocument: schriftstueck,
-    getContext: () => ctx,
-    getBoundingClientRect: () => ({
-      left: 0, top: 0, width: blatt.clientWidth, height: blatt.clientHeight
-    }),
-    addEventListener: (name, fn) => melde("blatt", name, fn),
-    removeEventListener: (name, fn) => nimm("blatt", name, fn),
-    requestFullscreen: () => {
-      if (!vollbildGelingt) {
-        return vollbildVersprechen ? Promise.reject(new Error("abgelehnt")) : undefined;
-      }
-      schriftstueck.fullscreenElement = blatt;
-      return vollbildVersprechen ? Promise.resolve() : undefined;
-    }
-  };
-  const bilder = [];
-  const alt = {
-    document: globalThis.document,
-    raf: globalThis.requestAnimationFrame,
-    an: globalThis.addEventListener,
-    zeiger: globalThis.PointerEvent,
-    dpr: globalThis.devicePixelRatio,
-    schirm: globalThis.screen
-  };
-  globalThis.document = schriftstueck;
-  globalThis.requestAnimationFrame = (fn) => { bilder.push(fn); return bilder.length; };
-  globalThis.addEventListener = (name, fn) => melde("fenster", name, fn);
-  /* Ohne das nähme `runtime/start.js` die Rückfalltür für alte Browser,
-     und der ganze Zeigerweg bliebe ungeprüft. */
-  globalThis.PointerEvent = function PointerEvent() {};
-  globalThis.devicePixelRatio = dpr;
-  /* Aufgeschrieben wird nur, was der Bildschirm wirklich kann: Wo es
-     kein `lock` gibt, wird auch keins untergeschoben — sonst prüfte der
-     Fall „`orientation` ohne `lock`" eine Sperre, die es nur in der
-     Prüfung gibt. */
-  const echterHalt = schirm && schirm.orientation && schirm.orientation.lock;
-  if (!schirm) delete globalThis.screen;
-  else if (!echterHalt) globalThis.screen = schirm;
-  else {
-    globalThis.screen = { ...schirm, orientation: { ...schirm.orientation,
-      lock: (wie) => { gedreht.push(wie); return echterHalt(wie); } } };
-  }
-
-  return {
-    ctx, blatt, hoerer, bilder, schriftstueck,
-    gedreht: () => gedreht.slice(),
-    zaehle: (name) => hoerer.filter((h) => h.name === name).length,
-    feuere(name, ereignis = {}) {
-      let getroffen = 0;
-      for (const h of [...hoerer]) {
-        if (h.name !== name) continue;
-        getroffen++;
-        h.fn(ereignis);
-      }
-      return getroffen;
-    },
-    naechstesBild(zeitMs) {
-      const fn = bilder.pop();
-      bilder.length = 0;
-      if (fn) fn(zeitMs);
-    },
-    raeumeAuf() {
-      globalThis.document = alt.document;
-      globalThis.requestAnimationFrame = alt.raf;
-      globalThis.addEventListener = alt.an;
-      globalThis.PointerEvent = alt.zeiger;
-      globalThis.devicePixelRatio = alt.dpr;
-      globalThis.screen = alt.schirm;
-    }
-  };
-}
-
-const ereignis = (zusatz = {}) => ({ preventDefault: () => {}, ...zusatz });
-
-/* Ein Atemzug für die Versprechen. `requestFullscreen()` und
-   `screen.orientation.lock()` geben Versprechen zurück; was daran
-   hängt, läuft erst nach dem synchronen Schritt. */
-const atemzug = () => new Promise((fertig) => setTimeout(fertig, 0));
-
-/* Die vier Ereignisse eines einzigen Tipps auf Android — in genau
-   dieser Reihenfolge, samt der nachgereichten Maus. */
-function tippAndroid(welt, x, y, knopf = 0) {
-  const zeiger = { clientX: x, clientY: y, button: knopf, pointerType: "touch", pointerId: 7 };
-  welt.feuere("pointerdown", ereignis(zeiger));
-  welt.feuere("pointerup", ereignis(zeiger));
-  welt.feuere("mousedown", ereignis({ clientX: x, clientY: y, button: knopf }));
-  welt.feuere("click", ereignis({ clientX: x, clientY: y, button: knopf }));
-}
-
-/* Derselbe Tipp ohne die nachgereichte Maus — der Vergleichsfall. */
-function tippSauber(welt, x, y, knopf = 0) {
-  const zeiger = { clientX: x, clientY: y, button: knopf, pointerType: "touch", pointerId: 7 };
-  welt.feuere("pointerdown", ereignis(zeiger));
-  welt.feuere("pointerup", ereignis(zeiger));
-}
-
-/* Und die Maus: dieselben Zeigerereignisse, nur mit `pointerType`
-   „mouse" — samt dem Schweben, das es am Finger gar nicht gibt. */
-function klickMaus(welt, x, y, knopf = 0) {
-  const zeiger = { clientX: x, clientY: y, button: knopf, pointerType: "mouse", pointerId: 1 };
-  welt.feuere("pointermove", ereignis(zeiger));
-  welt.feuere("pointerdown", ereignis(zeiger));
-  welt.feuere("pointerup", ereignis(zeiger));
-}
-
-/* Die Leiste im **fertigen Bild** wiederfinden: der einzige Kasten in
-   `FARBEN.hudGrund`, der über die ganze Breite läuft und unten
-   anstößt. Gemessen wird damit, was wirklich gezeichnet wurde, und
-   nicht, was eine zweite Rechnung dafür hält. */
-function leisteImBild(welt) {
-  let gefunden = null;
-  for (const r of welt.ctx.rechtecke()) {
-    if (r.farbe !== FARBEN.hudGrund) continue;
-    if (r.x !== 0 || r.b !== welt.blatt.width) continue;
-    if (r.y + r.h !== welt.blatt.height) continue;
-    if (gefunden === null || r.h > gefunden) gefunden = r.h;
-  }
-  return gefunden;
-}
-
-/* Der Bildpunkt in der Mitte einer Kachel. Nicht die Ecke: Ein Fehler
-   um einen halben Bildpunkt fiele dort nicht auf. */
-function punktVon(kamera, x, y) {
-  const ecke = kamera.feldNachBild(x, y);
-  const halb = Math.floor((kamera.vergroesserung * KACHEL) / 2);
-  return { x: ecke.x + halb, y: ecke.y + halb };
-}
 
 /* Ein Tipp auf einen benannten Knopf des Vorlaufs. Erst ein Bild —
    wo ein Knopf liegt, weiß der Vorlauf erst, nachdem er ihn gemalt
@@ -380,8 +162,11 @@ function tippeSaat(welt, tippeAuf) {
     gleich(welt.zaehle("pointerup"), 1, "genau ein Lauf läuft — eine einzige Eingabe hört zu");
     gleich(welt.zaehle("mousedown"), 0, "und der Mausweg ist bis zuletzt leer");
 
+    /* Keine Rechteckzahl: Der Vorlauf würfelt seine Saat, und eine
+       andere Ziffernzahl im Feld malt andere Rechtecke — eine Zahl, die
+       niemand nachrechnen kann, ist keine Messung (Regel 11). */
     messungen.push(`Vorlauf mit der vollen Android-Folge: 1 Lauf, `
-      + `${welt.hoerer.length} Hörer, ${welt.ctx.anzahl()} Rechtecke im letzten Bild`);
+      + `${welt.hoerer.length} Hörer, davon ${welt.zaehle("pointerup")} Eingabe`);
   } finally {
     welt.raeumeAuf();
   }
