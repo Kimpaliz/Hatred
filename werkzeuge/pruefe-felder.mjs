@@ -374,4 +374,101 @@ abschnitt("3 · Karte und Menü");
     `auf 120 Punkten wird wirklich gekürzt (${knapp.length} Felder) - sonst prüfte das nichts`);
 }
 
+/* ── 4 · Sichtbar, was ein Tipp kostet ────────────────────────────
+
+   Der Fall, den man beim Bauen vergisst: Die Punkte sind alle. Zeigte
+   die Leiste dann einfach weniger Felder, spränge alles an eine andere
+   Stelle — der Daumen lernt eine Stelle, die sich bewegt. Zeigte sie
+   die Felder unverändert hell, tippte man dreimal und nichts geschähe;
+   das sieht aus wie ein kaputtes Telefon, nicht wie „zu teuer".
+
+   Geprüft wird deshalb beides zugleich: Das Feld **steht** noch da, an
+   **derselben** Stelle, und es sieht **anders** aus. */
+abschnitt("4 · Matt statt hell");
+{
+  const stellung = (ap) => {
+    const probe = macheProbe();
+    probe.schuetze.ap = ap;
+    const b = macheBuehne(probe.zustand, { fenster: 700 });
+    b.flaeche.zeichne(probe.zustand, {}, { finger: true });
+    return { probe, buehne: b, felder: b.flaeche.felder() };
+  };
+
+  const voll = stellung(6);
+  const leer = stellung(0);
+
+  /* Fehlt ein Feld, soll die Prüfung das **melden** und nicht am
+     fehlenden Feld sterben: Ein Absturz sagt nicht, was fehlte. */
+  const fehlt = { id: "fehlt", x: -1, y: -1, breite: 0, hoehe: 0, aktiv: "fehlt",
+    aktion: "fehlt", beschriftung: "fehlt" };
+  const feldIn = (liste, id) => liste.find((f) => f.id === id) || fehlt;
+
+  /* Der ständige Vorrat steht bei vollen und bei leeren Punkten da. */
+  for (const id of ["aktion:gehen", "aktion:angriff", "aktion:stoss"]) {
+    const a = voll.felder.find((f) => f.id === id);
+    const b = leer.felder.find((f) => f.id === id);
+    behaupte(!!a && !!b, `"${id}" steht mit und ohne Punkte in der Leiste`);
+    if (!a || !b) continue;
+    gleich(b.x, a.x, `"${id}" behält ohne Punkte seine Stelle (x)`);
+    gleich(b.y, a.y, `"${id}" behält ohne Punkte seine Stelle (y)`);
+    gleich(b.breite, a.breite, `"${id}" behält ohne Punkte seine Breite`);
+  }
+
+  /* Ohne Punkte geht nichts mehr außer aufhören. */
+  const angriffLeer = feldIn(leer.felder, "aktion:angriff");
+  gleich(angriffLeer.aktiv, false, "ohne Punkte ist der Angriff nicht wählbar");
+  gleich(angriffLeer.aktion, null,
+    "und trägt keine Aktion, die der Kern doch ablehnen würde");
+  const gehenVoll = feldIn(voll.felder, "aktion:gehen");
+  gleich(gehenVoll.aktiv, true, "mit Punkten ist Gehen wählbar");
+  behaupte(gehenVoll.aktion !== null, "und trägt die fertige Aktion des Kerns");
+  gleich(feldIn(leer.felder, "zugEnde").aktiv, true,
+    "aufhören geht immer");
+
+  /* Und der Fall, der ohne diese Prüfung falsch wäre: Das matte Feld
+     sieht aus wie das helle. Die Farbe wird aus der Mitschrift gelesen,
+     nicht aus dem Auge - und es ist die Farbe aus der Palette, keine
+     neu erfundene. */
+  const farbeIn = (buehne, feld) => buehne.schrift.texte
+    .filter((t) => t.x >= feld.x && t.x < feld.x + feld.breite
+      && t.y >= feld.y && t.y < feld.y + feld.hoehe && t.text.trim() !== "")
+    .map((t) => t.farbe);
+
+  const mattFarben = farbeIn(leer.buehne, angriffLeer);
+  behaupte(mattFarben.length > 0, "das matte Feld ist beschriftet");
+  behaupte(mattFarben.every((f) => f === FARBEN.hudMatt),
+    `ein nicht wählbares Feld steht ganz in hudMatt (${mattFarben.join(", ")})`);
+  const helleFarben = farbeIn(voll.buehne, feldIn(voll.felder, "aktion:angriff"));
+  behaupte(helleFarben.some((f) => f === FARBEN.hudSchrift),
+    `ein wählbares Feld steht in hudSchrift (${helleFarben.join(", ")})`);
+  behaupte(!helleFarben.includes(FARBEN.hudMatt),
+    "und nicht zugleich matt - sonst sähen beide gleich aus");
+  behaupte(FARBEN.hudMatt !== FARBEN.hudSchrift,
+    "die beiden Töne sind wirklich verschieden - sonst prüfte das nichts");
+
+  /* Der Preis steht auf dem wählbaren Feld und wird auf dem matten
+     weggelassen: Der Kern rechnet ihn aus einer Aktion, und die gibt es
+     dann nicht. Eine erfundene Zahl wäre eine zweite Wahrheit. */
+  behaupte(/\d+ AP$/.test(feldIn(voll.felder, "aktion:angriff").beschriftung),
+    "auf dem wählbaren Angriffsfeld steht sein Preis");
+  behaupte(!/AP/.test(angriffLeer.beschriftung),
+    `auf dem matten steht keine erfundene Zahl (${angriffLeer.beschriftung})`);
+
+  /* Das matte Feld ist trotzdem noch ein Kasten - unsichtbar wäre es
+     dasselbe wie weggelassen. */
+  behaupte(leer.buehne.ctx.rechtecke.some((r) =>
+    r.x === angriffLeer.x && r.y === angriffLeer.y
+    && r.b === angriffLeer.breite && r.h === angriffLeer.hoehe),
+  "das matte Feld ist weiter als Kasten gemalt");
+
+  /* Zwischenstand: zwei Punkte reichen für den Trank, nicht für den
+     Bogen. Ohne diesen Fall bewiese die Prüfung nur „alles oder nichts". */
+  const knapp = stellung(2);
+  gleich(feldIn(knapp.felder, "aktion:angriff").aktiv, false,
+    "mit zwei Punkten ist der 3-AP-Bogen nicht wählbar");
+  gleich(feldIn(knapp.felder, "aktion:trank").aktiv, true,
+    "der 2-AP-Trank aber schon - matt ist keine Sammelabfertigung");
+  pruefeFelder(knapp.buehne, knapp.felder, "mit zwei Punkten");
+}
+
 ende("Felder");

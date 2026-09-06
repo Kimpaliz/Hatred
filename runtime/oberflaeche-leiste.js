@@ -29,6 +29,16 @@
       Reihenfolge wie vor dem Umbau. Nur so ist beweisbar, dass die
       neuen Felder die alte Leiste nicht beschädigt haben (Regel 12).
 
+   ── Warum am Finger auch das Unmögliche dasteht ────────────────────
+
+   Ohne Finger zeigt die Leiste nur, was der Kern gerade erlaubt. Am
+   Finger wäre das falsch: Die Felder sprängen bei jedem ausgegebenen
+   Punkt an eine andere Stelle, und der Daumen lernt eine Stelle, die
+   sich bewegt. Deshalb steht am Finger der ständige Vorrat des Wesens —
+   und was gerade nicht geht, steht **matt** da (`FARBEN.hudMatt`) und
+   trägt `aktiv: false`. Sonst tippt man dreimal und nichts geschieht,
+   und das sieht aus wie ein kaputtes Telefon.
+
    ── Warum diese Datei getrennt von `oberflaeche.js` liegt ──────────
 
    Zusammen wären es über tausend Zeilen (Regel 8). Geteilt wurde an der
@@ -95,6 +105,13 @@ const REIHUNG = {
    erreichbar: Die Übersichtskarte hängt an `Tab`, und ein Menü hat
    überhaupt keine Taste — deshalb steht dort `null` und keine erfundene.
    Wer sie wegkürzen muss, kürzt von hinten: das Menü zuerst. */
+/* Der Vorrat, der am Finger **immer** dasteht — auch ohne Punkte. Das
+   ist das ständige Können eines Wesens: gehen, schlagen, stoßen,
+   warten. Trank und Aufheben stehen nicht dabei; die hängen daran, was
+   man trägt und was am Boden liegt, und ein Feld, das nie angeht, ist
+   nur Gedränge. */
+const FINGER_GRUNDVORRAT = [AKTION.gehen, AKTION.angriff, AKTION.stoss, AKTION.wacht];
+
 const ZUSATZ_FELDER = [
   { id: "karte", art: "karte", taste: "Tab", beschriftung: "Karte" },
   { id: "menue", art: "menue", taste: null, beschriftung: "Menü" }
@@ -180,9 +197,13 @@ export function macheLeiste(werkzeug) {
 
   /* Der Preis, wie er in der Leiste steht. Gehen hat kein festes Ziel,
      also steht dort der Preis **je Feld** — die einzige ehrliche Zahl,
-     solange der Zeiger nirgends liegt. */
+     solange der Zeiger nirgends liegt. Ohne fertige Aktion (der matte
+     Fall am Finger) steht gar kein Preis: Der Kern rechnet ihn aus einer
+     Aktion, und die gibt es dann nicht. Eine erfundene Zahl wäre die
+     zweite Wahrheit, die diese Datei gerade vermeiden soll. */
   function gruppenKosten(zustand, gruppe) {
     if (gruppe.typ === AKTION.gehen) return `${GEHEN_KOSTEN} je Feld`;
+    if (!gruppe.aktion) return "";
     const kosten = kostenVon(zustand, gruppe.aktion);
     if (!Number.isFinite(kosten)) return "-";
     return `${kosten} AP`;
@@ -294,7 +315,44 @@ export function macheLeiste(werkzeug) {
      Die Taste steht nicht darauf — sie hilft dort niemandem und nähme
      genau die Breite weg, die der Name braucht. Im Feld steht sie
      trotzdem, damit Tastatur und Finger dieselbe Aktion auslösen. */
-  function fingerEintrag(zustand, dran, gruppe, mass) {
+  /* Der ganze Vorrat des Wesens, mit der Angabe, was davon gerade geht.
+     Was der Kern anbietet, trägt seine fertige Aktion; der Rest steht
+     ohne Aktion da und wird matt gezeichnet. */
+  function fingerVorrat(zustand, dran, gruppen) {
+    const nachArt = new Map(gruppen.map((g) => [g.art, g]));
+    const arten = [...FINGER_GRUNDVORRAT];
+    for (const schluessel of dran.faehigkeiten || []) {
+      if (kenntFaehigkeit(schluessel)) arten.push(`faehigkeit:${schluessel}`);
+    }
+    /* Trank und Aufheben nur, wenn der Kern sie gerade anbietet. */
+    for (const g of gruppen) {
+      if (g.typ === AKTION.trank || g.typ === AKTION.aufheben) arten.push(g.art);
+    }
+    arten.push(AKTION.zugEnde);
+
+    const vorrat = [];
+    const gesehen = new Set();
+    for (const art of arten) {
+      if (gesehen.has(art)) continue;
+      gesehen.add(art);
+      const da = nachArt.get(art) || null;
+      const faehig = art.startsWith("faehigkeit:");
+      vorrat.push({
+        gruppe: da || {
+          art,
+          typ: faehig ? AKTION.faehigkeit : art,
+          schluessel: faehig ? art.slice("faehigkeit:".length) : null,
+          aktion: null
+        },
+        aktiv: da !== null
+      });
+    }
+    vorrat.sort((a, b) => (REIHUNG[a.gruppe.typ] || 0) - (REIHUNG[b.gruppe.typ] || 0));
+    return vorrat;
+  }
+
+  function fingerEintrag(zustand, dran, roh, mass) {
+    const gruppe = roh.gruppe;
     const name = gruppenName(zustand, dran, gruppe);
     const kosten = gruppenKosten(zustand, gruppe);
     return {
@@ -306,6 +364,7 @@ export function macheLeiste(werkzeug) {
       name,
       kosten,
       beschriftung: beschriftungVon(name, kosten),
+      aktiv: roh.aktiv,
       wunschBreite: Math.max(textBreite(name), textBreite(kosten)) + 2 * mass.polster
     };
   }
@@ -319,6 +378,7 @@ export function macheLeiste(werkzeug) {
     name: vorlage.beschriftung,
     kosten: "",
     beschriftung: vorlage.beschriftung,
+    aktiv: true,
     wunschBreite: textBreite(vorlage.beschriftung) + 2 * mass.polster
   });
 
@@ -355,10 +415,13 @@ export function macheLeiste(werkzeug) {
     const kosten = eintrag.kosten === "" ? "" : kuerze(eintrag.kosten, innen);
     const zeilen = kosten === "" ? 1 : 2;
     const ny = y + Math.floor((hoehe - zeilen * zeile) / 2);
-    schreibe(name, x + Math.floor((breite - textBreite(name)) / 2), ny, FARBEN.hudSchrift);
+    /* Matt statt hell, wenn es gerade nicht geht — sonst sieht „zu teuer"
+       genauso aus wie „kostet drei", und man tippt dreimal ins Leere. */
+    schreibe(name, x + Math.floor((breite - textBreite(name)) / 2), ny,
+      eintrag.aktiv ? FARBEN.hudSchrift : FARBEN.hudMatt);
     if (kosten !== "") {
       schreibe(kosten, x + Math.floor((breite - textBreite(kosten)) / 2), ny + zeile,
-        FARBEN.hudWarn);
+        eintrag.aktiv ? FARBEN.hudWarn : FARBEN.hudMatt);
     }
 
     merke({
@@ -368,7 +431,7 @@ export function macheLeiste(werkzeug) {
       taste: eintrag.taste === undefined ? null : eintrag.taste,
       aktion: eintrag.aktion,
       beschriftung: eintrag.beschriftung,
-      aktiv: true
+      aktiv: eintrag.aktiv
     });
   }
 
@@ -388,9 +451,10 @@ export function macheLeiste(werkzeug) {
     const feldHoch = fingerFeldHoehe(mass);
     const hoechstens = Math.max(1, Math.floor(mass.hoehe / (FINGER_ANTEIL * feldHoch)));
 
-    const schluss = gruppen.find((g) => g.typ === AKTION.zugEnde) || null;
-    let aktionen = gruppen.filter((g) => g !== schluss)
-      .map((g) => fingerEintrag(zustand, dran, g, mass));
+    const vorrat = fingerVorrat(zustand, dran, gruppen);
+    const schluss = vorrat.find((e) => e.gruppe.typ === AKTION.zugEnde) || null;
+    let aktionen = vorrat.filter((e) => e !== schluss)
+      .map((e) => fingerEintrag(zustand, dran, e, mass));
     let zusatz = ZUSATZ_FELDER.map((v) => zusatzEintrag(v, mass));
     const letzte = schluss ? [fingerEintrag(zustand, dran, schluss, mass)] : [];
 
