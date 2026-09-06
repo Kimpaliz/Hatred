@@ -42,6 +42,8 @@ import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 import { pruefeAktion } from "../spiel/aktionen.mjs";
 import * as SCHRIFT from "../runtime/schrift.js";
 import { TASTEN } from "../runtime/oberflaeche.js";
+import { FARBEN } from "../runtime/palette.js";
+import { FINGER_MINDESTMASS, TASTEN as T2 } from "../runtime/oberflaeche.js";
 import { draussen, macheBuehne, macheProbe } from "./buehne-oberflaeche.mjs";
 
 /* ── 1 · Die Leiste am Mauszeiger ─────────────────────────────────*/
@@ -195,6 +197,98 @@ function pruefeFelder(buehne, felder, wo) {
   b2.flaeche.zeichne(ruhe.zustand, {});
   gleich(b2.flaeche.felder().length, 0,
     "ist niemand am Zug, meldet die Leiste kein Feld");
+}
+
+/* ── 2 · Am Finger ────────────────────────────────────────────────
+
+   Der Fall, der ohne diese Prüfung falsch wäre: Die Leiste **quetscht**
+   die Felder, statt umzubrechen. Auf dem Bild sieht das ordentlich aus
+   — jedes Feld ist da, jede Beschriftung steht drin —, und der Daumen
+   trifft trotzdem nichts, weil ein Feld dreizehn Punkte hoch ist.
+   Deshalb wird hier nicht „es gibt Felder" behauptet, sondern die eine
+   Zahl, an der Android das festmacht: 48. */
+abschnitt("2 · Am Finger");
+{
+  behaupte(FINGER_MINDESTMASS === 48,
+    "Androids Mindestmaß für einen Daumen ist 48 Punkte");
+
+  for (const fenster of [260, 340, 400, 700, 900, 1400]) {
+    const probe = macheProbe();
+    const buehne = macheBuehne(probe.zustand, { fenster });
+    buehne.flaeche.zeichne(probe.zustand, {}, { finger: true });
+    const felder = buehne.flaeche.felder();
+    const mass = buehne.flaeche.masse();
+
+    behaupte(felder.length > 0, `bei ${fenster} am Finger stehen Felder da`);
+    pruefeFelder(buehne, felder, `Finger bei ${fenster}`);
+
+    /* Die Behauptung dieses Bausteins. Ein einziges zu kleines Feld
+       reicht — deshalb wird das kleinste genannt, nicht der Durchschnitt. */
+    const engstes = Math.min(...felder.map((f) => Math.min(f.breite, f.hoehe)));
+    behaupte(engstes >= FINGER_MINDESTMASS,
+      `bei ${fenster} ist kein Feld schmaler oder niedriger als 48 (${engstes})`);
+
+    /* Und die Felder liegen wirklich als eigene Kästen im Bild — nicht
+       nur als Zahl in einer Liste über einem gemeinsamen Band. */
+    for (const f of felder) {
+      behaupte(buehne.ctx.rechtecke.some((r) =>
+        r.farbe === FARBEN.hudGrund && r.x === f.x && r.y === f.y
+        && r.b === f.breite && r.h === f.hoehe),
+      `Finger bei ${fenster}: "${f.id}" ist als eigener Kasten gemalt`);
+    }
+
+    /* Umgebrochen wird nach unten, und die Leiste bleibt im Bild. */
+    const reihen = new Set(felder.map((f) => f.y));
+    behaupte([...reihen].every((y) => y + FINGER_MINDESTMASS <= mass.hoehe),
+      `bei ${fenster} liegt jede Reihe im Fenster`);
+    behaupte(mass.leisteHoehe === reihen.size * felder[0].hoehe,
+      `bei ${fenster} ist die Leiste so hoch wie ihre ${reihen.size} Reihe(n)`);
+    behaupte(mass.leisteHoehe <= Math.floor(mass.hoehe / 2) + felder[0].hoehe,
+      `bei ${fenster} frisst die Leiste nicht das halbe Bild (${mass.leisteHoehe})`);
+
+    /* Ohne dieses Feld steckt man fest — auch am Finger, auch schmal. */
+    behaupte(felder.some((f) => f.art === "zugEnde"),
+      `bei ${fenster} bleibt "Zug beenden" am Finger stehen`);
+    gleich(felder.find((f) => f.art === "zugEnde").taste, T2.zugEnde,
+      `bei ${fenster} nennt es dieselbe Taste wie die Tastatur`);
+  }
+
+  /* Der schmale Schirm bricht wirklich um — sonst prüfte das oben nichts:
+     Eine Leiste, die nie umbricht, bestünde jede Behauptung über den
+     Umbruch. Auf 260 Punkten passen fünf Felder à 48 nicht nebeneinander. */
+  const eng = macheProbe();
+  const be = macheBuehne(eng.zustand, { fenster: 260 });
+  be.flaeche.zeichne(eng.zustand, {}, { finger: true });
+  const engFelder = be.flaeche.felder();
+  const engReihen = new Set(engFelder.map((f) => f.y));
+  behaupte(engReihen.size > 1,
+    `auf 260 Punkten bricht die Leiste wirklich um (${engReihen.size} Reihen)`);
+  behaupte(be.flaeche.masse().leisteHoehe > FINGER_MINDESTMASS,
+    "und wird dabei höher als ein einzelnes Feld");
+  behaupte(engFelder.every((f) => f.breite >= FINGER_MINDESTMASS),
+    "und quetscht dabei kein Feld unter 48 Punkte");
+  /* Auf demselben schmalen Schirm ohne Finger bleibt es eine Zeile —
+     der Umbruch ist die Antwort auf den Daumen, nicht auf die Breite. */
+  const bs = macheBuehne(macheProbe().zustand, { fenster: 260 });
+  bs.flaeche.zeichne(eng.zustand, {});
+  gleich(new Set(bs.flaeche.felder().map((f) => f.y)).size, 1,
+    "ohne Finger bleibt dieselbe Breite einzeilig");
+
+  /* Und der Beweis, dass die Arbeit nichts beschädigt hat: Ohne Finger
+     ist die Aufrufliste dieselbe wie ohne den Zusatz überhaupt — und mit
+     Finger eine andere. Ohne den zweiten Teil wäre der erste wertlos. */
+  const a = macheProbe(), b = macheProbe(), c = macheProbe();
+  const ba = macheBuehne(a.zustand, { fenster: 900 });
+  const bb = macheBuehne(b.zustand, { fenster: 900 });
+  const bc = macheBuehne(c.zustand, { fenster: 900 });
+  const ansicht = () => ({ ziel: 2, zeiger: { x: 6, y: 6 }, zeit: 1, rundeSeit: 1 });
+  ba.flaeche.zeichne(a.zustand, ansicht());
+  bb.flaeche.zeichne(b.zustand, ansicht(), { finger: false });
+  bc.flaeche.zeichne(c.zustand, ansicht(), { finger: true });
+  gleich(JSON.stringify(bb.ctx.aufrufe), JSON.stringify(ba.ctx.aufrufe),
+    "finger: false zeichnet Aufruf für Aufruf dasselbe wie ohne die Angabe");
+  behaupte(JSON.stringify(bc.ctx.aufrufe) !== JSON.stringify(ba.ctx.aufrufe),
+    "finger: true zeichnet wirklich etwas anderes - sonst prüfte das nichts");
 }
 
 ende("Felder");

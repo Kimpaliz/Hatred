@@ -10,17 +10,22 @@
    zu lesen ist. Deshalb liefert diese Datei zu jedem Eintrag ein
    **Feld**: die Stelle, an der ein Tipp dasselbe auslöst wie die Taste.
 
-   Zwei Entscheidungen tragen den Aufbau:
+   Drei Entscheidungen tragen den Aufbau:
 
    1. **Die Felder entstehen beim Zeichnen, nicht daneben.** Jedes Feld
       wird in dem Augenblick gemeldet, in dem sein Kasten fällt — mit
       genau den Maßen, mit denen gemalt wurde. Eine zweite Rechnung für
       dieselbe Stelle liefe auseinander (Fehlerbuch E2), und zwar
       lautlos: Der Finger träfe daneben, und niemand sähe warum.
-   2. **Das Bild bleibt auf den Bildpunkt genau, wie es war.** Der Umbau
-      zeichnet dieselben Rechtecke in derselben Reihenfolge wie vorher.
-      Nur so ist beweisbar, dass die neuen Felder die alte Leiste nicht
-      beschädigt haben (Regel 12).
+   2. **Am Finger ist jedes Feld mindestens 48 Bildschirmpunkte groß.**
+      Das ist Androids Mindestmaß für einen Daumen; was für einen
+      Mauszeiger reicht, trifft er nicht. Reicht die Breite nicht, wird
+      die Leiste **umgebrochen** und höher — nicht enger. Ein gequetschtes
+      Feld sieht auf dem Bild noch gut aus und ist trotzdem unbedienbar.
+   3. **Ohne Finger bleibt alles auf den Bildpunkt genau wie vorher.**
+      `finger: false` zeichnet dieselben Rechtecke in derselben
+      Reihenfolge wie vor dem Umbau. Nur so ist beweisbar, dass die
+      neuen Felder die alte Leiste nicht beschädigt haben (Regel 12).
 
    ── Warum diese Datei getrennt von `oberflaeche.js` liegt ──────────
 
@@ -65,6 +70,17 @@ export const TASTEN = {
 /* Für die Fähigkeiten, in der Reihenfolge, in der das Wesen sie trägt. */
 export const FAEHIGKEIT_TASTEN = ["6", "7", "8", "9"];
 
+/* Androids Mindestmaß für eine Fläche, die ein Daumen sicher trifft:
+   48 geräteunabhängige Punkte. Die Zahl ist nicht gewählt, sondern die
+   Vorgabe der Plattform — deshalb steht sie einmal hier und wird
+   nirgends nachgerechnet. */
+export const FINGER_MINDESTMASS = 48;
+
+/* Wie viel vom Bild die Leiste am Finger höchstens einnehmen darf: die
+   Hälfte. Wer nur noch Felder sieht, sieht den Kerker nicht mehr, und
+   ein Zug, dessen Ziel man nicht sieht, ist nicht planbar. */
+const FINGER_ANTEIL = 2;
+
 /* In welcher Folge die Aktionsleiste liest. Nicht die Folge aus
    `moeglicheAktionen` — die ist nach Prüfaufwand sortiert, diese hier
    nach dem, was man im Zug zuerst tut. */
@@ -79,7 +95,7 @@ const REIHUNG = {
    dieselbe Schrift, dieselben Maße. Nichts davon wird hier nachgebaut —
    sonst gäbe es zwei Anzeigen, die verschieden aussehen. */
 export function macheLeiste(werkzeug) {
-  const { fuelle, schreibe, kasten, textBreite, masse, merke } = werkzeug;
+  const { fuelle, schreibe, kasten, textBreite, kuerze, masse, merke } = werkzeug;
 
   /* Der kleine Vorrat ist keine Bequemlichkeit: Ohne ihn liefe die
      Wegsuche über alle erreichbaren Felder sechzigmal je Sekunde,
@@ -255,16 +271,136 @@ export function macheLeiste(werkzeug) {
     }
   }
 
+  /* ── Am Finger: Felder, die ein Daumen trifft ─────────────────────*/
+
+  const fingerFeldHoehe = (mass) =>
+    Math.min(mass.hoehe, Math.max(FINGER_MINDESTMASS, schmalHoehe(mass)));
+
+  const fingerFeldBreite = (eintrag, mass) =>
+    Math.min(mass.breite, Math.max(FINGER_MINDESTMASS, eintrag.wunschBreite));
+
+  /* Ein Eintrag, so wie er am Finger aussieht: Name, darunter der Preis.
+     Die Taste steht nicht darauf — sie hilft dort niemandem und nähme
+     genau die Breite weg, die der Name braucht. Im Feld steht sie
+     trotzdem, damit Tastatur und Finger dieselbe Aktion auslösen. */
+  function fingerEintrag(zustand, dran, gruppe, mass) {
+    const name = gruppenName(zustand, dran, gruppe);
+    const kosten = gruppenKosten(zustand, gruppe);
+    return {
+      id: kennung(gruppe),
+      art: feldArt(gruppe),
+      gruppe,
+      taste: gruppenTaste(dran, gruppe),
+      aktion: gruppe.aktion,
+      name,
+      kosten,
+      beschriftung: beschriftungVon(name, kosten),
+      wunschBreite: Math.max(textBreite(name), textBreite(kosten)) + 2 * mass.polster
+    };
+  }
+
+  /* Die Einträge in Reihen brechen. Ein Eintrag, der allein schon breiter
+     als das Fenster wäre, wird auf das Fenster gestutzt — sonst ragte er
+     hinaus, und ein Feld außerhalb des Fensters ist ein Feld, das der
+     Finger nie trifft. */
+  function breche(eintraege, mass) {
+    const reihen = [[]];
+    let lauf = 0;
+    for (const eintrag of eintraege) {
+      const breite = fingerFeldBreite(eintrag, mass);
+      if (lauf > 0 && lauf + breite > mass.breite) { reihen.push([]); lauf = 0; }
+      reihen[reihen.length - 1].push({ eintrag, breite });
+      lauf += breite;
+    }
+    return reihen;
+  }
+
+  /* Ein einzelnes Feld. Das gewählte bekommt eine gefüllte Fläche statt
+     nur eines Rahmens: Am Handy liegt der Daumen darauf, und ein dünner
+     Rahmen verschwindet darunter. */
+  function maleFingerFeld(eintrag, x, y, breite, hoehe, mass, geplantArt) {
+    const { polster, zeile } = mass;
+    const gewaehlt = eintrag.gruppe !== null && eintrag.gruppe.art === geplantArt;
+    kasten(x, y, breite, hoehe);
+    if (gewaehlt) {
+      fuelle(x + polster, y + polster, breite - 2 * polster, hoehe - 2 * polster,
+        FARBEN.hudRahmen);
+    }
+
+    const innen = breite - 2 * polster;
+    const name = kuerze(eintrag.name, innen);
+    const kosten = eintrag.kosten === "" ? "" : kuerze(eintrag.kosten, innen);
+    const zeilen = kosten === "" ? 1 : 2;
+    const ny = y + Math.floor((hoehe - zeilen * zeile) / 2);
+    schreibe(name, x + Math.floor((breite - textBreite(name)) / 2), ny, FARBEN.hudSchrift);
+    if (kosten !== "") {
+      schreibe(kosten, x + Math.floor((breite - textBreite(kosten)) / 2), ny + zeile,
+        FARBEN.hudWarn);
+    }
+
+    merke({
+      id: eintrag.id,
+      art: eintrag.art,
+      x, y, breite, hoehe,
+      taste: eintrag.taste === undefined ? null : eintrag.taste,
+      aktion: eintrag.aktion,
+      beschriftung: eintrag.beschriftung,
+      aktiv: true
+    });
+  }
+
+  function maleReihen(reihen, oben, feldHoch, mass, geplantArt) {
+    for (let r = 0; r < reihen.length; r++) {
+      let x = 0;
+      const y = oben + r * feldHoch;
+      for (const platz of reihen[r]) {
+        maleFingerFeld(platz.eintrag, x, y, platz.breite, feldHoch, mass, geplantArt);
+        x += platz.breite;
+      }
+    }
+  }
+
+  function maleFinger(zustand, ansicht, dran, mass, gruppen) {
+    const geplantArt = geplanteArt(ansicht);
+    const feldHoch = fingerFeldHoehe(mass);
+    const hoechstens = Math.max(1, Math.floor(mass.hoehe / (FINGER_ANTEIL * feldHoch)));
+
+    const schluss = gruppen.find((g) => g.typ === AKTION.zugEnde) || null;
+    let aktionen = gruppen.filter((g) => g !== schluss)
+      .map((g) => fingerEintrag(zustand, dran, g, mass));
+    const letzte = schluss ? [fingerEintrag(zustand, dran, schluss, mass)] : [];
+
+    /* Passt nicht alles, fällt die letzte Aktion weg. „Zug beenden"
+       bleibt in jedem Fall stehen; ohne dieses Feld steckt man auf dem
+       Telefon fest, denn es gibt keinen anderen Weg aus dem Zug. */
+    let reihen = breche([...aktionen, ...letzte], mass);
+    while (reihen.length > hoechstens && aktionen.length > 0) {
+      aktionen = aktionen.slice(0, -1);
+      reihen = breche([...aktionen, ...letzte], mass);
+    }
+
+    const hoch = reihen.length * feldHoch;
+    const oben = mass.hoehe - hoch;
+    kasten(0, oben, mass.breite, hoch);
+    maleReihen(reihen, oben, feldHoch, mass, geplantArt);
+    return hoch;
+  }
+
   /* ── Der eine Weg herein ──────────────────────────────────────────*/
 
   /* Zeichnet die Leiste und meldet dabei jedes Feld. Gibt die Höhe
      zurück, die sie diesmal eingenommen hat. */
-  function maleAktionsleiste(zustand, ansicht, dran) {
+  function maleAktionsleiste(zustand, ansicht, dran, finger = false) {
     const mass = masse();
     if (!dran) return meldung(mass, "Niemand ist am Zug.");
 
     const gruppen = aktionsGruppen(zustand, dran);
     if (gruppen.length === 0) return meldung(mass, "Keine Aktion möglich.");
+
+    if (finger) {
+      letzteHoehe = maleFinger(zustand, ansicht, dran, mass, gruppen);
+      return letzteHoehe;
+    }
 
     const hoch = schmalHoehe(mass);
     kasten(0, mass.hoehe - hoch, mass.breite, hoch);

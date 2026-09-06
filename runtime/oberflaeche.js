@@ -114,7 +114,7 @@ export const LEBEN_WARN = 0.3;
 /* Die Tasten stehen bei der Leiste, weil sie dort gebraucht werden —
    weitergereicht werden sie von hier, damit `runtime/eingabe.js` und die
    Prüfung ihren Einfuhrpfad behalten und nicht zwei Stellen kennen. */
-export { TASTEN, FAEHIGKEIT_TASTEN } from "./oberflaeche-leiste.js";
+export { TASTEN, FAEHIGKEIT_TASTEN, FINGER_MINDESTMASS } from "./oberflaeche-leiste.js";
 
 /* ── Namen für Zahlen ───────────────────────────────────────────────
    `spiel/` kennt nur Schlüssel. Hier bekommen sie deutsche Wörter — an
@@ -378,7 +378,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
   }
 
   const leiste = macheLeiste({
-    fuelle, schreibe, kasten, textBreite,
+    fuelle, schreibe, kasten, textBreite, kuerze,
     masse: rohMasse,
     merke: (feld) => felderListe.push(feld)
   });
@@ -756,8 +756,13 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
      Kern rechnet nur auf ganzen Feldern und wirft sonst
      (`spiel/sicht.mjs`, `spiel/wegfindung.mjs`). Nur die Stellen der
      Lebensbalken kommen aus der Abspielung. Fehlt `ansicht.schau`,
-     ist beides derselbe Stand — dann steht auch nichts in Bewegung. */
-  function zeichne(zustand, ansicht = {}) {
+     ist beides derselbe Stand — dann steht auch nichts in Bewegung.
+
+     `finger` sagt, dass ein Daumen bedient und kein Mauszeiger: Dann
+     wird jedes Feld der Leiste mindestens `FINGER_MINDESTMASS` groß und
+     die Leiste bricht um, statt die Felder zu quetschen. Ohne die
+     Angabe bleibt jeder gezeichnete Punkt so, wie er vorher lag. */
+  function zeichne(zustand, ansicht = {}, { finger = false } = {}) {
     gezeichnet = 0;
     felderListe.length = 0;
     hole();
@@ -770,7 +775,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     maleWesen(zustand, schau, sicht, dran);
     maleZugleiste(zustand, dran);
     maleSpielerleiste(zustand, sicht);
-    leiste.maleAktionsleiste(zustand, sicht, dran);
+    leiste.maleAktionsleiste(zustand, sicht, dran, finger);
     const lauftextBreite = maleLauftext(zustand, sicht);
 
     /* Rechts unten, von unten nach oben gestapelt: erst die Zielangabe,
