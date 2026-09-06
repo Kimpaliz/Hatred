@@ -3,6 +3,28 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Die fünf Phasen haben ihre Vorgänge
+
+**Auftrag:** Jannik hat auf die Frage aus dem letzten Bericht mit „ja"
+geantwortet — das war die einzige der drei Bitten, die eine Handlung von
+hier verlangte (Regel 3: Veröffentlichung nur auf ein ausdrückliches Ja).
+
+Angelegt in `Kimpaliz/Hatred-`: **#1 bis #5**, Etikett `track`, jede
+Phase mit ihrem Abnahmekriterium und `Begründung: docs/ROADMAP.md`.
+Die Nummern stehen als `Vorgang: #N` in `docs/ROADMAP.md` — **jede
+Verbindung wird zweimal geschrieben**, sonst ist sie von einer Seite
+unsichtbar.
+
+*Nebenbefund:* `werkzeuge/vorgaenge.mjs` kam nicht durch — der
+`GITHUB_TOKEN` in dieser Umgebung ist abgelaufen (*GitHub 401: Bad
+credentials*). Angelegt wurden sie deshalb über die GitHub-Werkzeuge
+der Sitzung. Das Werkzeug ist in Ordnung, der Zugang war es nicht; wer
+es daheim mit `gh auth token` aufruft, kommt durch.
+
+**Damit ist die Kette zum ersten Mal vollständig grün: 34 von 34.**
+
+---
+
 ## 06.09.2026 — Das Spiel läuft, und der Nebel deckt jetzt auch das Licht ab
 
 **Gemessen im echten Browser** (Chromium, Einzeldatei aus

@@ -12,6 +12,8 @@ als die Arbeit, die auf sie wartet — als Absatz in einer Phase
 verschwände sie mit deren Abschluss, ohne beantwortet zu sein.
 
 ## Phase 1 — Der Rechenkern, bevor irgendetwas leuchtet
+
+Vorgang: #1
 **Abnahme:** `node werkzeuge/pruefe-alles.mjs` ist grün, und ein Lauf
 über 40 Runden ergibt in zwei frisch gebauten Zuständen nach **jeder**
 Runde dieselbe `zustandsSumme()`.
@@ -27,6 +29,8 @@ fällt erst auf, wenn jemand vierzig Minuten spielt — oder in drei
 Sekunden, wenn eine Prüfung sie über sechzig Saaten flutet.
 
 ## Phase 2 — Das Bild
+
+Vorgang: #2
 **Abnahme:** Eine erzeugte Karte ist im Browser vollständig zu sehen —
 Höhenkanten, Rampen, Wasser, Fackellicht, Partikel — und kein
 Zeichenaufruf liegt auf einem halben Bildpunkt.
@@ -40,6 +44,8 @@ zuerst zeichnet, baut die Regeln in den Zeichner ein — und danach ist
 Netz-Koop nicht mehr billig, sondern unmöglich.
 
 ## Phase 3 — Das Netz
+
+Vorgang: #3
 **Abnahme:** Zwei Rechner spielen dreißig Runden und haben nach jeder
 Runde dieselbe `zustandsSumme()`; eine absichtlich verfälschte
 Nachricht wird abgelehnt und ändert nichts.
@@ -53,6 +59,8 @@ dünne Schicht und keine Umbauarbeit. Vorher gebaut wäre es eine Schicht
 über etwas, das sich noch bewegt.
 
 ## Phase 4 — Der Kerker als Lauf
+
+Vorgang: #4
 **Abnahme:** Ein Lauf über drei Kerkertiefen ist von Anfang bis Ende
 spielbar und endet mit Sieg oder Niederlage.
 
@@ -64,6 +72,8 @@ Abstieg, Sieg und Niederlage.
 wackeligen Unterbau muss zweimal gebaut werden.
 
 ## Phase 5 — Was Jannik nach dem ersten Abend sagt
+
+Vorgang: #5
 **Abnahme:** gibt es nicht — diese Phase wird von Janniks Rückmeldung
 geschrieben, nicht vorher.
 
