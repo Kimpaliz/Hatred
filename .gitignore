@@ -1,0 +1,6 @@
+node_modules/
+dashboard-game-result.json
+.env
+.env.*
+!.env.example
+npm-debug.log*

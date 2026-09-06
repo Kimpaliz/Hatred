@@ -1,0 +1,159 @@
+name: Dashboard game
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOURCE_SHA: ${{ github.sha }}
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source commit
+        shell: bash
+        run: |
+          test "$(printf '%s' "$SOURCE_SHA" | grep -Ec '^[0-9a-f]{40,64}$')" = "1"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify Dashboard contract
+        run: npm run dashboard:verify
+
+  publish:
+    if: github.event_name == 'workflow_dispatch'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify exact source commit
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Resolve lowercase image name
+        id: image
+        shell: bash
+        run: echo "reference=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Build smoke image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: dashboard-game-smoke:${{ env.SOURCE_SHA }}
+
+      - name: Container smoke test
+        shell: bash
+        env:
+          SMOKE_IMAGE: dashboard-game-smoke:${{ env.SOURCE_SHA }}
+        run: |
+          docker run --detach --name dashboard-game-smoke \
+            --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --publish 127.0.0.1:18080:8080 \
+            --env DASHBOARD_GAMES_API_URL=https://dashboard.example.invalid/api/modules/games/v1 \
+            --env DASHBOARD_GAME_ID=golden-path-game \
+            --env DASHBOARD_GAME_API_KEY=smoke-only-key-with-more-than-forty-characters-0000 \
+            --env GAME_VERSION=2.0.0 \
+            --env COMMIT_SHA="$SOURCE_SHA" \
+            --env PUBLIC_BASE_URL=https://game.example.invalid \
+            "$SMOKE_IMAGE"
+          trap 'docker rm --force dashboard-game-smoke >/dev/null 2>&1 || true' EXIT
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:18080/healthz >/dev/null && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:18080/healthz | grep --fixed-strings '"status":"ok"'
+          curl --fail --silent http://127.0.0.1:18080/version.json | grep --fixed-strings "\"commitSha\":\"$SOURCE_SHA\""
+          curl --fail --silent --head http://127.0.0.1:18080/app.mjs | grep -i '^content-type: text/javascript; charset=utf-8'
+          curl --fail --silent --head http://127.0.0.1:18080/sdk/browser.mjs | grep -i '^content-type: text/javascript; charset=utf-8'
+          for media in cover hero icon; do
+            media_url="http://127.0.0.1:18080/dashboard/${media}.png"
+            headers="$(curl --fail --silent --show-error --head "$media_url")"
+            printf '%s\n' "$headers" | grep -i '^content-type: image/png'
+            ! printf '%s\n' "$headers" | grep -qi '^cross-origin-resource-policy: same-origin'
+            curl --fail --silent --show-error "$media_url" --output "/tmp/dashboard-${media}.png"
+            test "$(od -An -t x1 -N8 "/tmp/dashboard-${media}.png" | tr -d ' \n')" = "89504e470d0a1a0a"
+          done
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:18080/missing-module.mjs)" = "404"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push immutable image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.image.outputs.reference }}:sha-${{ env.SOURCE_SHA }}
+
+      - name: Write closed dashboard-game-result v1
+        shell: bash
+        env:
+          IMAGE_REFERENCE: ${{ steps.image.outputs.reference }}
+          IMAGE_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          node --input-type=module - <<'NODE'
+          import { writeFile } from "node:fs/promises";
+          const { IMAGE_REFERENCE, IMAGE_DIGEST, SOURCE_SHA, GITHUB_REPOSITORY } = process.env;
+          if (!/^sha256:[0-9a-f]{64}$/.test(IMAGE_DIGEST || "")) throw new Error("Image-Digest fehlt.");
+          const result = {
+            schemaVersion: 1,
+            image: { reference: IMAGE_REFERENCE, digest: IMAGE_DIGEST },
+            commitSha: SOURCE_SHA,
+            version: "2.0.0",
+            provenance: {
+              sourceUrl: `https://github.com/${GITHUB_REPOSITORY}/commit/${SOURCE_SHA}`,
+              builtAt: new Date().toISOString(),
+              testsPassed: true
+            }
+          };
+          await writeFile("dashboard-game-result.json", `${JSON.stringify(result, null, 2)}\n`);
+          NODE
+          node scripts/verify-build-result.mjs dashboard-game-result.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-game-result
+          path: dashboard-game-result.json
+          if-no-files-found: error
+          retention-days: 14
