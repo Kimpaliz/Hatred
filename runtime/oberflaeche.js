@@ -641,13 +641,27 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     return zeilen;
   }
 
-  function zielVon(zustand, ansicht) {
+  function zielVon(zustand, ansicht, finger) {
     const id = ansicht.ziel !== undefined && ansicht.ziel !== null
       ? ansicht.ziel
       : (ansicht.geplant ? ansicht.geplant.ziel : null);
-    if (id === undefined || id === null) return null;
-    const ziel = wesenMitId(zustand, id);
-    return ziel && ziel.lebt ? ziel : null;
+    if (id !== undefined && id !== null) {
+      const ziel = wesenMitId(zustand, id);
+      return ziel && ziel.lebt ? ziel : null;
+    }
+    /* Am Finger gibt es kein Schweben. Der Zeiger liegt dort, wo zuletzt
+       **getippt** wurde, und bleibt liegen — er ist also die Anwahl.
+       Steht ein Wesen darauf, gehört die Zielangabe dazu; sonst bekäme
+       man die Trefferchance auf dem Telefon nie zu sehen, und das Spiel
+       wäre dort ein Ratespiel. Eine eigene Anwahl wird hier **nicht**
+       erfunden: Sie steht schon in `ansicht.zeiger`. */
+    if (!finger || !ansicht.zeiger) return null;
+    const { x, y } = ansicht.zeiger;
+    if (!Number.isInteger(x) || !Number.isInteger(y)) return null;
+    for (const wesen of zustand.wesen || []) {
+      if (wesen && wesen.lebt && wesen.x === x && wesen.y === y) return wesen;
+    }
+    return null;
   }
 
   /* ── Höhenangabe ─────────────────────────────────────────────────
@@ -760,8 +774,10 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
 
      `finger` sagt, dass ein Daumen bedient und kein Mauszeiger: Dann
      wird jedes Feld der Leiste mindestens `FINGER_MINDESTMASS` groß und
-     die Leiste bricht um, statt die Felder zu quetschen. Ohne die
-     Angabe bleibt jeder gezeichnete Punkt so, wie er vorher lag. */
+     die Leiste bricht um, statt die Felder zu quetschen. Und die
+     Zielangabe steht dann auch beim **angetippten** Feld, weil ein
+     Finger nicht schwebt. Ohne die Angabe bleibt jeder gezeichnete
+     Punkt so, wie er vorher lag. */
   function zeichne(zustand, ansicht = {}, { finger = false } = {}) {
     gezeichnet = 0;
     felderListe.length = 0;
@@ -783,7 +799,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     const platzRechts = Math.max(zeile, breite - lauftextBreite - 3 * polster);
     let unten = hoehe - leiste.hoeheVon() - polster;
 
-    const ziel = zielVon(zustand, sicht);
+    const ziel = zielVon(zustand, sicht, finger);
     if (ziel && dran) {
       const zeilen = zielZeilen(zustand, dran, ziel);
       if (zeilen) {

@@ -330,8 +330,11 @@ abschnitt("5 · Zielangabe");
 
   /* Die Probe, die eine bloß hübsche Anzeige nicht besteht: Die
      Summanden müssen die gezeigte Zahl **ergeben**. */
-  const chanceZeile = texte.find((t) => t.startsWith("Trefferchance"));
-  const gezeigt = Number(chanceZeile.match(/(\d+)/)[1]);
+  /* Fehlt die Zeile ganz, soll die Prüfung das **melden** und nicht an
+     ihr sterben: Ein Absturz sagt nicht, was fehlte. */
+  const chanceZeile = texte.find((t) => t.startsWith("Trefferchance")) || "";
+  behaupte(chanceZeile !== "", "es steht überhaupt eine Trefferchance da");
+  const gezeigt = Number((chanceZeile.match(/(\d+)/) || [0, -1])[1]);
   let summe = 0;
   for (const t of texte) {
     const grund = t.match(/^Grundwert der Waffe (\d+) %/);
@@ -820,6 +823,80 @@ abschnitt("15 · Ohne Zustand");
     "eine unbekannte Zielnummer wirft nicht");
   behaupte(buehne.flaeche.zeichne(probe.zustand, { geplant: { typ: "gibtEsNicht", wer: 1 } }) > 0,
     "eine unbekannte Aktionsart wirft nicht");
+}
+
+/* ── 16 · Die Zielangabe ohne Zeiger ──────────────────────────────
+
+   Der Fall, der ohne diese Prüfung falsch wäre — und der am Schreibtisch
+   nie auffällt: Die Zielangabe hängt heute am **Schweben**. Ein Finger
+   schwebt nicht. Auf dem Telefon bekäme man Trefferchance und Begründung
+   also nie zu sehen, und aus dem taktischen Spiel würde ein Ratespiel.
+
+   Am Finger bleibt der Zeiger dort liegen, wo zuletzt getippt wurde —
+   er **ist** die Anwahl. Geprüft wird deshalb, dass ein angetipptes
+   Wesen dieselbe Auskunft bekommt wie ein überfahrenes, und dass die
+   Anzeige sich dafür keine eigene Anwahl ausdenkt: Ohne `finger` ändert
+   sich nichts. */
+abschnitt("16 · Zielangabe am Finger");
+{
+  /* Die Zugleiste nennt **alle** Namen, auch den der Beute. Gefragt ist
+     hier aber, wen die **Zielangabe** nennt - also wird nur gelesen, was
+     unterhalb des oberen Bandes steht. */
+  const unterhalb = (buehne) => buehne.schrift.texte
+    .filter((t) => t.y > buehne.flaeche.masse().zugHoehe).map((t) => t.text);
+
+  /* Die Beute steht auf 8,5 - derselbe Platz, den sonst `ziel: 2` nennt. */
+  const probe = macheProbe();
+  const getippt = macheBuehne(probe.zustand, { fenster: 900 });
+  getippt.flaeche.zeichne(probe.zustand, { zeiger: { x: 8, y: 5 } }, { finger: true });
+  const texte = alleTexte(getippt.schrift);
+  behaupte(texte.some((t) => t.startsWith("Trefferchance")),
+    "ein angetipptes Wesen zeigt seine Trefferchance");
+  behaupte(unterhalb(getippt).some((t) => t.includes("Krätzling")),
+    "und wird in der Zielangabe benannt");
+  behaupte(texte.some((t) => t.includes("+12") && t.includes("oben")),
+    "samt Begründung - dieselbe wie beim Schweben");
+
+  /* Dieselbe Stellung ohne Finger: Der Zeiger ist dann ein Zeiger und
+     keine Anwahl, und die Anzeige erfindet keine. */
+  const ohne = macheBuehne(macheProbe().zustand, { fenster: 900 });
+  ohne.flaeche.zeichne(probe.zustand, { zeiger: { x: 8, y: 5 } });
+  behaupte(!enthaelt(ohne.schrift, "Trefferchance"),
+    "ohne Finger bleibt der Zeiger ein Zeiger und keine Anwahl");
+
+  /* Und der Fall, den man beim Bauen vergisst: Wird ausdrücklich ein
+     Ziel gereicht, gilt **das** - nicht das Wesen unter dem Zeiger.
+     Sonst überschriebe die Anwahl die Absicht des Spielers. */
+  const beides = macheBuehne(macheProbe().zustand, { fenster: 900 });
+  beides.flaeche.zeichne(probe.zustand,
+    { ziel: 4, zeiger: { x: 8, y: 5 } }, { finger: true });
+  behaupte(unterhalb(beides).some((t) => t.includes("Knochendiener")),
+    "ein ausdrücklich gereichtes Ziel hat Vorrang vor dem Zeiger");
+  behaupte(!unterhalb(beides).some((t) => t.includes("Krätzling")),
+    "und das Wesen unter dem Zeiger steht dann nicht auch noch in der Zielangabe");
+
+  /* Ein leeres Feld ist kein Ziel, und ein Toter auch nicht: Beides
+     dürfte keine Trefferchance erfinden. */
+  const leer = macheBuehne(macheProbe().zustand, { fenster: 900 });
+  leer.flaeche.zeichne(probe.zustand, { zeiger: { x: 20, y: 20 } }, { finger: true });
+  behaupte(!enthaelt(leer.schrift, "Trefferchance"),
+    "ein leeres Feld bekommt keine Trefferchance");
+  const tot = macheBuehne(macheProbe().zustand, { fenster: 900 });
+  tot.flaeche.zeichne(probe.zustand,
+    { zeiger: { x: probe.toter.x, y: probe.toter.y } }, { finger: true });
+  behaupte(!enthaelt(tot.schrift, "Trefferchance"),
+    "ein totes Wesen bekommt keine Trefferchance");
+
+  /* Und die Zielangabe steht **über** der Leiste, nicht darunter: Am
+     Finger ist die Leiste höher, und ein Kasten, der darunter rutscht,
+     ist aus dem Bild. */
+  const mass = getippt.flaeche.masse();
+  const chance = getippt.schrift.texte.find((t) => t.text.startsWith("Trefferchance"));
+  behaupte(!!chance && chance.y + mass.zeile <= mass.hoehe - mass.leisteHoehe,
+    `die Zielangabe bleibt über der Leiste (${chance && chance.y} von `
+    + `${mass.hoehe - mass.leisteHoehe})`);
+  behaupte(getippt.ctx.rechtecke.every((r) => !draussen(r, mass.breite, mass.hoehe)),
+    "und nichts wird dabei aus dem Fenster gemalt");
 }
 
 ende("Oberfläche");
