@@ -9,6 +9,8 @@
    drücken kann — das Spiel ist auf dem Telefon unbedienbar, obwohl alles
    zu lesen ist. Deshalb liefert diese Datei zu jedem Eintrag ein
    **Feld**: die Stelle, an der ein Tipp dasselbe auslöst wie die Taste.
+   Zwei davon gibt es **nur** am Finger — Karte und Menü —, weil man an
+   diese zwei Dinge auf dem Telefon sonst gar nicht herankommt.
 
    Drei Entscheidungen tragen den Aufbau:
 
@@ -88,6 +90,15 @@ const REIHUNG = {
   gehen: 0, angriff: 1, stoss: 2, faehigkeit: 3,
   trank: 4, aufheben: 5, wacht: 6, zugEnde: 7
 };
+
+/* Was es nur am Finger gibt. Beides ist auf dem Telefon sonst gar nicht
+   erreichbar: Die Übersichtskarte hängt an `Tab`, und ein Menü hat
+   überhaupt keine Taste — deshalb steht dort `null` und keine erfundene.
+   Wer sie wegkürzen muss, kürzt von hinten: das Menü zuerst. */
+const ZUSATZ_FELDER = [
+  { id: "karte", art: "karte", taste: "Tab", beschriftung: "Karte" },
+  { id: "menue", art: "menue", taste: null, beschriftung: "Menü" }
+];
 
 /* ── Die Leiste ─────────────────────────────────────────────────────
 
@@ -299,6 +310,18 @@ export function macheLeiste(werkzeug) {
     };
   }
 
+  const zusatzEintrag = (vorlage, mass) => ({
+    id: vorlage.id,
+    art: vorlage.art,
+    gruppe: null,
+    taste: vorlage.taste,
+    aktion: null,
+    name: vorlage.beschriftung,
+    kosten: "",
+    beschriftung: vorlage.beschriftung,
+    wunschBreite: textBreite(vorlage.beschriftung) + 2 * mass.polster
+  });
+
   /* Die Einträge in Reihen brechen. Ein Eintrag, der allein schon breiter
      als das Fenster wäre, wird auf das Fenster gestutzt — sonst ragte er
      hinaus, und ein Feld außerhalb des Fensters ist ein Feld, das der
@@ -368,15 +391,19 @@ export function macheLeiste(werkzeug) {
     const schluss = gruppen.find((g) => g.typ === AKTION.zugEnde) || null;
     let aktionen = gruppen.filter((g) => g !== schluss)
       .map((g) => fingerEintrag(zustand, dran, g, mass));
+    let zusatz = ZUSATZ_FELDER.map((v) => zusatzEintrag(v, mass));
     const letzte = schluss ? [fingerEintrag(zustand, dran, schluss, mass)] : [];
 
-    /* Passt nicht alles, fällt die letzte Aktion weg. „Zug beenden"
-       bleibt in jedem Fall stehen; ohne dieses Feld steckt man auf dem
-       Telefon fest, denn es gibt keinen anderen Weg aus dem Zug. */
-    let reihen = breche([...aktionen, ...letzte], mass);
-    while (reihen.length > hoechstens && aktionen.length > 0) {
-      aktionen = aktionen.slice(0, -1);
-      reihen = breche([...aktionen, ...letzte], mass);
+    /* Passt nicht alles, fällt von hinten weg — erst die letzte Aktion,
+       dann das Menü, dann die Karte. „Zug beenden" bleibt in jedem Fall
+       stehen; ohne dieses Feld steckt man auf dem Telefon fest, denn es
+       gibt keinen anderen Weg aus dem Zug. */
+    let reihen = breche([...aktionen, ...zusatz, ...letzte], mass);
+    while (reihen.length > hoechstens) {
+      if (aktionen.length > 0) aktionen = aktionen.slice(0, -1);
+      else if (zusatz.length > 0) zusatz = zusatz.slice(0, -1);
+      else break;
+      reihen = breche([...aktionen, ...zusatz, ...letzte], mass);
     }
 
     const hoch = reihen.length * feldHoch;
@@ -386,16 +413,42 @@ export function macheLeiste(werkzeug) {
     return hoch;
   }
 
+  /* Niemand ist am Zug — und trotzdem müssen Karte und Menü erreichbar
+     bleiben. Ohne sie käme man am Ende eines Laufs auf dem Telefon aus
+     dem Bild nicht mehr heraus: Es gibt keine Taste, die ein Menü
+     öffnet, und `Tab` drückt dort niemand. */
+  function maleFingerOhneZug(mass, satz) {
+    const feldHoch = fingerFeldHoehe(mass);
+    const kopf = schmalHoehe(mass);
+    const hoch = Math.min(mass.hoehe, kopf + feldHoch);
+    const oben = mass.hoehe - hoch;
+    kasten(0, oben, mass.breite, hoch);
+    schreibe(satz, mass.polster, oben + mass.polster, FARBEN.hudMatt);
+    const zusatz = ZUSATZ_FELDER.map((v) => zusatzEintrag(v, mass));
+    maleReihen(breche(zusatz, mass), oben + kopf, hoch - kopf, mass, null);
+    return hoch;
+  }
+
   /* ── Der eine Weg herein ──────────────────────────────────────────*/
 
   /* Zeichnet die Leiste und meldet dabei jedes Feld. Gibt die Höhe
      zurück, die sie diesmal eingenommen hat. */
   function maleAktionsleiste(zustand, ansicht, dran, finger = false) {
     const mass = masse();
-    if (!dran) return meldung(mass, "Niemand ist am Zug.");
+    if (!dran) {
+      letzteHoehe = finger
+        ? maleFingerOhneZug(mass, "Niemand ist am Zug.")
+        : meldung(mass, "Niemand ist am Zug.");
+      return letzteHoehe;
+    }
 
     const gruppen = aktionsGruppen(zustand, dran);
-    if (gruppen.length === 0) return meldung(mass, "Keine Aktion möglich.");
+    if (gruppen.length === 0) {
+      letzteHoehe = finger
+        ? maleFingerOhneZug(mass, "Keine Aktion möglich.")
+        : meldung(mass, "Keine Aktion möglich.");
+      return letzteHoehe;
+    }
 
     if (finger) {
       letzteHoehe = maleFinger(zustand, ansicht, dran, mass, gruppen);

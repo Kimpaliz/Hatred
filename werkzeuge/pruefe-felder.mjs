@@ -249,7 +249,7 @@ abschnitt("2 · Am Finger");
     /* Ohne dieses Feld steckt man fest — auch am Finger, auch schmal. */
     behaupte(felder.some((f) => f.art === "zugEnde"),
       `bei ${fenster} bleibt "Zug beenden" am Finger stehen`);
-    gleich(felder.find((f) => f.art === "zugEnde").taste, T2.zugEnde,
+    gleich((felder.find((f) => f.art === "zugEnde") || { taste: "fehlt" }).taste, T2.zugEnde,
       `bei ${fenster} nennt es dieselbe Taste wie die Tastatur`);
   }
 
@@ -289,6 +289,89 @@ abschnitt("2 · Am Finger");
     "finger: false zeichnet Aufruf für Aufruf dasselbe wie ohne die Angabe");
   behaupte(JSON.stringify(bc.ctx.aufrufe) !== JSON.stringify(ba.ctx.aufrufe),
     "finger: true zeichnet wirklich etwas anderes - sonst prüfte das nichts");
+}
+
+/* ── 3 · Karte und Menü ───────────────────────────────────────────
+
+   Der Fall, der ohne diese Prüfung falsch wäre: Die Übersichtskarte
+   hängt an `Tab`, ein Menü hat überhaupt keine Taste. Auf einem Telefon
+   sind das zwei Dinge, an die man **gar nicht** herankommt — und das
+   fällt niemandem auf, der mit einer Tastatur davorsitzt. Geprüft wird
+   deshalb nicht „es gibt zwei Felder mehr", sondern dass es sie genau
+   dort gibt, wo es sonst keinen Weg hin gäbe. */
+abschnitt("3 · Karte und Menü");
+{
+  for (const fenster of [340, 700, 1400]) {
+    const probe = macheProbe();
+    const b = macheBuehne(probe.zustand, { fenster });
+    b.flaeche.zeichne(probe.zustand, {}, { finger: true });
+    const felder = b.flaeche.felder();
+    gleich(felder.filter((f) => f.art === "karte").length, 1,
+      `bei ${fenster} gibt es am Finger genau ein Feld für die Karte`);
+    gleich(felder.filter((f) => f.art === "menue").length, 1,
+      `bei ${fenster} gibt es am Finger genau ein Feld für das Menü`);
+
+    /* Fehlt ein Feld, soll die Prüfung das **melden** und nicht am
+       fehlenden Feld sterben: Ein Absturz sagt nicht, was fehlte. */
+    const leer = { taste: "fehlt", aktion: "fehlt", beschriftung: "fehlt", aktiv: false };
+    const karte = felder.find((f) => f.art === "karte") || leer;
+    const menue = felder.find((f) => f.art === "menue") || leer;
+    gleich(karte.taste, "Tab", `bei ${fenster} tut das Kartenfeld, was Tab tut`);
+    gleich(karte.aktion, null, `bei ${fenster} ist die Karte keine Spielaktion`);
+    gleich(karte.beschriftung, "Karte", `bei ${fenster} steht "Karte" darauf`);
+    /* `null` ist hier kein Versehen, sondern die Auskunft: Es gibt keine
+       Taste, die ein Menü öffnet. Stünde dort eine erfundene, suchte die
+       Eingabe eine Taste, die nichts tut. */
+    gleich(menue.taste, null, `bei ${fenster} nennt das Menüfeld keine erfundene Taste`);
+    gleich(menue.aktion, null, `bei ${fenster} ist das Menü keine Spielaktion`);
+    gleich(menue.beschriftung, "Menü", `bei ${fenster} steht "Menü" darauf`);
+    behaupte(karte.aktiv && menue.aktiv, `bei ${fenster} sind beide wählbar`);
+
+    /* Ohne Finger gibt es sie nicht — sonst wären es zwei Felder, die
+       am Mauszeiger niemand braucht und die das Bild von heute ändern. */
+    const ohne = macheBuehne(macheProbe().zustand, { fenster });
+    ohne.flaeche.zeichne(probe.zustand, {});
+    gleich(ohne.flaeche.felder().filter((f) => f.art === "karte" || f.art === "menue").length,
+      0, `bei ${fenster} gibt es sie ohne Finger nicht`);
+  }
+
+  /* Am Ende eines Laufs ist niemand am Zug. Genau dann braucht man das
+     Menü am dringendsten — und genau dann fehlte es, wenn die Leiste
+     nur einen Satz schriebe. */
+  const aus = macheProbe();
+  aus.zustand.vorbei = "sieg";
+  const ba = macheBuehne(aus.zustand, { fenster: 400 });
+  ba.flaeche.zeichne(aus.zustand, {}, { finger: true });
+  const ruhe = ba.flaeche.felder();
+  pruefeFelder(ba, ruhe, "ohne Zug am Finger");
+  gleich(ruhe.length, 2, "ist niemand am Zug, bleiben am Finger genau Karte und Menü");
+  behaupte(ruhe.some((f) => f.art === "karte") && ruhe.some((f) => f.art === "menue"),
+    "und zwar diese beiden");
+  behaupte(ruhe.every((f) => f.breite >= FINGER_MINDESTMASS
+    && f.hoehe >= FINGER_MINDESTMASS), "auch sie sind daumengroß");
+  const bo = macheBuehne(macheProbe().zustand, { fenster: 400 });
+  bo.flaeche.zeichne(aus.zustand, {});
+  gleich(bo.flaeche.felder().length, 0,
+    "ohne Finger bleibt es beim Satz ohne Felder");
+
+  /* Und der Fall, den ein breiter Schirm verdeckt: Wenn es eng wird,
+     muss die Reihenfolge des Wegkürzens stimmen. Erst die Aktionen,
+     dann das Menü, dann die Karte — "Zug beenden" niemals. */
+  const winzig = macheProbe();
+  const bw = macheBuehne(winzig.zustand, { fenster: 120 });
+  bw.flaeche.zeichne(winzig.zustand, {}, { finger: true });
+  const knapp = bw.flaeche.felder();
+  pruefeFelder(bw, knapp, "auf 120 Punkten");
+  behaupte(knapp.some((f) => f.art === "zugEnde"),
+    `auf 120 Punkten bleibt "Zug beenden" stehen (${knapp.map((f) => f.id).join(", ")})`);
+  behaupte(!knapp.some((f) => f.art === "aktion"),
+    "auf 120 Punkten sind die Aktionen zuerst gewichen");
+  behaupte(!knapp.some((f) => f.art === "menue"),
+    "und danach das Menü");
+  behaupte(knapp.some((f) => f.art === "karte"),
+    "die Karte weicht als letzte vor dem Zugende");
+  behaupte(knapp.length < 7,
+    `auf 120 Punkten wird wirklich gekürzt (${knapp.length} Felder) - sonst prüfte das nichts`);
 }
 
 ende("Felder");
