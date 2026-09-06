@@ -5,8 +5,8 @@
    Was die Eingabe aus einem **Finger** macht — Zeigerereignisse, die
    zwei Schritte, die Knopfleiste —, steht in
    `werkzeuge/pruefe-eingabe-finger.mjs`. Das sind zwei Sachen und
-   nicht dieselbe mit anderem Gerät; von dort kommt auch die Werkbank,
-   die beide brauchen.
+   nicht dieselbe mit anderem Gerät. Die Stellung, auf der beide
+   messen, steht in `werkzeuge/buehne-eingabe.mjs`.
 
    ── Warum genau diese Fälle ────────────────────────────────────────
 
@@ -39,9 +39,9 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/eingabe.js` (das Geprüfte),
-   `werkzeuge/pruefe-eingabe-finger.mjs` (der Finger; liefert die
-   Werkbank), `runtime/kamera.js` (rechnet
+   `runtime/eingabe.js` (das Geprüfte), `werkzeuge/buehne-eingabe.mjs`
+   (die geteilte Stellung), `werkzeuge/pruefe-eingabe-finger.mjs` (der
+   Finger, misst über dieselbe Stellung), `runtime/kamera.js` (rechnet
    Bildpunkte in Felder), `spiel/gitter.mjs`, `spiel/wegfindung.mjs`,
    `spiel/hoehen.mjs`, `spiel/aktionen.mjs`, `spiel/lauf.mjs`
    (`macheLauf`, `zustandsSumme`), `werkzeuge/helfer.mjs`,
@@ -66,15 +66,15 @@ import {
   KNOPF_LINKS, KNOPF_RECHTS, MODUS, WARNUNG, macheEingabe
 } from "../runtime/eingabe.js";
 
-/* Die Werkbank — von Hand gebaute Karte, Spielstand, mitschreibendes
-   Blatt — steht in `pruefe-eingabe-finger.mjs`, weil **beide**
-   Prüfungen sie brauchen und es sie nur einmal geben darf. Zweimal
-   aufgebaut wären es zwei Karten, und sobald jemand eine davon ändert,
-   prüfte diese Datei stillschweigend etwas anderes als die andere. */
+/* Die Stellung — von Hand gebaute Karte, Spielstand, mitschreibendes
+   Blatt — steht in `buehne-eingabe.mjs`, weil **beide** Prüfungen sie
+   brauchen und es sie nur einmal geben darf. Zweimal aufgebaut wären
+   es zwei Karten, und sobald jemand eine davon ändert, prüfte diese
+   Datei stillschweigend etwas anderes als die andere. */
 import {
   BREITE, HOEHE, abbild, baueZustand, klickeAuf, macheEreignis,
   macheLeinwandErsatz, macheProbe, punktVon, zeigeAuf
-} from "./pruefe-eingabe-finger.mjs";
+} from "./buehne-eingabe.mjs";
 
 /* Gemessene Zahlen, am Ende gedruckt. Eine Behauptung sagt nur „größer
    als" — hier steht, wie groß wirklich. */
