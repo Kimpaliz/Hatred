@@ -43,7 +43,10 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/palette.js` (jede Farbe), `runtime/licht.js` (`KACHEL`),
+   `runtime/oberflaeche-leiste.js` — die Aktionsleiste und die Felder,
+   die ein Finger trifft; sie bekommt von hier Schere, Schrift und Maße
+   und trägt in die Feldliste ein, die `felder()` ausgibt.
+   Dazu `runtime/palette.js` (jede Farbe), `runtime/licht.js` (`KACHEL`),
    `runtime/sprite-daten.js` (`SPIELER_FARBEN` für die Spielerleiste),
    `runtime/schrift.js` und `runtime/kamera.js` (beide hereingereicht),
    `spiel/aktionen.mjs` (`moeglicheAktionen`, `kostenVon` — die eine Wahrheit
@@ -57,21 +60,21 @@
 import { FARBEN } from "./palette.js";
 import { KACHEL } from "./licht.js";
 import { SPIELER_FARBEN } from "./sprite-daten.js";
+import { macheLeiste } from "./oberflaeche-leiste.js";
 
 import { EBENEN, FLUESSIG, HINDERNIS, schussweite } from "../spiel/gitter.mjs";
 import { amZugWesen, wesenMitId } from "../spiel/zug.mjs";
-import { AKTION, kostenVon, moeglicheAktionen } from "../spiel/aktionen.mjs";
+import { kostenVon } from "../spiel/aktionen.mjs";
 import {
   TREFFER_HOECHSTENS, TREFFER_MINDESTENS, ausweichAnteil, inReichweite,
   reichweiteVon, ruestungAbzug, trefferChance
 } from "../spiel/kampf.mjs";
 import {
-  AUFSTIEG_KOSTEN, DECKUNG_MALUS, GEHEN_KOSTEN, WASSER_ZUSCHLAG, betretenSchaden,
+  AUFSTIEG_KOSTEN, DECKUNG_MALUS, WASSER_ZUSCHLAG, betretenSchaden,
   hatDeckung, hoehenVorteil, sturzSchaden, sturzTiefe, trefferBonus
 } from "../spiel/hoehen.mjs";
 import { ruestungVon } from "../spiel/wesen.mjs";
 import { mittlererSchaden, waffe, kenntWaffe } from "../spiel/katalog/waffen.mjs";
-import { faehigkeit, kenntFaehigkeit } from "../spiel/katalog/faehigkeiten.mjs";
 import { held, kenntHeld } from "../spiel/katalog/helden.mjs";
 import { gegner, kenntGegner } from "../spiel/katalog/gegner.mjs";
 
@@ -108,29 +111,10 @@ export const RUNDE_EINBLENDUNG = 1.6;
 export const LEBEN_GUT = 0.6;
 export const LEBEN_WARN = 0.3;
 
-/* Die Tasten. Sie stehen **hier** und nicht in der Eingabe, damit
-   Anzeige und Tastatur nicht auseinanderlaufen können: Was die Leiste
-   anzeigt, ist genau das, was die Taste auslöst. */
-export const TASTEN = {
-  gehen: "1",
-  angriff: "2",
-  stoss: "3",
-  trank: "4",
-  aufheben: "5",
-  wacht: "W",
-  zugEnde: "E"
-};
-
-/* Für die Fähigkeiten, in der Reihenfolge, in der das Wesen sie trägt. */
-export const FAEHIGKEIT_TASTEN = ["6", "7", "8", "9"];
-
-/* In welcher Folge die Aktionsleiste liest. Nicht die Folge aus
-   `moeglicheAktionen` — die ist nach Prüfaufwand sortiert, diese hier
-   nach dem, was man im Zug zuerst tut. */
-const REIHUNG = {
-  gehen: 0, angriff: 1, stoss: 2, faehigkeit: 3,
-  trank: 4, aufheben: 5, wacht: 6, zugEnde: 7
-};
+/* Die Tasten stehen bei der Leiste, weil sie dort gebraucht werden —
+   weitergereicht werden sie von hier, damit `runtime/eingabe.js` und die
+   Prüfung ihren Einfuhrpfad behalten und nicht zwei Stellen kennen. */
+export { TASTEN, FAEHIGKEIT_TASTEN } from "./oberflaeche-leiste.js";
 
 /* ── Namen für Zahlen ───────────────────────────────────────────────
    `spiel/` kennt nur Schlüssel. Hier bekommen sie deutsche Wörter — an
@@ -277,6 +261,14 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
   let zeile = schrift.ZEILE;
   let gezeichnet = 0;
 
+  /* Die Felder, die ein Finger treffen kann. Die Liste wird **beim
+     Zeichnen** gefüllt: `merke` trägt jedes Feld in dem Augenblick ein,
+     in dem es gemalt wird, mit genau den Maßen, mit denen gemalt wurde.
+     Eine zweite Rechnung daneben liefe auseinander (Fehlerbuch E2), und
+     zwar lautlos — der Finger träfe daneben, und niemand sähe warum.
+     Vor dem ersten Bild ist die Liste deshalb leer und nicht geraten. */
+  const felderListe = [];
+
   function hole() {
     stufe = Math.max(1, Math.floor(kamera.vergroesserung || 1));
     breite = Math.max(1, Math.floor(kamera.fensterBreite || 1));
@@ -376,82 +368,20 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
   }
 
   const zugHoehe = () => zeile + 2 * polster;
-  const leisteHoehe = () => zeile + 2 * polster;
 
-  /* ── Die möglichen Aktionen, zu Gruppen zusammengefasst ───────────
-
-     `moeglicheAktionen` liefert jedes einzelne Ziel und jedes einzelne
-     Laufziel — auf einer offenen Karte sind das schnell hundert
-     Einträge. Die Leiste zeigt **Arten**: einmal Gehen, einmal Angriff,
-     je Fähigkeit einmal. Welche Arten möglich sind, entscheidet weiter
-     der Kern; hier wird nur zusammengefasst.
-
-     Der kleine Vorrat davor ist keine Bequemlichkeit: Ohne ihn liefe die
-     Wegsuche über alle erreichbaren Felder sechzigmal je Sekunde, obwohl
-     sich zwischen zwei Bildern eines rundenbasierten Spiels nichts
-     ändert. Der Schlüssel nennt alles, was das Ergebnis verschiebt. */
-  let vorratSchluessel = null;
-  let vorratGruppen = [];
-
-  function aktionsGruppen(zustand, wesen) {
-    if (!zustand || !wesen) return [];
-    const schluessel = `${wesen.id}|${wesen.ap}|${wesen.x},${wesen.y}|`
-      + `${(zustand.protokoll || []).length}|${zustand.runde}|${wesen.lp}`;
-    if (schluessel === vorratSchluessel) return vorratGruppen;
-
-    const gesehen = new Set();
-    const gruppen = [];
-    for (const aktion of moeglicheAktionen(zustand, wesen)) {
-      const art = aktion.typ === AKTION.faehigkeit
-        ? `faehigkeit:${aktion.schluessel}`
-        : aktion.typ;
-      if (gesehen.has(art)) continue;
-      gesehen.add(art);
-      gruppen.push({ art, typ: aktion.typ, schluessel: aktion.schluessel || null, aktion });
-    }
-    gruppen.sort((a, b) => (REIHUNG[a.typ] || 0) - (REIHUNG[b.typ] || 0));
-
-    vorratSchluessel = schluessel;
-    vorratGruppen = gruppen;
-    return gruppen;
+  /* Die Maße ohne die Leiste. Sie gehen an die Leiste hinein, damit die
+     dort nicht ein zweites Mal aus der Kamera rechnet — wie hoch die
+     Leiste selbst wird, weiß umgekehrt nur sie. */
+  function rohMasse() {
+    hole();
+    return { stufe, breite, hoehe, polster, zeile };
   }
 
-  function gruppenName(zustand, wesen, gruppe) {
-    switch (gruppe.typ) {
-      case AKTION.gehen: return "Gehen";
-      case AKTION.angriff:
-        return kenntWaffe(wesen.waffe) ? waffe(wesen.waffe).name : "Angriff";
-      case AKTION.stoss: return "Stoß";
-      case AKTION.trank: return "Trank";
-      case AKTION.aufheben: return "Aufheben";
-      case AKTION.wacht: return "Wacht";
-      case AKTION.zugEnde: return "Zug beenden";
-      case AKTION.faehigkeit:
-        return kenntFaehigkeit(gruppe.schluessel)
-          ? faehigkeit(gruppe.schluessel).name
-          : "Fähigkeit";
-      default: return "Aktion";
-    }
-  }
-
-  /* Die Taste zu einer Gruppe. Fähigkeiten bekommen sie in der
-     Reihenfolge, in der das Wesen sie trägt — nicht in der des Katalogs,
-     sonst hätte derselbe Held je nach Kerker andere Tasten. */
-  function gruppenTaste(wesen, gruppe) {
-    if (gruppe.typ !== AKTION.faehigkeit) return TASTEN[gruppe.typ] || "?";
-    const stelle = (wesen.faehigkeiten || []).indexOf(gruppe.schluessel);
-    return FAEHIGKEIT_TASTEN[stelle] || "?";
-  }
-
-  /* Der Preis, wie er in der Leiste steht. Gehen hat kein festes Ziel,
-     also steht dort der Preis **je Feld** — die einzige ehrliche Zahl,
-     solange der Zeiger nirgends liegt. */
-  function gruppenKosten(zustand, gruppe) {
-    if (gruppe.typ === AKTION.gehen) return `${GEHEN_KOSTEN} je Feld`;
-    const kosten = kostenVon(zustand, gruppe.aktion);
-    if (!Number.isFinite(kosten)) return "-";
-    return `${kosten} AP`;
-  }
+  const leiste = macheLeiste({
+    fuelle, schreibe, kasten, textBreite,
+    masse: rohMasse,
+    merke: (feld) => felderListe.push(feld)
+  });
 
   /* ── Aktionspunkte über der Figur ─────────────────────────────────
 
@@ -631,73 +561,6 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     maleKasten(zeilen, breite - mass.breite - polster, zugHoehe() + polster, mass);
   }
 
-  /* ── Aktionsleiste ────────────────────────────────────────────────*/
-  /* Ein Eintrag der Leiste: Taste, Name, Preis. Gibt zurück, wie breit er
-     geworden ist — die Leiste rechnet damit weiter, statt dieselbe
-     Messung ein zweites Mal aufzuschreiben. */
-  function maleEintrag(zustand, dran, gruppe, x, oben, geplantArt) {
-    const taste = gruppenTaste(dran, gruppe);
-    const name = gruppenName(zustand, dran, gruppe);
-    const kosten = gruppenKosten(zustand, gruppe);
-    const weite = textBreite(`${taste} ${name} ${kosten}`) + 2 * polster;
-    if (gruppe.art === geplantArt) fuelle(x - polster, oben + stufe, weite, zeile,
-      FARBEN.hudRahmen);
-    let lauf = x;
-    lauf += schreibe(`${taste} `, lauf, oben + polster, FARBEN.apVoll);
-    lauf += schreibe(`${name} `, lauf, oben + polster, FARBEN.hudSchrift);
-    schreibe(kosten, lauf, oben + polster, FARBEN.hudWarn);
-    return weite;
-  }
-
-  const eintragsBreite = (zustand, dran, gruppe) => textBreite(
-    `${gruppenTaste(dran, gruppe)} ${gruppenName(zustand, dran, gruppe)} `
-    + `${gruppenKosten(zustand, gruppe)}`) + 2 * polster;
-
-  function maleAktionsleiste(zustand, ansicht, dran) {
-    const hoch = leisteHoehe();
-    const oben = hoehe - hoch;
-    kasten(0, oben, breite, hoch);
-    if (!dran) {
-      schreibe("Niemand ist am Zug.", polster, oben + polster, FARBEN.hudMatt);
-      return;
-    }
-
-    const gruppen = aktionsGruppen(zustand, dran);
-    if (gruppen.length === 0) {
-      schreibe("Keine Aktion möglich.", polster, oben + polster, FARBEN.hudMatt);
-      return;
-    }
-
-    const geplantArt = ansicht.geplant
-      ? (ansicht.geplant.typ === AKTION.faehigkeit
-        ? `faehigkeit:${ansicht.geplant.schluessel}`
-        : ansicht.geplant.typ)
-      : null;
-
-    /* „Zug beenden" wird **zuerst** und rechtsbündig gesetzt, dann erst
-       der Rest von links. Sonst fällt gerade die eine Aktion aus der
-       Leiste, ohne die man feststeckt: Sie steht in der Reihung hinten,
-       und auf einem schmalen Fenster reicht der Platz nicht bis dorthin.
-       Ein Spieler, der seinen Zug nicht beenden kann, hat kein Spiel. */
-    const schluss = gruppen.find((g) => g.typ === AKTION.zugEnde);
-    let rechteGrenze = breite - polster;
-    if (schluss) {
-      const weite = eintragsBreite(zustand, dran, schluss);
-      const x = breite - polster - weite + polster;
-      maleEintrag(zustand, dran, schluss, x, oben, geplantArt);
-      rechteGrenze = x - 2 * polster;
-    }
-
-    let x = polster;
-    for (const gruppe of gruppen) {
-      if (gruppe === schluss) continue;
-      const weite = eintragsBreite(zustand, dran, gruppe);
-      if (x + weite > rechteGrenze) break;
-      maleEintrag(zustand, dran, gruppe, x, oben, geplantArt);
-      x += weite;
-    }
-  }
-
   /* ── Zielangabe ───────────────────────────────────────────────────
 
      Jede Zeile ist ein Summand der Trefferchance, und jeder kommt aus
@@ -860,7 +723,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
       farbe: i === saetze.length - 1 ? FARBEN.hudSchrift : FARBEN.hudMatt
     }));
     const mass = kastenMass(zeilen, Math.floor(breite * 2 / 3));
-    const y = hoehe - leisteHoehe() - polster - mass.hoehe;
+    const y = hoehe - leiste.hoeheVon() - polster - mass.hoehe;
     maleKasten(zeilen, polster, y, mass);
     return mass.breite;
   }
@@ -889,13 +752,14 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
      `zustand` ist der echte Stand, `ansicht.schau` die laufende
      Abspielung — dieselben Wesen, aber auf Zwischenstellen zwischen
      zwei Feldern. Alles, was **rechnet**, bekommt den echten Stand:
-     `moeglicheAktionen`, `kostenVon` und die Zielangabe fragen den
-     Kern, und der Kern rechnet nur auf ganzen Feldern und wirft sonst
+     die Leiste, `kostenVon` und die Zielangabe fragen den Kern, und der
+     Kern rechnet nur auf ganzen Feldern und wirft sonst
      (`spiel/sicht.mjs`, `spiel/wegfindung.mjs`). Nur die Stellen der
      Lebensbalken kommen aus der Abspielung. Fehlt `ansicht.schau`,
      ist beides derselbe Stand — dann steht auch nichts in Bewegung. */
   function zeichne(zustand, ansicht = {}) {
     gezeichnet = 0;
+    felderListe.length = 0;
     hole();
     ctx.imageSmoothingEnabled = false;
     if (!zustand || !zustand.karte) return gezeichnet;
@@ -906,13 +770,13 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     maleWesen(zustand, schau, sicht, dran);
     maleZugleiste(zustand, dran);
     maleSpielerleiste(zustand, sicht);
-    maleAktionsleiste(zustand, sicht, dran);
+    leiste.maleAktionsleiste(zustand, sicht, dran);
     const lauftextBreite = maleLauftext(zustand, sicht);
 
     /* Rechts unten, von unten nach oben gestapelt: erst die Zielangabe,
        darüber die Höhenangabe. Beide bleiben links vom Lauftext. */
     const platzRechts = Math.max(zeile, breite - lauftextBreite - 3 * polster);
-    let unten = hoehe - leisteHoehe() - polster;
+    let unten = hoehe - leiste.hoeheVon() - polster;
 
     const ziel = zielVon(zustand, sicht);
     if (ziel && dran) {
@@ -936,14 +800,25 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
   }
 
   /* Die Maße dieses Bildes — damit Eingabe und Prüfung die Bänder
-     treffen, ohne die Rechnung ein zweites Mal aufzuschreiben. */
+     treffen, ohne die Rechnung ein zweites Mal aufzuschreiben.
+     `leisteHoehe` ist die Höhe der **zuletzt gezeichneten** Leiste — wie
+     hoch sie wird, weiß nur die Leiste selbst. Vor dem ersten Bild gilt
+     das schmale Maß. */
   function masse() {
     hole();
     return {
       stufe, breite, hoehe, polster, zeile,
-      zugHoehe: zugHoehe(), leisteHoehe: leisteHoehe()
+      zugHoehe: zugHoehe(), leisteHoehe: leiste.hoeheVon()
     };
   }
 
-  return { zeichne, masse, apReihe, aktionsGruppen, zielZeilen, hoehenZeilen };
+  /* Die Felder, die ein Tipp treffen kann — in der Reihenfolge, in der
+     sie gezeichnet wurden. Eine Kopie, damit niemand von außen an der
+     einen Wahrheit über die Maße dreht. */
+  const felder = () => felderListe.slice();
+
+  return {
+    zeichne, masse, felder, apReihe, zielZeilen, hoehenZeilen,
+    aktionsGruppen: leiste.aktionsGruppen
+  };
 }
