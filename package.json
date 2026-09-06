@@ -1,0 +1,25 @@
+{
+  "name": "dashboard-golden-path-game",
+  "version": "2.2.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/dashboard-games-sdk"
+  ],
+  "scripts": {
+    "start": "node src/server/index.mjs",
+    "dev": "node --watch src/server/index.mjs",
+    "test": "node --test test/*.test.mjs",
+    "build": "node scripts/verify-repository.mjs",
+    "check:version": "node scripts/check-version-bump.mjs",
+    "check:release": "node scripts/check-release-readiness.mjs",
+    "dashboard:verify": "dashboard-games-verify .",
+    "verify": "npm test && npm run build && npm run dashboard:verify"
+  },
+  "dependencies": {
+    "@dashboard/games-sdk": "file:packages/dashboard-games-sdk"
+  }
+}
