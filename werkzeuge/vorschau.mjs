@@ -43,7 +43,24 @@ const TYPEN = {
    Prüfung holt `GET /../../../etc/passwd` genau das. `normalize` allein
    genügt nicht — erst der Vergleich mit der Wurzel. */
 function sicherAufloesen(pfad) {
-  const roh = decodeURIComponent(pfad.split("?")[0]);
+  /* `decodeURIComponent` **wirft** bei einem halben Prozentzeichen —
+     und geworfen wird hier, außerhalb des `try` im Hörer darunter.
+     Am 06.09.2026 gemessen: `GET /%` beendete den ganzen Server mit
+     `URIError: URI malformed`, Rückgabewert 1. Die nächste Anfrage
+     bekam gar keine Antwort mehr.
+
+     Das ist kein Randfall. Es reicht ein Prozentzeichen in der
+     Adresszeile, ein Tippfehler in einem Verweis, ein Suchprogramm
+     das die Adresse abschneidet — und Jannik steht vor einem Spiel,
+     das „eben noch lief\u201c. Eine Adresse, die sich nicht entschlüsseln
+     lässt, ist keine Datei in diesem Ordner: also `null`, also 403,
+     wie jeder andere Weg nach draußen auch. */
+  let roh;
+  try {
+    roh = decodeURIComponent(pfad.split("?")[0]);
+  } catch {
+    return null;
+  }
   const ziel = normalize(join(WURZEL, roh === "/" ? "index.html" : roh));
   if (ziel !== WURZEL && !ziel.startsWith(WURZEL + sep)) return null;
   return ziel;

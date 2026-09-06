@@ -62,7 +62,13 @@ const ZEICHEN_RAMPE = {
   [RAMPE.west]: "←"
 };
 
+/* Namen und Größen kommen aus `spiel/gitter.mjs`, nicht aus einer
+   Liste hier. Bis zum 06.09.2026 standen `new Array(6)`, `new Array(8)`
+   und eine Namensliste mit sechs Einträgen fest im Text — wer dort eine
+   siebte Flüssigkeit einträgt, bekam von diesem Werkzeug lautlos
+   „undefined:NaN" gedruckt, und die ganze Prüfkette blieb grün. */
 const NAME_BODEN = Object.fromEntries(Object.entries(BODEN).map(([n, w]) => [w, n]));
+const NAME_FLUESSIG = Object.fromEntries(Object.entries(FLUESSIG).map(([n, w]) => [w, n]));
 
 function lesArgumente(argv) {
   const werte = { saat: 1, breite: 56, hoehe: 40, tiefe: 1, spieler: 2 };
@@ -126,7 +132,11 @@ function zeichenEbenen(karte) {
 
 function tafel(titel, zeilen) {
   const breite = zeilen.length ? zeilen[0].length : 0;
-  console.log(`┌─ ${titel} ${"─".repeat(Math.max(0, breite - titel.length - 2))}┐`);
+  /* Drei, nicht zwei: Ecke + Strich + Leerzeichen + Titel + Leerzeichen
+     + Füllung + Ecke muss so breit werden wie `│` + Zeile + `│`. Mit
+     der Zwei war jede Oberkante genau ein Zeichen zu breit — seit es
+     dieses Werkzeug gibt, und niemandem aufgefallen. */
+  console.log(`┌─ ${titel} ${"─".repeat(Math.max(0, breite - titel.length - 3))}┐`);
   for (const z of zeilen) console.log(`│${z}│`);
   console.log(`└${"─".repeat(breite)}┘`);
 }
@@ -143,8 +153,8 @@ function seenZahl(karte) {
 function zahlen(karte) {
   let begehbar = 0, rampen = 0;
   const jeEbene = new Array(EBENEN).fill(0);
-  const jeFluessig = new Array(6).fill(0);
-  const jeBoden = new Array(8).fill(0);
+  const jeFluessig = new Array(Object.keys(FLUESSIG).length).fill(0);
+  const jeBoden = new Array(Object.keys(BODEN).length).fill(0);
   for (const { x, y, i } of alleFelder(karte)) {
     if (karte.rampe[i] !== RAMPE.keine) rampen++;
     if (karte.blocktBewegung(x, y)) continue;
@@ -168,8 +178,8 @@ function zahlen(karte) {
     ` (${(100 * erreichbar / Math.max(1, begehbar)).toFixed(1)} %)` +
     ` · eine Fackel je ${(begehbar / Math.max(1, fackeln)).toFixed(1)} offene Felder`);
   console.log(`  Ebenen: ${jeEbene.map((z, e) => `${e}:${z}`).join("  ")}`);
-  const fName = ["–", "Wasser", "Blut", "Schleim", "Lava", "Öl"];
-  console.log(`  Flüssig: ${jeFluessig.map((z, f) => `${fName[f]}:${z}`).join("  ")}`);
+  const fName = (f) => (f === FLUESSIG.keine ? "–" : NAME_FLUESSIG[f]);
+  console.log(`  Flüssig: ${jeFluessig.map((z, f) => `${fName(f)}:${z}`).join("  ")}`);
   console.log(`  Boden: ${jeBoden.map((z, b) => `${NAME_BODEN[b]}:${z}`).join("  ")}`);
   console.log("  Räume:");
   for (const r of karte.raeume) {

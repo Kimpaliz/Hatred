@@ -3,6 +3,97 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Dieselbe Frage an alle Werkzeuge gestellt
+
+Nachdem die Einzeldatei tot war, während die Kette grün meldete, lag die
+Frage auf der Hand: **Bei wie vielen anderen Werkzeugen ist das auch so?**
+Sechs Werkzeuge, je ein Agent, der sie liest und misst; jeder Fund
+danach von einem zweiten Agenten, dessen Auftrag lautete: *widerlege
+das, und im Zweifel gilt es als widerlegt*. Elf Agenten, 194
+Werkzeugaufrufe.
+
+**Ergebnis: vier bestätigte Lücken, eine widerlegte.** Zwei davon waren
+keine Möglichkeiten, sondern Fehler, die es **heute schon gab**:
+
+### 1. Ein Prozentzeichen beendete den Vorschauserver
+
+`werkzeuge/vorschau.mjs` ist der Weg, auf dem Hatred daheim startet
+(`Vorschau-starten.cmd`). Selbst nachgemessen:
+
+    curl "http://127.0.0.1:8199/"    → 200
+    curl "http://127.0.0.1:8199/%"   → 000   ← keine Antwort
+    curl "http://127.0.0.1:8199/"    → 000   ← der Server ist weg
+
+`URIError: URI malformed`, Rückgabewert 1. `decodeURIComponent` steht in
+`sicherAufloesen`, und das läuft **vor** dem `try` des Hörers — ein Wurf
+dort ist kein Fehlercode, sondern das Ende des Prozesses. Es genügt ein
+Prozentzeichen in der Adresszeile.
+
+*Behoben:* Eine Adresse, die sich nicht entschlüsseln lässt, ist keine
+Datei in diesem Ordner — also 403, wie jeder andere Weg nach draußen.
+
+*Neu:* `werkzeuge/pruefe-vorschau.mjs`, 11 Behauptungen. Sie startet den
+Server als eigenen Prozess und schickt **rohe Bytes** über eine
+Netzsteckdose — `fetch` käme gar nicht bis zum Server, weil es die
+krumme Adresse schon im eigenen Prozess ablehnt und damit Node prüfte
+statt Hatred. Die eigentliche Behauptung steht am Schluss: *danach
+antwortet der Server weiter*.
+
+*Rotprobe:* Absturz zurückgeholt → **9 von 11** Behauptungen fielen,
+darunter „der Server läuft immer noch: ist 1, soll null".
+
+### 2. Jede Tafel der Kartenansicht war ein Zeichen zu breit
+
+`werkzeuge/karte-zeigen.mjs` zeichnet die Karte als Textbild. Die
+Oberkante jeder Tafel maß **59** Zeichen, jede Inhalts- und Unterkante
+**58** — seit dem ersten Tag. Die Rechnung in `tafel()` zog zwei ab, wo
+drei hingehörten.
+
+Schwerer wog der zweite Fund derselben Datei: Die Zähltabellen standen
+mit `new Array(6)`, `new Array(8)` und einer Namensliste **fest im
+Text**, während die Wahrheit in `spiel/gitter.mjs` steht. Wer dort eine
+siebte Flüssigkeit einträgt, hätte lautlos `undefined:NaN` gedruckt
+bekommen.
+
+*Behoben:* Größen und Namen kommen jetzt aus `spiel/gitter.mjs`.
+
+*Neu:* `werkzeuge/pruefe-karte-zeigen.mjs`, 25 Behauptungen — alle
+Zeilen einer Tafel gleich breit, kein `undefined`/`NaN`/`?` im Bild,
+und **jede** Flüssigkeit und jeder Boden aus dem Gitter kommt
+namentlich vor (die Namen, nicht die Anzahl: eine Zählung verglich nur
+zwei Zahlen).
+
+*Rotprobe:* alte Rahmenbreite zurück → „die Tafel ‚Kerker · Saat 7' ist
+überall gleich breit (59, 58): ist 2, soll 1"; feste Größe 5 statt der
+gemessenen 6 → „so viele Flüssigkeiten wie im Gitter: ist 5, soll 6".
+
+### Was offen bleibt — gemessen, nicht behoben
+
+Drei Lücken sind bestätigt und stehen hier, damit sie nicht in einem
+Chatverlauf verschwinden:
+
+| Werkzeug | die Lücke | Schwere |
+| --- | --- | --- |
+| `werkzeuge/werkstatt-auftrag.mjs` | legt **52 JSON-Dateien** an; keine Prüfung sieht eine davon an | mittel |
+| `werkzeuge/vorgaenge.mjs` | trägt die Vorgangsnummer nicht in die Roadmap zurück — eine falsch abgeschriebene Nummer bleibt still | mittel |
+| `werkzeuge/github-zugang.mjs` | **ein Syntaxfehler in dieser Datei lässt die Kette 37/37 grün melden** — sie wird von keiner Prüfung geladen | mittel |
+
+Die dritte ist der schärfste Befund des ganzen Durchgangs, und er kommt
+ausgerechnet von dem Agenten, dessen Auftrag das **Widerlegen** war:
+Er hat die gemeldete Lücke abgewiesen (ein Ausfall dieser Datei ist
+laut, nicht still — sie wird von Hand gestartet und schreibt jeden
+Fehlschlag auf die Konsole), dabei aber eine härtere gefunden und
+nachgemessen.
+
+*Nicht behoben, weil:* Alle drei brauchen eigene Prüfungen und eigene
+Rotproben, und zwei davon (`vorgaenge`, `github-zugang`) reden über das
+Netz. Das ist eine eigene Arbeit, kein Anhängsel an die
+Fingerbedienung.
+
+Kette: **39 Prüfungen grün** (vorher 37).
+
+---
+
 ## 06.09.2026 — Umbau: der Abspieler zieht aus
 
 **Auftrag, wörtlich:** *„runtime/start.js aufteilen"*
