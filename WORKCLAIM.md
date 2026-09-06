@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| `runtime/start.js`, `werkzeuge/pruefe-tippen.mjs` | Claude, Agent D | Verdrahtung, danach | 06.09.2026 |
+| frei | frei | Die Fingerbedienung ist zusammengeführt, niemand schreibt. | 06.09.2026 |
 
 ## Format
 

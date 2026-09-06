@@ -41,8 +41,22 @@
 import { FARBEN } from "../runtime/palette.js";
 import { KACHEL } from "../runtime/licht.js";
 
-/* Das Handy, an dem gemessen wird: Pixel 7 im Querformat, wie ihn
-   Chromium nachstellt. Die krumme Zahl ist der ganze Punkt. */
+/* Das Handy, an dem gemessen wird: ein Pixel 7 quer, mit dem **ganzen**
+   Bildschirm — 412 x 915 CSS-Punkte bei devicePixelRatio 2,625. Das ist
+   das Maß aus der Geräteliste von Chrome DevTools.
+
+   Playwright führt dasselbe Gerät mit kleineren Zahlen, weil es die
+   Browserleisten schon abzieht. Nachzurechnen, wo Playwright liegt —
+   dieses Projekt braucht es nicht, die Prüfkette läuft am Ersatzbrowser
+   hierunter:
+
+     node -e "console.log(require('playwright-core').devices['Pixel 7 landscape'])"
+
+   Am 06.09.2026 so gemessen: 863 x 360 bei 2,625. Hier steht bewusst die
+   größere Zahl, denn gemessen wird die Zeichenfläche im Vollbild ohne
+   Leisten — genau der Fall, für den das Spiel gebaut ist. Die krumme
+   2,625 fällt in beiden Angaben gleich aus und ist der eigentliche
+   Punkt: Sie macht halbe Bildpunkte, wenn man sie nicht abfängt. */
 export const HANDY = { breite: 915, hoehe: 412, dpr: 2.625 };
 /* ══════════════════════════════════════════════════════════════════
    Das mitschreibende Blatt

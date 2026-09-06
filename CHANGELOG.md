@@ -3,6 +3,91 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Der Kerker gehorcht dem Daumen
+
+**Auftrag, wörtlich:** *„ja bitte hauptsächlich android compatible.
+nutte subagent orchestation skill"*
+
+Das Spiel lief bis eben nur mit einer Maus. Auf einem Android-Handy war
+es unbedienbar — nicht „unschön", sondern unbedienbar: Ein Tipp löste
+jede Aktion **zweimal** aus, die Leiste war dreizehn Bildpunkte hoch,
+und die Zielanzeige hing am Schweben, das ein Finger nicht kann.
+
+**Vier Flächen, vier Arbeitsbäume, ein Prüfer.** Aufgeteilt nach Datei,
+nicht nach Tätigkeit, damit sich niemand ins Gehege kommt:
+
+- `runtime/eingabe.js` — Zeigerereignisse statt Maus. Der Browser
+  liefert bei einem Tipp die ganze Folge `pointerdown touchstart
+  pointerup touchend click`; gehört wird **entweder** der Zeiger
+  **oder** die Maus, nie beides (`runtime/start.js:939`). Ein zweiter
+  Finger wird abgewiesen, damit kein Doppeltipp-Zoom das Bild verzieht.
+- `runtime/oberflaeche.js` — die Leiste kennt einen Fingermodus und
+  wird darin **48 Bildpunkte** hoch. Was gerade nicht geht, steht matt
+  da, statt beim Antippen still zu versagen. Statt Schweben: zwei
+  Schritte — erst antippen, dann bestätigen.
+- `index.html`, `runtime/lobby.js` — Blattmaße für Android festgenagelt,
+  Ruhezone, Knöpfe in 48 Punkten, quer zweispaltig, und ein verstecktes
+  Eingabefeld, damit die echte Tastatur aufgeht.
+- `runtime/start.js` — die Verdrahtung: Vollbild und Querformat hängen
+  an einer Nutzergeste (ohne die verweigert Android beides), und die
+  Vergrößerung wird **ganzzahlig** gerechnet, obwohl `devicePixelRatio`
+  auf dem Pixel 7 krumm ist (2,625). Halbe Bildpunkte machen aus
+  Pixelgrafik Matsch.
+
+**Messung — die ganze Kette:** 36 Prüfungen grün in 66,5 s. 26 davon
+melden **12.037 Behauptungen**, die zehn Wächter 27 weitere: **12.064**.
+Die längsten Dateien liegen bei 999, 999 und 996 Zeilen (Regel 8: 1000).
+
+**Messung — echtes Chromium, nicht der Ersatz.** Ein unabhängiger Prüfer
+hat das gebaute Bündel in einem echten Browser bei 915 x 412 mit
+`deviceScaleFactor` 2,625 und `hasTouch` geöffnet und **ausschließlich**
+`page.tap()` benutzt:
+
+- **9 von 9 Tipps kamen genau einmal an** — trotz der vollen
+  Ereignisfolge. Das war der Fehler, der das Spiel unbedienbar machte.
+- Die Leiste misst **genau 48 Reihen** (y 364…411). Im Hochformat
+  360 x 640 ebenfalls 48.
+- Vergrößerung **1** — ganzzahlig, keine halben Bildpunkte.
+- Drei Züge durchgespielt: ein Schritt kostet 1 von 6 Aktionspunkten;
+  der Knopf „Karte" schaltet um, **ohne** dass die Figur läuft; Zugende
+  bringt eine neue Runde mit 6 Punkten zurück.
+- Alle vier Extremkanten eines Knopfes treffen ihn.
+- Konsole: nur der 404 für `favicon.ico`, den der Browser selbst holt.
+  Alle 43 Module kamen mit 200.
+
+**Rotprobe — 4 von 4 schlugen an** (eine Prüfung, die nie rot war, prüft
+womöglich nichts):
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| `mousedown` zusätzlich gehört | „ein Tipp kommt genau einmal in der Lobby an, nicht zweimal: ist 2, soll 1" |
+| Fingermodus abgeschaltet | „am Finger ist die Leiste daumengroß: 13 >= 48" |
+| Knopf um 3 Punkte verschoben | **50 von 953** Behauptungen fielen |
+| Sperre für gesperrte Knöpfe entfernt | „die Figur geht nicht auf das erreichbare Feld darunter: ist 2, soll 0" |
+
+**Ein Befund des Prüfers, hiermit behoben:** In
+`werkzeuge/buehne-browser.mjs` stand „Pixel 7 … wie ihn Chromium
+nachstellt" — Playwrights eigene Angabe für dasselbe Gerät ist aber
+863 x 360, weil sie die Browserleisten schon abzieht. Die Zahl 915 x 412
+stimmt trotzdem: Sie ist der **ganze** Bildschirm, und im Vollbild wird
+genau der gezeichnet. Jetzt steht die Quelle dabei und der Befehl, der
+die andere Zahl nachrechnet (Regel 11).
+
+**Neu als Werkzeug:** drei geteilte Bühnen — `buehne-eingabe.mjs`,
+`buehne-oberflaeche.mjs`, `buehne-browser.mjs`. Sie behaupten nichts,
+darum heißen sie nicht `pruefe-`; sie stellen den Aufbau bereit, den
+zwei Prüfungen gemeinsam brauchen. `werkzeuge/eine-datei.mjs` wurde neu
+geschrieben: Jedes Modul bekommt seinen eigenen Bereich, nachdem
+**27 Namen** im Bündel kollidierten. Der Ordner war in Ordnung, das
+Werkzeug war es nicht.
+
+**Was der Prüfer ausdrücklich nicht prüfen konnte:** echte Hardware;
+Vollbild und Querformat wurden nie ausgelöst; die Sperre für den zweiten
+Finger ist im Betrieb nie angesprungen; Koop zu zweit bis viert an einem
+Gerät wurde nicht gespielt.
+
+---
+
 ## 06.09.2026 — Rüstzeug für verteiltes Arbeiten
 
 **Auftrag, wörtlich:** *„nutte subagent orchestation skill"*
