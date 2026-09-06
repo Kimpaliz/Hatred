@@ -73,6 +73,26 @@ Nie mit `grep`/`cat -A` beurteilen — `file` nehmen oder Bytes zählen.
 das Arbeitsverzeichnis zwischen Befehlen zurück. Immer absolute Pfade
 oder `cd <pfad> && …` in **einem** Befehl.
 
+**C5 — Ein „✓" eines Werkzeugs sagt nichts über sein Ergebnis.** Am
+06.09.2026 meldete `werkzeuge/eine-datei.mjs` *„✓ 43 Module → 780,8 kB"*
+und lieferte eine Datei, die im Browser keine einzige Zeile ausführte
+(`Unexpected token 'export'`). Eine kaputte Datei ist genauso groß wie
+eine heile; die Größe ist kein Beweis. **Woran man es erkennt, bevor
+man hineinläuft:** Gibt es zu dem, was ein Werkzeug *erzeugt*, eine
+Prüfung, die das Erzeugte selbst anfasst? Wenn nicht, ist das Werkzeug
+ungeprüft, egal wie grün die Kette ist — sie war es hier, 36 Prüfungen
+lang. Gegenmittel steht in `werkzeuge/pruefe-einzeldatei.mjs`:
+bauen, dann `node --check` auf das Ergebnis.
+
+**C6 — Ein Bündler aus Mustern kennt nur die Formen, die er kennt.**
+Dieselbe Sache von der anderen Seite: Als `runtime/oberflaeche.js` eine
+Weiterausfuhr bekam (`export { … } from "./x.js"`), passte kein Muster,
+und die Zeile blieb **wörtlich** stehen — geräuschlos. **Woran man es
+erkennt:** Wer eine Datei aufteilt und die Namen durchreicht, führt eine
+neue Modulform ein. Danach die Einzeldatei bauen und zerteilen lassen,
+nicht nur die Kette laufen lassen. Jedes Musterwerkzeug braucht die
+Stelle, an der es zugibt, dass es etwas nicht verstanden hat.
+
 ## Klasse D — Bild
 
 **D1 — Halbe Bildpunkte.** Sobald eine Figur auf `x = 12.5` gezeichnet

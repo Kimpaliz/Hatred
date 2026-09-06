@@ -3,6 +3,88 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Die Einzeldatei war tot, und die Kette war grün
+
+**Gefunden beim Ausliefern**, nicht durch eine Prüfung. Und das ist der
+eigentliche Fund.
+
+`node werkzeuge/eine-datei.mjs` meldete *„✓ 43 Module → 780,8 kB"*. Die
+Datei entstand, sie war groß, sie sah richtig aus — und im Browser blieb
+das Bild **schwarz**. Eine einzige Zeile:
+
+    Uncaught SyntaxError: Unexpected token 'export'
+
+*Woher:* Beim Aufteilen der Leiste bekam `runtime/oberflaeche.js` eine
+**Weiterausfuhr**:
+
+```js
+export { TASTEN, FAEHIGKEIT_TASTEN, FINGER_MINDESTMASS } from "./oberflaeche-leiste.js";
+```
+
+Der Bündler kennt `export const`, `export function` und `export { … }` —
+aber nicht `export { … } from`. Sein Muster für die letzte Form verlangt
+das Zeilenende gleich hinter der Klammer, und hier stand noch ein
+`from …`. Also blieb die Zeile **wörtlich** stehen. Jedes Modul wird in
+eine Funktion gewickelt, und ein `export` in einer Funktion ist ein
+Syntaxfehler: Das Skript lief keine einzige Zeile.
+
+**Was das kostete, gemessen.** Fünf Handy-Formate, echtes Chromium, die
+Einzeldatei als Datei geöffnet:
+
+| Format | vorher (Blatt / Vergrößerung) | nachher |
+| --- | --- | --- |
+| 915 x 412 @ 2,625 | 960 x 540 / **1,0492** | 915 x 412 / **1** |
+| 412 x 915 @ 2,625 | 960 x 540 / **2,3301** | 412 x 915 / **1** |
+| 640 x 360 @ 3 | 960 x 540 / **1,5000** | 640 x 360 / **1** |
+| 360 x 640 @ 3 | 960 x 540 / **2,6667** | 360 x 640 / **1** |
+| 863 x 360 @ 2,625 | 960 x 540 / **1,1124** | 863 x 360 / **1** |
+
+Vorher: fünfmal 960 x 540 — das ist der Vorgabewert aus `index.html`,
+den niemand angefasst hat, weil niemand mehr lief. Ein Fehler in der
+Konsole je Lauf. Nachher: das Blatt trifft das Fenster genau, die
+Vergrößerung ist überall **1**, und die Konsole bleibt still.
+
+**Und dann durchgespielt**, nur mit `touchscreen.tap`, nie mit der Maus:
+Vorlauf → „Allein spielen" → Heldenwahl (Bluthexer statt Späher) →
+„Losgehen" → der Kerker steht: Raster, vier Höhen als Helligkeitsstufen,
+Wasser, Fackeln, Nebel um das Gesehene, der gelbe Umriss der erreichbaren
+Felder, das Kampfprotokoll und die Leiste mit zehn Feldern. Null Fehler.
+
+**Zwei Änderungen, und die zweite ist die wichtigere.**
+
+1. Der Bündler **versteht** die Weiterausfuhr jetzt: Sie wird zu einem
+   Griff in die Merkliste (`const { TASTEN } = __teile[…]`) plus einem
+   Eintrag in der Ausfuhrliste. Auch der Wandergang kennt sie nun als
+   Abhängigkeitskante — sonst stünde das durchgereichte Modul unter
+   Umständen gar nicht in der Datei.
+2. Der Bündler wird **laut**. Was nach dem Wickeln noch mit `import`
+   oder `export` beginnt, hat kein Muster verstanden; das wirft jetzt
+   mit Datei und Zeile. Seine eigene Kopfnotiz versprach das seit dem
+   ersten Tag (*„soll auffallen statt geräuschlos durchzurutschen"*) —
+   nur setzte den Satz nichts durch.
+
+**Neu: `werkzeuge/pruefe-einzeldatei.mjs`** — 22 Behauptungen. Sie baut
+die Datei und zerteilt sie mit `node --check` als Modul, so wie der
+Browser sie lädt. Sie prüft außerdem, dass die Weiterausfuhr *aufgelöst*
+und nicht bloß *gestrichen* wurde (gestrichen wäre syntaktisch sauber
+und trotzdem falsch), und hält das laute Muster gegen vier Formen, die
+es fangen muss, und fünf, die es in Ruhe lassen muss.
+
+**Rotprobe, zweimal:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| Weiterausfuhr wieder unverstanden | **5 von 22** fielen — zuerst „SyntaxError: Unexpected token 'export'", dann die Stelle: *Zeile 9249* |
+| laute Stelle stumm geschaltet | **4 von 22** fielen — das Muster erkennt `export default`, `export *`, Standardimport und Weiterausfuhr nicht mehr |
+
+*Die Lehre, und sie gehört ins Fehlerbuch:* Ein Werkzeug, das „✓" meldet,
+hat damit nichts über sein Ergebnis gesagt. Eine kaputte Datei ist
+genauso groß wie eine heile. Geprüft gehört, was herauskommt — nicht,
+dass etwas herauskam. Die Kette hat 36 Prüfungen lang niemals die
+gebaute Datei angefasst; jetzt sind es 37, und eine davon tut es.
+
+---
+
 ## 06.09.2026 — Der Kerker gehorcht dem Daumen
 
 **Auftrag, wörtlich:** *„ja bitte hauptsächlich android compatible.
