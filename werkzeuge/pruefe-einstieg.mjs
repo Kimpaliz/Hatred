@@ -55,9 +55,12 @@ import { ANGEBOT, ANTWORT, schreibeAngabe, vermittlerVonHand } from "../netz/ver
 import {
   ANHANG_ANGEBOT, ANHANG_ANTWORT, fachFuer, heldenZiffern, lesbar, leseFach, macheLobby, umbrich
 } from "../runtime/lobby.js";
-import {
-  SCHRITT, TEMPO, macheAblage, macheAbspieler, macheSpiel, starte
-} from "../runtime/start.js";
+import { SCHRITT, macheAblage, macheSpiel, starte } from "../runtime/start.js";
+/* Der Abspieler ist am 06.09.2026 aus `start.js` in seine eigene Datei
+   gezogen (Regel 8: 999 von 1000 Zeilen). Er wird hier direkt geholt
+   und nicht über `start.js` durchgereicht — ein Durchreichen wäre eine
+   zweite Wahrheit über seinen Ort. */
+import { TEMPO, macheAbspieler } from "../runtime/abspieler.js";
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 
