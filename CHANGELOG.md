@@ -3,6 +3,299 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Auf dem Handy war nach der ersten Ebene Schluss
+
+**Gefunden beim Nachlesen der eigenen Texte**, nicht durch einen Absturz.
+Genau darum war es unsichtbar.
+
+Wer eine Ebene schaffte, las im Bild:
+
+    Ebene geschafft - Leertaste: tiefer hinab
+
+Auf einem Handy gibt es keine Leertaste. Und der Weg tiefer hing an
+**genau** dieser Taste (`runtime/start.js`, der `keydown`-Hörer). Das
+Spiel war auf Android also nach der ersten geschafften Ebene zu Ende —
+ohne Fehlermeldung, ohne rote Prüfung, ohne dass irgendetwas kaputt
+aussah. Es ging einfach nicht weiter.
+
+Dasselbe eine Stufe kleiner auf dem Pausenbild: *„Pause - klick ins
+Bild"* — auf einem Gerät ohne Maus.
+
+**Drei geänderte Zeilen, keine neue.** `runtime/start.js` steht bei
+**999** von 1000 Zeilen (Regel 8); jede zusätzliche Zeile erzwingt die
+Aufteilung. Deshalb ersetzt jede Änderung genau eine Zeile:
+
+- `if (!lobby) return;` → `if (!lobby) { if (tieferMoeglich()) tiefer(); return; }`
+- `"Pause - klick ins Bild"` → `"Pause - tippen oder klicken"`
+- `"Ebene geschafft - Leertaste: tiefer hinab"` → `"Ebene geschafft - tippen oder Leertaste"`
+
+Die neuen Sätze nennen beide Wege. Das ist kein Kompromiss, sondern die
+Wahrheit: Am Rechner geht beides, am Handy geht der eine.
+
+*Warum der Tipp im Vorlauf-Hörer landet und nicht in einem neuen Knopf:*
+Ein Knopf müsste in die Leiste, die Leiste gehört
+`runtime/oberflaeche-leiste.js`, und ein Sieg ist kein Zug. Der
+Vorlauf-Hörer ist ohnehin der einzige, der den Fall „gerade läuft kein
+Spiel" schon kennt — er trägt bereits das Aufwecken aus der Pause.
+
+**Zwei neue Abschnitte in `werkzeuge/pruefe-tippen.mjs`** (jetzt 285
+Behauptungen, vorher 253):
+
+- *„Eine geschaffte Ebene führt auch ohne Tastatur weiter."* Der Sieg
+  wird über die Funktion des Spiels selbst herbeigeführt
+  (`laufEndeEintragen` aus `spiel/zug.mjs` — dieselbe, die ihn im Lauf
+  einträgt), dann wird getippt. Danach muss eine neue Sitzung stehen,
+  **eine** Ebene tiefer. Vorweg steht die Gegenprobe: Ohne Sieg wechselt
+  derselbe Tipp die Ebene nicht — sonst bliebe unklar, ob der Tipp den
+  Sieg erkennt oder ob er das immer tut.
+- *„Kein Text verlangt etwas, das ein Handy nicht hat."* Holt die Sätze
+  aus dem Quelltext und schlägt an, wenn einer nur die Maus (`klick`
+  ohne `tipp`) oder nur die Tastatur (`Leertaste` ohne `tipp`) nennt.
+
+**Rotprobe — 3 von 3:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| Tipp-Weg zurückgenommen | **3 Behauptungen** fielen: „ein Tipp nach dem Sieg baut eine neue Sitzung", „genau eine Ebene tiefer: ist 1, soll 2", „die neue Ebene läuft wieder: ist ‚sieg', soll null" |
+| alter Leertasten-Satz zurück | „„Ebene geschafft - Leertaste: tiefer hinab" nennt nicht nur die Tastatur" |
+| alter Klick-Satz zurück | „„Pause - klick ins Bild" nennt nicht nur die Maus" |
+
+Gemessen im Ersatzbrowser: Ebene 1 → 2, vier Gegner gefallen, vier Sätze
+geprüft. **Ein** Abstieg je Tipp, nicht zwei — am Blatt hängen zwei
+Hörer, und beide bekommen denselben `pointerdown`.
+
+*Was daran hängen bleibt:* `runtime/start.js` ist mit 999 Zeilen voll.
+Die nächste Änderung dort muss die Datei erst teilen. Der saubere
+Schnitt liegt bei `macheAbspieler` → `runtime/abspieler.js`.
+
+---
+
+## 06.09.2026 — Die Einzeldatei war tot, und die Kette war grün
+
+**Gefunden beim Ausliefern**, nicht durch eine Prüfung. Und das ist der
+eigentliche Fund.
+
+`node werkzeuge/eine-datei.mjs` meldete *„✓ 43 Module → 780,8 kB"*. Die
+Datei entstand, sie war groß, sie sah richtig aus — und im Browser blieb
+das Bild **schwarz**. Eine einzige Zeile:
+
+    Uncaught SyntaxError: Unexpected token 'export'
+
+*Woher:* Beim Aufteilen der Leiste bekam `runtime/oberflaeche.js` eine
+**Weiterausfuhr**:
+
+```js
+export { TASTEN, FAEHIGKEIT_TASTEN, FINGER_MINDESTMASS } from "./oberflaeche-leiste.js";
+```
+
+Der Bündler kennt `export const`, `export function` und `export { … }` —
+aber nicht `export { … } from`. Sein Muster für die letzte Form verlangt
+das Zeilenende gleich hinter der Klammer, und hier stand noch ein
+`from …`. Also blieb die Zeile **wörtlich** stehen. Jedes Modul wird in
+eine Funktion gewickelt, und ein `export` in einer Funktion ist ein
+Syntaxfehler: Das Skript lief keine einzige Zeile.
+
+**Was das kostete, gemessen.** Fünf Handy-Formate, echtes Chromium, die
+Einzeldatei als Datei geöffnet:
+
+| Format | vorher (Blatt / Vergrößerung) | nachher |
+| --- | --- | --- |
+| 915 x 412 @ 2,625 | 960 x 540 / **1,0492** | 915 x 412 / **1** |
+| 412 x 915 @ 2,625 | 960 x 540 / **2,3301** | 412 x 915 / **1** |
+| 640 x 360 @ 3 | 960 x 540 / **1,5000** | 640 x 360 / **1** |
+| 360 x 640 @ 3 | 960 x 540 / **2,6667** | 360 x 640 / **1** |
+| 863 x 360 @ 2,625 | 960 x 540 / **1,1124** | 863 x 360 / **1** |
+
+Vorher: fünfmal 960 x 540 — das ist der Vorgabewert aus `index.html`,
+den niemand angefasst hat, weil niemand mehr lief. Ein Fehler in der
+Konsole je Lauf. Nachher: das Blatt trifft das Fenster genau, die
+Vergrößerung ist überall **1**, und die Konsole bleibt still.
+
+**Und dann durchgespielt**, nur mit `touchscreen.tap`, nie mit der Maus:
+Vorlauf → „Allein spielen" → Heldenwahl (Bluthexer statt Späher) →
+„Losgehen" → der Kerker steht: Raster, vier Höhen als Helligkeitsstufen,
+Wasser, Fackeln, Nebel um das Gesehene, der gelbe Umriss der erreichbaren
+Felder, das Kampfprotokoll und die Leiste mit zehn Feldern. Null Fehler.
+
+**Zwei Änderungen, und die zweite ist die wichtigere.**
+
+1. Der Bündler **versteht** die Weiterausfuhr jetzt: Sie wird zu einem
+   Griff in die Merkliste (`const { TASTEN } = __teile[…]`) plus einem
+   Eintrag in der Ausfuhrliste. Auch der Wandergang kennt sie nun als
+   Abhängigkeitskante — sonst stünde das durchgereichte Modul unter
+   Umständen gar nicht in der Datei.
+2. Der Bündler wird **laut**. Was nach dem Wickeln noch mit `import`
+   oder `export` beginnt, hat kein Muster verstanden; das wirft jetzt
+   mit Datei und Zeile. Seine eigene Kopfnotiz versprach das seit dem
+   ersten Tag (*„soll auffallen statt geräuschlos durchzurutschen"*) —
+   nur setzte den Satz nichts durch.
+
+**Neu: `werkzeuge/pruefe-einzeldatei.mjs`** — 22 Behauptungen. Sie baut
+die Datei und zerteilt sie mit `node --check` als Modul, so wie der
+Browser sie lädt. Sie prüft außerdem, dass die Weiterausfuhr *aufgelöst*
+und nicht bloß *gestrichen* wurde (gestrichen wäre syntaktisch sauber
+und trotzdem falsch), und hält das laute Muster gegen vier Formen, die
+es fangen muss, und fünf, die es in Ruhe lassen muss.
+
+**Rotprobe, zweimal:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| Weiterausfuhr wieder unverstanden | **5 von 22** fielen — zuerst „SyntaxError: Unexpected token 'export'", dann die Stelle: *Zeile 9249* |
+| laute Stelle stumm geschaltet | **4 von 22** fielen — das Muster erkennt `export default`, `export *`, Standardimport und Weiterausfuhr nicht mehr |
+
+*Die Lehre, und sie gehört ins Fehlerbuch:* Ein Werkzeug, das „✓" meldet,
+hat damit nichts über sein Ergebnis gesagt. Eine kaputte Datei ist
+genauso groß wie eine heile. Geprüft gehört, was herauskommt — nicht,
+dass etwas herauskam. Die Kette hat 36 Prüfungen lang niemals die
+gebaute Datei angefasst; jetzt sind es 37, und eine davon tut es.
+
+---
+
+## 06.09.2026 — Der Kerker gehorcht dem Daumen
+
+**Auftrag, wörtlich:** *„ja bitte hauptsächlich android compatible.
+nutte subagent orchestation skill"*
+
+Das Spiel lief bis eben nur mit einer Maus. Auf einem Android-Handy war
+es unbedienbar — nicht „unschön", sondern unbedienbar: Ein Tipp löste
+jede Aktion **zweimal** aus, die Leiste war dreizehn Bildpunkte hoch,
+und die Zielanzeige hing am Schweben, das ein Finger nicht kann.
+
+**Vier Flächen, vier Arbeitsbäume, ein Prüfer.** Aufgeteilt nach Datei,
+nicht nach Tätigkeit, damit sich niemand ins Gehege kommt:
+
+- `runtime/eingabe.js` — Zeigerereignisse statt Maus. Der Browser
+  liefert bei einem Tipp die ganze Folge `pointerdown touchstart
+  pointerup touchend click`; gehört wird **entweder** der Zeiger
+  **oder** die Maus, nie beides (`runtime/start.js:939`). Ein zweiter
+  Finger wird abgewiesen, damit kein Doppeltipp-Zoom das Bild verzieht.
+- `runtime/oberflaeche.js` — die Leiste kennt einen Fingermodus und
+  wird darin **48 Bildpunkte** hoch. Was gerade nicht geht, steht matt
+  da, statt beim Antippen still zu versagen. Statt Schweben: zwei
+  Schritte — erst antippen, dann bestätigen.
+- `index.html`, `runtime/lobby.js` — Blattmaße für Android festgenagelt,
+  Ruhezone, Knöpfe in 48 Punkten, quer zweispaltig, und ein verstecktes
+  Eingabefeld, damit die echte Tastatur aufgeht.
+- `runtime/start.js` — die Verdrahtung: Vollbild und Querformat hängen
+  an einer Nutzergeste (ohne die verweigert Android beides), und die
+  Vergrößerung wird **ganzzahlig** gerechnet, obwohl `devicePixelRatio`
+  auf dem Pixel 7 krumm ist (2,625). Halbe Bildpunkte machen aus
+  Pixelgrafik Matsch.
+
+**Messung — die ganze Kette:** 36 Prüfungen grün in 66,5 s. 26 davon
+melden **12.037 Behauptungen**, die zehn Wächter 27 weitere: **12.064**.
+Die längsten Dateien liegen bei 999, 999 und 996 Zeilen (Regel 8: 1000).
+
+**Messung — echtes Chromium, nicht der Ersatz.** Ein unabhängiger Prüfer
+hat das gebaute Bündel in einem echten Browser bei 915 x 412 mit
+`deviceScaleFactor` 2,625 und `hasTouch` geöffnet und **ausschließlich**
+`page.tap()` benutzt:
+
+- **9 von 9 Tipps kamen genau einmal an** — trotz der vollen
+  Ereignisfolge. Das war der Fehler, der das Spiel unbedienbar machte.
+- Die Leiste misst **genau 48 Reihen** (y 364…411). Im Hochformat
+  360 x 640 ebenfalls 48.
+- Vergrößerung **1** — ganzzahlig, keine halben Bildpunkte.
+- Drei Züge durchgespielt: ein Schritt kostet 1 von 6 Aktionspunkten;
+  der Knopf „Karte" schaltet um, **ohne** dass die Figur läuft; Zugende
+  bringt eine neue Runde mit 6 Punkten zurück.
+- Alle vier Extremkanten eines Knopfes treffen ihn.
+- Konsole: nur der 404 für `favicon.ico`, den der Browser selbst holt.
+  Alle 43 Module kamen mit 200.
+
+**Rotprobe — 4 von 4 schlugen an** (eine Prüfung, die nie rot war, prüft
+womöglich nichts):
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| `mousedown` zusätzlich gehört | „ein Tipp kommt genau einmal in der Lobby an, nicht zweimal: ist 2, soll 1" |
+| Fingermodus abgeschaltet | „am Finger ist die Leiste daumengroß: 13 >= 48" |
+| Knopf um 3 Punkte verschoben | **50 von 953** Behauptungen fielen |
+| Sperre für gesperrte Knöpfe entfernt | „die Figur geht nicht auf das erreichbare Feld darunter: ist 2, soll 0" |
+
+**Ein Befund des Prüfers, hiermit behoben:** In
+`werkzeuge/buehne-browser.mjs` stand „Pixel 7 … wie ihn Chromium
+nachstellt" — Playwrights eigene Angabe für dasselbe Gerät ist aber
+863 x 360, weil sie die Browserleisten schon abzieht. Die Zahl 915 x 412
+stimmt trotzdem: Sie ist der **ganze** Bildschirm, und im Vollbild wird
+genau der gezeichnet. Jetzt steht die Quelle dabei und der Befehl, der
+die andere Zahl nachrechnet (Regel 11).
+
+**Neu als Werkzeug:** drei geteilte Bühnen — `buehne-eingabe.mjs`,
+`buehne-oberflaeche.mjs`, `buehne-browser.mjs`. Sie behaupten nichts,
+darum heißen sie nicht `pruefe-`; sie stellen den Aufbau bereit, den
+zwei Prüfungen gemeinsam brauchen. `werkzeuge/eine-datei.mjs` wurde neu
+geschrieben: Jedes Modul bekommt seinen eigenen Bereich, nachdem
+**27 Namen** im Bündel kollidierten. Der Ordner war in Ordnung, das
+Werkzeug war es nicht.
+
+**Was der Prüfer ausdrücklich nicht prüfen konnte:** echte Hardware;
+Vollbild und Querformat wurden nie ausgelöst; die Sperre für den zweiten
+Finger ist im Betrieb nie angesprungen; Koop zu zweit bis viert an einem
+Gerät wurde nicht gespielt.
+
+---
+
+## 06.09.2026 — Rüstzeug für verteiltes Arbeiten
+
+**Auftrag, wörtlich:** *„nutte subagent orchestation skill"*
+
+- `.claude/subagent-profile.md` — die stillen Fallen dieser Fläche, damit sie
+  in jeden Auftrag wörtlich hineingehen statt als Verweis. Zehn Stück, alle
+  aus dieser Sitzung gemessen: halbe Bildpunkte, zurückgesetzte Glättung,
+  **doppelt ausgelöste Aktionen bei Tipp auf Android**, fehlendes Schweben,
+  krummes `devicePixelRatio`, Doppeltipp-Zoom, Vollbild ohne Nutzergeste,
+  48 Bildpunkte Mindestmaß.
+- `WORKCLAIM.md` — vier Ansprüche eingetragen, einer je Fläche.
+
+**Ein Fehler dabei, und er ist lehrreich:** Beide Dateien lagen beim Anlegen
+der Arbeitsbäume **noch nicht im Commit**. Die drei Agenten arbeiteten
+deshalb ohne das Profil — einer meldete es („`.claude/subagent-profile.md`
+gibt es nicht"), ein zweiter trug sich regelkonform selbst in `WORKCLAIM.md`
+ein und schrieb damit in eine fremde Datei. Beides war richtig gehandelt und
+mein Versäumnis.
+
+*Die Lehre:* Was ein Agent lesen soll, muss **committet** sein, bevor der
+Arbeitsbaum entsteht — ein Arbeitsbaum kennt nur Commits, keine offenen
+Änderungen. Steht jetzt im Profil.
+
+---
+
+## 06.09.2026 — Das Spiel ist im Netz erreichbar
+
+**Auftrag, wörtlich:** *„linl zum spielen?"*
+
+<https://kimpaliz.github.io/Hatred-/> — Zweig `gh-pages`, ausgeliefert
+von GitHub Pages.
+
+*Warum ein eigener Zweig und kein Bauschritt:* Der Zweig trägt genau
+den Ordner, der auch daheim läuft — `index.html`, `runtime/`, `spiel/`,
+`netz/`. Was live geht, ist byteweise das, was
+`node werkzeuge/vorschau.mjs` ausliefert. Ein Bauschritt dazwischen
+wäre eine zweite Wahrheit, in der ein Fehler stecken könnte, den daheim
+niemand sieht.
+
+*Warum `.nojekyll`:* Ohne diese leere Datei schiebt GitHub Pages jede
+Auslieferung durch Jekyll, und Jekyll schluckt stillschweigend jeden
+Ordner mit führendem Unterstrich — ohne Fehlermeldung.
+
+**Gemessen, weil `github.io` aus dieser Umgebung nicht erreichbar ist:**
+Der Zweig wurde lokal aus einem **Unterordner** über HTTP ausgeliefert
+(`http://127.0.0.1:8155/Hatred-/`) und im echten Browser durchgespielt —
+Titelbild, Heldenwahl, Kerker, keine Fehler außer dem `favicon.ico`,
+das jeder Browser von selbst anfragt. Der Unterordner ist der Punkt:
+Genau dort scheitern absolute Pfade, und genau dagegen steht Regel 14.
+
+Bestätigt hat es GitHub selbst: der Lauf *pages build and deployment*
+auf `gh-pages` steht auf **completed / success**.
+
+⚠️ Sobald das Repository von `Hatred-` auf `hatred` umbenannt ist,
+lautet die Adresse <https://kimpaliz.github.io/hatred/>; die alte
+leitet weiter.
+
+---
+
 ## 06.09.2026 — Die fünf Phasen haben ihre Vorgänge
 
 **Auftrag:** Jannik hat auf die Frage aus dem letzten Bericht mit „ja"

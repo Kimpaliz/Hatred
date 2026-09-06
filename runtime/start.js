@@ -59,16 +59,17 @@
    `spiel/lauf.mjs` (`macheLauf`, `naechsteTiefe`), `spiel/gegner-ki.mjs`
    (`planeZug`), `spiel/zug.mjs`, `spiel/sicht.mjs`, `spiel/wesen.mjs`,
    `netz/sitzung.mjs` (der einzige Ausgang jeder Aktion), `sw.js`
-   (wird von hier angemeldet), `werkzeuge/pruefe-einstieg.mjs`. */
+   (wird von hier angemeldet), `werkzeuge/pruefe-einstieg.mjs`,
+   `werkzeuge/pruefe-app.mjs`, `werkzeuge/pruefe-tippen.mjs`. */
 
 import { FARBEN } from "./palette.js";
 import * as schrift from "./schrift.js";
 import { KACHEL, macheLichtwerk } from "./licht.js";
 import { SCHLEIM_RAMPE, machePartikelwerk } from "./partikel.js";
-import { macheKamera } from "./kamera.js";
+import { macheKamera, vergroesserungFuer } from "./kamera.js";
 import { macheZeichner } from "./zeichnen.js";
 import { macheOberflaeche, satzVon } from "./oberflaeche.js";
-import { macheEingabe } from "./eingabe.js";
+import { ZEIGER_FINGER, macheEingabe } from "./eingabe.js";
 import { macheLobby, lesbar } from "./lobby.js";
 import { richtungAus } from "./sprites.js";
 import { AKTION } from "../spiel/aktionen.mjs";
@@ -342,7 +343,7 @@ export function macheAbspieler({
    Browser bauen und ein Bild anfordern kann. */
 export function macheSpiel({
   ctx, zustand, sitzung, platz = null, leinwand = null,
-  fensterBreite = 960, fensterHoehe = 540
+  fensterBreite = 960, fensterHoehe = 540, fingerVoraus = null
 } = {}) {
   if (!ctx || typeof ctx.fillRect !== "function") {
     throw new Error("macheSpiel: ein Zeichenblatt mit fillRect muss herein");
@@ -362,9 +363,20 @@ export function macheSpiel({
     beiSatz: (satz) => melde(satz)
   });
 
+  /* Was der Vorlauf weiß, bis die Eingabe ihr erstes Ereignis sah. */
+  const fingerZuvor = () => typeof fingerVoraus === "function" && fingerVoraus();
+
   const eingabe = macheEingabe({
     leinwand, kamera, platz,
     zustand: () => zustand,
+    /* Wo die Knöpfe der Leiste liegen, weiß nur die Anzeige, die sie
+       gezeichnet hat. Ohne diese Zeile sind sie zwar zu sehen, aber
+       kein Tipp findet sie — er ginge als Gehbefehl auf das Kartenfeld
+       darunter. Gefragt wird bei jedem Tipp neu, weil `felder()` beim
+       Zeichnen gefüllt wird: Sie ist damit die Leiste, die gerade
+       wirklich auf dem Schirm steht, und keine zweite Rechnung
+       (Fehlerbuch E2). */
+    felderLesen: () => flaeche.felder(),
     /* Der einzige Ausgang. Alles, was ein Mensch anklickt, geht hier
        hinaus und kommt als Ereignis zurück. */
     sende: (aktion) => sitzung.willAktion(aktion)
@@ -554,7 +566,15 @@ export function macheSpiel({
        Feldern — mitten in einer Bewegung steht eine Figur aber auf
        einer Zwischenstelle. Wer hier die Abspielung hineinreicht,
        bekommt keinen schiefen Text, sondern einen geworfenen Fehler
-       und ein stehendes Bild. */
+       und ein stehendes Bild.
+
+       `finger` sagt der Anzeige, womit zuletzt bedient wurde. Die Antwort
+       kommt aus der Eingabe und nicht aus einer eigenen Erkennung: Es gibt
+       genau eine Stelle, die es weiß, und eine zweite liefe auseinander.
+       Wer mit der Maus spielt, behält die schmale Leiste; wer tippt,
+       bekommt die 48 Punkte. `fingerZuvor()` überbrückt allein das
+       erste Bild: Da hat die Eingabe noch nichts gesehen, der Vorlauf
+       aber sehr wohl. */
     flaeche.zeichne(zustand, {
       schau: schauZustand,
       geplant: null,
@@ -565,7 +585,7 @@ export function macheSpiel({
       sichtbar: alles ? null : sichtbareWesenIds(),
       zeit,
       rundeSeit
-    });
+    }, { finger: eingabe.istFinger() || fingerZuvor() });
     return zeichner.anzahlRechtecke();
   }
 
@@ -661,11 +681,26 @@ export function starte(blatt) {
   let pausiert = false;
   let letzteRunde = 0;
 
-  /* Die Maße. Das Blatt bekommt so viele Bildpunkte, wie das Fenster
-     in CSS-Punkten breit ist; die Vergrößerung auf echte Gerätepunkte
-     macht der Browser mit `image-rendering: pixelated`. Der eigene
-     Maßstab bleibt damit ganzzahlig — genau das verlangt der
-     Bildvertrag. */
+  /* Womit zuletzt ein Zeiger auf dem Blatt lag. Ohne diesen Merker
+     beginnt der Kerker in der **Mausleiste**: `runtime/eingabe.js`
+     entsteht erst mit dem Spiel und hat bis zu ihrem ersten eigenen
+     Ereignis keine Antwort — der allererste Tipp träfe 13 Punkte hohe
+     Knöpfe und ginge daneben. Der Vorlauf weiß es längst; hier steht
+     es, weil es hier entsteht, und die Eingabe bleibt unberührt. */
+  let zuletztFinger = false;
+
+  /* Die Maße in CSS-Punkten — `devicePixelRatio` geht **absichtlich
+     nicht** ein. Auf Android ist er krumm (2,625): Die Maße damit
+     multipliziert gäbe ein Blatt von 1081,5 Punkten Breite, also
+     Bruchzahlen in jedem Rechteck darauf (Fehlerbuch D1), und
+     schrumpfte jeden Fingerknopf von 48 Blattpunkten auf 18
+     CSS-Punkte — keine vier Millimeter Daumen. Gemessen bei 412 x 915
+     mit 2,625: Blatt 412 x 915, Vergrößerung 1 — ganzzahlig, und 48
+     Punkte bleiben 48 (`node werkzeuge/pruefe-tippen.mjs`).
+
+     Auf echte Gerätepunkte vergrößert der Browser selbst, mit
+     `image-rendering: pixelated` aus `index.html`: nächster Nachbar,
+     keine Glättung. Lieber Rand als ein weiches Bild. */
   function masse() {
     const breite = Math.max(1, Math.floor(blatt.clientWidth || globalThis.innerWidth || 960));
     const hoehe = Math.max(1, Math.floor(blatt.clientHeight || globalThis.innerHeight || 540));
@@ -690,13 +725,48 @@ export function starte(blatt) {
     if (lobby) lobby.setzeFenster(breite, hoehe);
   }
 
-  /* ── Vollbild ───────────────────────────────────────────────────*/
+  /* Die Vergrößerung, mit der dieses Blatt gerade arbeitet: ganzzahlig
+     und mindestens 1, weil `vergroesserungFuer` abrundet. Sie steht
+     hier heraus, damit die Prüfung sie bei jeder Fenstergröße und jedem
+     `devicePixelRatio` nachmessen kann, ohne erst ein Spiel zu bauen. */
+  function vergroesserung() {
+    const { breite, hoehe } = masse();
+    return vergroesserungFuer(breite, hoehe);
+  }
+
+  /* ── Vollbild und Querformat ────────────────────────────────────
+
+     Beides braucht eine Nutzergeste, wird also nur aus einem Tipp
+     heraus gerufen und nie aus einem Zeitgeber. Und beides darf
+     fehlschlagen — der Normalfall: Kein Rechner dreht den Bildschirm,
+     viele Handys auch nicht, und `screen.orientation` fehlt
+     mancherorts ganz. Ein Spiel, das an einer abgelehnten Drehung
+     stehenbliebe, wäre auf genau den Geräten hin, für die sie gedacht
+     ist. Deshalb zweifach abgesichert: `try/catch` um den Aufruf und
+     ein Fangarm am Versprechen. */
+  function sperreQuerformat() {
+    try {
+      const dreh = globalThis.screen && globalThis.screen.orientation;
+      if (!dreh || typeof dreh.lock !== "function") return;
+      const versprechen = dreh.lock("landscape");
+      if (versprechen && typeof versprechen.catch === "function") {
+        versprechen.catch(() => {});
+      }
+    } catch { /* das Gerät kann es nicht - dann eben nicht */ }
+  }
 
   function vollbild() {
     const drin = globalThis.document && globalThis.document.fullscreenElement;
     try {
-      if (drin) globalThis.document.exitFullscreen();
-      else if (blatt.requestFullscreen) blatt.requestFullscreen();
+      if (drin) { globalThis.document.exitFullscreen(); return; }
+      if (!blatt.requestFullscreen) return;
+      /* Gedreht wird erst nach dem **gelungenen** Vollbild: Solange die
+         Seite noch im Fenster steht, lehnt Android die Sperre ab. Ältere
+         Browser geben kein Versprechen zurück - dann sofort. */
+      const versprechen = blatt.requestFullscreen();
+      if (versprechen && typeof versprechen.then === "function") {
+        versprechen.then(sperreQuerformat, () => {});
+      } else sperreQuerformat();
     } catch { /* manche Browser verweigern es ohne Klick - dann eben nicht */ }
   }
 
@@ -736,7 +806,8 @@ export function starte(blatt) {
     spiel = macheSpiel({
       ctx, zustand, sitzung, leinwand: blatt,
       platz: was.istGastgeber ? 1 : was.platz,
-      fensterBreite: b, fensterHoehe: h
+      fensterBreite: b, fensterHoehe: h,
+      fingerVoraus: () => zuletztFinger
     });
     spiel.setzeFenster(b, h);
     letzteRunde = zustand.runde;
@@ -780,7 +851,7 @@ export function starte(blatt) {
 
   function pausenbild() {
     const gross = Math.max(1, Math.floor(blatt.width / 320));
-    const text = "Pause - klick ins Bild";
+    const text = "Pause - tippen oder klicken";
     ctx.fillStyle = FARBEN.kontur;
     ctx.fillRect(0, 0, blatt.width, blatt.height);
     schrift.zeichne(ctx, text,
@@ -794,7 +865,7 @@ export function starte(blatt) {
     if (!stand.vorbei) return;
     const gross = Math.max(1, Math.floor(blatt.width / 320));
     const text = stand.vorbei === "sieg"
-      ? (tieferMoeglich() ? "Ebene geschafft - Leertaste: tiefer hinab" : "Ebene geschafft.")
+      ? (tieferMoeglich() ? "Ebene geschafft - tippen oder Leertaste" : "Ebene geschafft.")
       : "Die Truppe ist gefallen.";
     schrift.zeichne(ctx, lesbar(text),
       Math.round((blatt.width - schrift.breiteVon(lesbar(text)) * gross) / 2),
@@ -823,10 +894,9 @@ export function starte(blatt) {
 
   /* ── Hörer ──────────────────────────────────────────────────────
 
-     Die Lobby bekommt Maus und Tastatur, solange sie da ist; sobald
-     das Spiel läuft, hört `runtime/eingabe.js` selbst mit. Doppelt
-     angemeldet ist hier nichts: Die Lobby fragt vorher, ob sie noch
-     dran ist. */
+     Die Lobby bekommt Zeiger und Tastatur, solange sie da ist; sobald
+     das Spiel läuft, hört `runtime/eingabe.js` selbst mit. Getan wird
+     danach hier nur noch eins: die Art des Zeigers merken. */
   function punktAus(fund) {
     const kasten = blatt.getBoundingClientRect();
     const x = (fund.clientX - kasten.left) * (blatt.width / (kasten.width || blatt.width));
@@ -834,18 +904,41 @@ export function starte(blatt) {
     return { x, y };
   }
 
-  blatt.addEventListener("mousemove", (fund) => {
+  function beiVorlaufZeiger(fund) {
+    if (fund.pointerType) zuletztFinger = fund.pointerType === ZEIGER_FINGER;
     if (!lobby) return;
     const punkt = punktAus(fund);
     lobby.beiZeiger(punkt.x, punkt.y);
-  });
-  blatt.addEventListener("mousedown", (fund) => {
+  }
+
+  function beiVorlaufDruck(fund) {
+    /* Zuerst und immer: Der abgeschnittene Weg ist der zweite Lauf.
+       Danach erst die Frage, wer gerade dran ist. */
+    if (typeof fund.preventDefault === "function") fund.preventDefault();
+    /* Vor der Frage nach der Lobby und auch danach: So kippt der Merker
+       wieder zurück, wenn jemand im Spiel zur Maus greift. */
+    if (fund.pointerType) zuletztFinger = fund.pointerType === ZEIGER_FINGER;
     if (pausiert) { pausiert = false; return; }
-    if (!lobby) return;
-    fund.preventDefault();
+    if (!lobby) { if (tieferMoeglich()) tiefer(); return; }
     const punkt = punktAus(fund);
     if (lobby.beiKlick(punkt.x, punkt.y) === "vollbild") vollbild();
-  });
+  }
+
+  /* Entweder Zeigerereignisse **oder** Mausereignisse, nie beide: Ein
+     Tipp auf Android erzeugt nach `pointerup` noch einmal `mousedown`
+     und `click` — dieselbe Stelle, nur als Maus verkleidet. Wer beide
+     Wege anmeldet, drückt „Los" zweimal und startet zwei Läufe
+     (`.claude/subagent-profile.md`, Falle 3); `preventDefault` allein
+     wäre die zweite Absicherung, nicht die erste. Der Mausweg bleibt
+     als Rückfalltür für Umgebungen ohne `PointerEvent` — sehr alte
+     Browser und jedes nachgestellte Blatt in `werkzeuge/`. */
+  if (globalThis.PointerEvent !== undefined) {
+    blatt.addEventListener("pointermove", beiVorlaufZeiger);
+    blatt.addEventListener("pointerdown", beiVorlaufDruck);
+  } else {
+    blatt.addEventListener("mousemove", beiVorlaufZeiger);
+    blatt.addEventListener("mousedown", beiVorlaufDruck);
+  }
 
   globalThis.document.addEventListener("keydown", (fund) => {
     if (fund.ctrlKey || fund.metaKey || fund.altKey) return;
@@ -880,7 +973,7 @@ export function starte(blatt) {
      anmelden, aus dem Vorlauf ins Spiel wechseln - nur im Browser
      ansehen, und damit gar nicht. */
   return {
-    vollbild, passeAn, tiefer,
+    vollbild, passeAn, tiefer, vergroesserung,
     lobby: () => lobby,
     spiel: () => spiel,
     stand: () => (spiel ? spiel.stand() : null)

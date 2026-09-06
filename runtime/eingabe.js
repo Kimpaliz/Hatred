@@ -1,5 +1,5 @@
-/* [Aufgabe: Oberfläche] Die Bedienung: aus Maus und Tastatur werden
-   Aktionen — und aus nichts sonst.
+/* [Aufgabe: Oberfläche] Die Bedienung: aus Zeiger — Maus, Finger,
+   Stift — und Tastatur werden Aktionen, und aus nichts sonst.
 
    ── Warum diese Datei nichts entscheidet ───────────────────────────
 
@@ -27,6 +27,31 @@
    und wirft beim Entsperren die gemerkte Reichweite weg, weil die
    Ereignisse sie ungültig gemacht haben.
 
+   ── Warum es hier keine Mausereignisse mehr gibt ───────────────────
+
+   Ein Tipp auf Android erzeugt nach `touchend` **zusätzlich**
+   `mousedown` und `click`. Wer beide Wege hört, führt jede Aktion
+   zweimal aus: zwei Züge, zwei Angriffe — und der zweite geht ins
+   Leere, weil die Punkte vom ersten schon weg sind. Deshalb hört diese
+   Datei nur noch auf Zeigerereignisse. Die bedienen Maus, Finger und
+   Stift zugleich, und der Nachschlag aus dem Browser findet keinen
+   Hörer mehr vor. `pointerType` sagt, womit gerade bedient wird.
+
+   ── Warum der Finger zwei Schritte braucht ─────────────────────────
+
+   Es gibt keinen Finger, der über einem Feld **schwebt**. Alles, was
+   die Maus beim Schweben zeigt — Weg, Kosten, Höhe, Sturzwarnung,
+   Trefferchance —, wäre auf dem Handy leer, und man liefe blind.
+   Deshalb übernimmt der **erste** Tipp die Rolle des Schwebens: Er
+   wählt an und zeigt, er tut nichts. Erst der **zweite** Tipp auf
+   dasselbe Feld führt aus, und ein **dritter** hebt die Anwahl wieder
+   auf — auf einem Handy gibt es kein `Esc`, und ohne diesen Ausgang
+   steckte man in einem Modus fest.
+
+   Für die Maus ändert sich dadurch nichts: Sie schwebt und klickt wie
+   bisher. Die zwei Schritte gelten nur, wenn zuletzt mit dem Finger
+   bedient wurde — `istFinger()` sagt es auch nach außen.
+
    ── Warum die Tastatur allein reichen muss ─────────────────────────
 
    Ein Spiel, das ohne Maus unbedienbar ist, schließt Leute aus. Die
@@ -49,8 +74,20 @@
    her, den `macheEingabe` gerade gebaut hat — Zeiger auf der eigenen
    Figur, Modus Gehen, keine Warnung, Übersichtskarte zu.
 
+   ── Warum die Knopfleiste ihre Maße selbst behält ──────────────────
+
+   Wo ein Knopf liegt, weiß nur die Anzeige, die ihn gezeichnet hat.
+   Rechnete diese Datei die Maße ein zweites Mal nach, gäbe es zwei
+   Wahrheiten, und die liefen auseinander (Fehlerbuch E2). Deshalb
+   fragt sie `felderLesen()` — die Liste, die `runtime/oberflaeche.js`
+   **beim Zeichnen** füllt — und trifft nur die Entscheidung, ob der
+   Punkt auf der Leiste liegt. Liegt er dort, gehört er ihr, auch wenn
+   das Feld ausgegraut ist: Sonst bewegte ein danebengegangener Daumen
+   die Figur unter dem toten Knopf. `felderLesen` darf fehlen.
+
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
+   `runtime/oberflaeche.js` (`felder()` — die Maße der Knopfleiste),
    `spiel/wegfindung.mjs` (`erreichbareFelder`, `pfadAus` — Vorschau
    und Kosten), `spiel/aktionen.mjs` (`pruefeAktion`, `kostenVon` —
    die einzige Wahrheit über „erlaubt"), `spiel/hoehen.mjs`
@@ -117,6 +154,13 @@ export const EIGENE_TASTEN = new Set([
 
 export const WARNUNG = { sturz: "sturz", abgelehnt: "abgelehnt" };
 
+/* Die drei Arten, mit denen ein Zeigerereignis kommen kann. Der Browser
+   schreibt sie so in `pointerType`; als Namen, weil `"touch"` an der
+   Aufrufstelle wie eine beliebige Zeichenkette aussieht. */
+export const ZEIGER_MAUS = "mouse";
+export const ZEIGER_FINGER = "touch";
+export const ZEIGER_STIFT = "pen";
+
 /* Eine Karte, die nie jemand füllt: die Antwort auf „Reichweite?",
    solange niemand von uns am Zug ist. Ein `null` an dieser Stelle
    zwänge jeden Zeichner zu einer Fallunterscheidung. */
@@ -125,7 +169,8 @@ const LEERE_REICHWEITE = new Map();
 const KEIN_ZUG = "Gerade ist niemand von euch am Zug.";
 
 export function macheEingabe({
-  leinwand = null, kamera = null, zustand = null, sende = null, platz = null
+  leinwand = null, kamera = null, zustand = null, sende = null, platz = null,
+  felderLesen = null
 } = {}) {
   if (typeof sende !== "function") {
     throw new Error("macheEingabe: `sende` muss eine Funktion sein — die Eingabe wendet "
@@ -146,6 +191,21 @@ export function macheEingabe({
   let wegVorschau = null;
   let kosten = null;
   let ziel = null;
+
+  /* Womit zuletzt bedient wurde. Am Anfang die Maus: Ein Rechner, an
+     dem nie jemand tippt, soll nicht in der Fingerbedienung starten. */
+  let zeigerArt = ZEIGER_MAUS;
+
+  /* Der Zeiger, der gerade unten ist. Ein zweiter, der dazukommt, wird
+     nicht angenommen — auf einem Handy liegt schnell ein Daumen mit auf
+     dem Blatt, und zwei Zeiger hießen zwei Aktionen. */
+  let aktiverZeiger = null;
+
+  /* Das Feld, das der Finger angewählt hat, und der wievielte Tipp
+     darauf gerade gezählt wurde: 1 wählt an, 2 führt aus, 3 hebt auf.
+     Die Maus benutzt beides nicht — sie schwebt. */
+  let anwahl = null;
+  let anwahlStufe = 0;
 
   /* Die gemerkte Lage. Sie hängt an einem Schlüssel aus allem, was sie
      ungültig machen kann; ändert sich einer der Werte, wird neu
@@ -404,6 +464,10 @@ export function macheEingabe({
     wegVorschau = null;
     kosten = null;
     ziel = null;
+    /* Auch die Anwahl des Fingers: Sonst führte der nächste Tipp auf
+       dasselbe Feld sofort aus, statt erst wieder zu zeigen. */
+    anwahl = null;
+    anwahlStufe = 0;
     return aktion;
   }
 
@@ -541,6 +605,8 @@ export function macheEingabe({
     modus = MODUS.gehen;
     schluessel = null;
     ganzeKarte = false;
+    anwahl = null;
+    anwahlStufe = 0;
     const w = eigenesWesen();
     zeigerFeld = w ? { x: w.x, y: w.y } : null;
     rechne();
@@ -566,6 +632,19 @@ export function macheEingabe({
     };
   }
 
+  /* Womit dieses Ereignis kommt. Ein Browser ohne `pointerType` gibt es
+     nicht mehr, aber ein nachgestelltes Ereignis in einer Prüfung sehr
+     wohl — und dort ist die Maus die harmlose Annahme. */
+  function artVon(ereignis) {
+    return ereignis && ereignis.pointerType ? ereignis.pointerType : ZEIGER_MAUS;
+  }
+
+  /* Die Nummer des Zeigers. `pointerId` darf 0 sein, deshalb wird auf
+     den Typ geprüft und nicht auf Wahrheit. */
+  function nummerVon(ereignis) {
+    return ereignis && typeof ereignis.pointerId === "number" ? ereignis.pointerId : 1;
+  }
+
   function haengeAn() {
     if (!leinwand || typeof leinwand.addEventListener !== "function") return;
     const tastenZiel = leinwand.ownerDocument || leinwand;
@@ -573,9 +652,25 @@ export function macheEingabe({
       if (typeof ereignis.preventDefault === "function") ereignis.preventDefault();
     };
     const paare = [
-      [leinwand, "mousemove", (e) => { const p = punktAus(e); beiZeiger(p.x, p.y); }],
-      [leinwand, "mousedown", (e) => { halteAn(e); const p = punktAus(e);
-        beiKlick(p.x, p.y, e.button); }],
+      /* Ein Finger schwebt nicht: Auf dem Handy kommt `pointermove` erst,
+         wenn er schon unten ist, und würde die Anwahl unter dem Finger
+         wegziehen. Das Schweben bleibt der Maus und dem Stift. */
+      [leinwand, "pointermove", (e) => {
+        zeigerArt = artVon(e);
+        if (zeigerArt === ZEIGER_FINGER) return;
+        const p = punktAus(e);
+        beiZeiger(p.x, p.y);
+      }],
+      [leinwand, "pointerdown", (e) => {
+        halteAn(e);
+        const p = punktAus(e);
+        beiZeigerDruck(p.x, p.y,
+          { art: artVon(e), knopf: e.button, nummer: nummerVon(e) });
+      }],
+      /* Losgelassen wird am Schriftstück und nicht am Blatt: Wer neben
+         dem Blatt loslässt, machte die Eingabe sonst dauerhaft taub. */
+      [tastenZiel, "pointerup", (e) => { beiZeigerEnde(nummerVon(e)); }],
+      [tastenZiel, "pointercancel", (e) => { beiZeigerEnde(nummerVon(e)); }],
       [leinwand, "contextmenu", halteAn],
       [tastenZiel, "keydown", (e) => { if (EIGENE_TASTEN.has(e.key)) halteAn(e);
         beiTaste(e.key, true); }],
@@ -591,19 +686,137 @@ export function macheEingabe({
 
   function beiZeiger(px, py) {
     if (gesperrt) return null;
+    /* Über einem Knopf steht kein Kartenfeld: Sonst zeigte die Vorschau
+       unter der Leiste einen Weg, den niemand angesteuert hat. */
+    if (knopfUnter(px, py)) return null;
     const feld = feldAus(px, py);
     zeigerFeld = feld;
     rechne();
     return zeigerFeld;
   }
 
-  function beiKlick(px, py, knopf = KNOPF_LINKS) {
+  /* Ein Zeiger geht nieder. Der zweite, der dazukommt, während der
+     erste noch unten ist, wird verworfen — sonst schickte ein
+     mitliegender Daumen dieselbe Aktion ein zweites Mal. */
+  function beiZeigerDruck(px, py, angaben = {}) {
+    const nummer = angaben.nummer === undefined ? 1 : angaben.nummer;
+    if (aktiverZeiger !== null && aktiverZeiger !== nummer) return null;
+    aktiverZeiger = nummer;
+    const knopf = angaben.knopf === undefined ? KNOPF_LINKS : angaben.knopf;
+    return beiKlick(px, py, knopf, angaben.art || ZEIGER_MAUS);
+  }
+
+  /* Losgelassen oder vom Browser abgenommen (Wischen, Zoomen). Ohne
+     `pointercancel` bliebe der Zeiger für immer als unten vermerkt. */
+  function beiZeigerEnde(nummer) {
+    if (nummer === undefined || aktiverZeiger === nummer) aktiverZeiger = null;
+    return null;
+  }
+
+  /* Das Feld der Knopfleiste unter diesem Bildpunkt — oder nichts.
+
+     Die Maße kommen von der Anzeige und werden hier **nicht**
+     nachgerechnet: Zwei Stellen, die Knopfmaße rechnen, sind zwei
+     Wahrheiten, und die laufen auseinander (Fehlerbuch E2). Gefragt
+     wird bei jedem Zeigerereignis neu, weil `felder()` beim Zeichnen
+     gefüllt wird und damit sagt, was gerade wirklich auf dem Schirm
+     steht.
+
+     `felderLesen` darf fehlen und darf werfen — vor dem ersten Bild
+     gibt es noch keine Leiste. Eine Eingabe, die dann unbrauchbar
+     wäre, wäre auf halbem Wege gebaut. */
+  function knopfUnter(px, py) {
+    if (typeof felderLesen !== "function") return null;
+    let liste = null;
+    try { liste = felderLesen(); } catch { return null; }
+    if (!Array.isArray(liste)) return null;
+    /* Von hinten nach vorn: Was zuletzt gezeichnet wurde, liegt oben.
+       Gesucht wird **jedes** Feld, auch ein ausgegrautes: Ein Punkt, der
+       auf der Leiste liegt, gehört der Leiste und nicht der Karte. */
+    for (let i = liste.length - 1; i >= 0; i--) {
+      const f = liste[i];
+      if (!f) continue;
+      if (!Number.isFinite(f.x) || !Number.isFinite(f.y)) continue;
+      if (px < f.x || py < f.y) continue;
+      if (px >= f.x + f.breite || py >= f.y + f.hoehe) continue;
+      return f;
+    }
+    return null;
+  }
+
+  /* Ein Knopf ist eindeutig, ein Feld nicht — deshalb läuft er sofort
+     los und nicht über die zwei Schritte. Und das Kartenfeld darunter
+     wird gar nicht erst gesucht: Sonst liefe die Figur los, während der
+     Spieler „Zug beenden" gedrückt hat. */
+  function drueckeKnopf(knopfFeld) {
+    /* Ausgegraut heißt für den Spieler „hier passiert nichts" — nicht
+       „hier passiert etwas anderes". Der Daumen ist ungenau, und ein
+       Fehlgriff auf einen toten Knopf dürfte sonst die Figur bewegen,
+       die zufällig darunter steht: Aktionspunkte weg, im Zweifel der
+       Zug. Das Ereignis ist verbraucht, geändert wird nichts —
+       eine abgelehnte Aktion ändert nichts (Fehlerbuch E2). */
+    if (knopfFeld.aktiv !== true) return null;
+    anwahl = null;
+    anwahlStufe = 0;
+    if (knopfFeld.aktion) return sendeAktion(knopfFeld.aktion);
+    /* Ein Feld ohne Aktion schaltet nur die Anzeige um. Es verschluckt
+       das Ereignis trotzdem — sonst ginge die Figur unter der Leiste. */
+    if (knopfFeld.art === "karte") ganzeKarte = !ganzeKarte;
+    return null;
+  }
+
+  function beiKlick(px, py, knopf = KNOPF_LINKS, art = ZEIGER_MAUS) {
+    zeigerArt = art;
     if (gesperrt) return null;
+    const knopfFeld = knopfUnter(px, py);
+    if (knopfFeld) return drueckeKnopf(knopfFeld);
     const feld = feldAus(px, py);
-    if (!feld) return null;
+    if (!feld) {
+      /* Neben die Karte getippt. Auf dem Handy ist das das einzige
+         `Esc`, das es gibt — also räumt es auf statt nichts zu tun. */
+      if (art === ZEIGER_FINGER) raeumeAuf();
+      return null;
+    }
+    if (art === ZEIGER_FINGER) return fingerTipp(feld, knopf);
+    /* Die Maus hat gerade das Kommando übernommen: Eine Anwahl vom
+       Finger, die liegen bliebe, verschluckte sonst den nächsten Klick. */
+    anwahl = null;
+    anwahlStufe = 0;
     zeigerFeld = feld;
     rechne();
     return bestaetige(knopf === KNOPF_RECHTS);
+  }
+
+  /* Zwei Schritte statt Schweben — siehe Kopfnotiz. Der erste Tipp
+     rechnet nur die Vorschau, der zweite bestätigt sie, der dritte
+     nimmt zurück. Der dritte kommt nur vor, wenn der zweite abgelehnt
+     wurde: Eine angenommene Aktion räumt die Anwahl selbst weg. */
+  function fingerTipp(feld, knopf) {
+    if (!anwahl || anwahl.x !== feld.x || anwahl.y !== feld.y) {
+      anwahl = { x: feld.x, y: feld.y };
+      anwahlStufe = 1;
+      zeigerFeld = feld;
+      rechne();
+      return null;
+    }
+    anwahlStufe++;
+    if (anwahlStufe >= 3) { raeumeAuf(); return null; }
+    /* Zwischen den beiden Tipps kann eine Pfeiltaste den Zeiger woanders
+       hingestellt haben. Bestätigt wird, was angetippt wurde — sonst
+       führte der zweite Tipp eine Aktion auf einem fremden Feld aus. */
+    zeigerFeld = feld;
+    rechne();
+    return bestaetige(knopf === KNOPF_RECHTS);
+  }
+
+  /* Ein Tipp mit dem Finger — dasselbe wie ein Zeigerereignis vom Typ
+     `touch`, nur ohne nachgestelltes Ereignis. */
+  function beiTipp(px, py, knopf = KNOPF_LINKS) {
+    return beiKlick(px, py, knopf, ZEIGER_FINGER);
+  }
+
+  function istFinger() {
+    return zeigerArt === ZEIGER_FINGER;
   }
 
   function beiTaste(taste, gedrueckt = true) {
@@ -640,6 +853,14 @@ export function macheEingabe({
     merkSchluessel = "";
     merkReichweite = LEERE_REICHWEITE;
     merkKandidaten = new Map();
+    /* Während der Sperre ist das Loslassen womöglich verlorengegangen.
+       Ein Zeiger, der als unten gilt, machte die Eingabe für immer
+       taub — und das fiele erst im Spiel auf. */
+    aktiverZeiger = null;
+    /* Und aus demselben Grund die Anwahl: Der zweite Tipp bestätigte
+       sonst eine Vorschau von vor den Ereignissen. */
+    anwahl = null;
+    anwahlStufe = 0;
     rechne();
     return false;
   }
@@ -657,7 +878,11 @@ export function macheEingabe({
       kosten,
       warnung,
       ganzeKarte,
-      gesperrt
+      gesperrt,
+      /* Damit die Anzeige weiß, ob sie Knöpfe für einen Daumen bauen
+         muss — und ob die Vorschau vom Schweben oder vom ersten Tipp
+         kommt. */
+      istFinger: istFinger()
     };
   }
 
@@ -668,5 +893,8 @@ export function macheEingabe({
   haengeAn();
   raeumeAuf();
 
-  return { beiZeiger, beiKlick, beiTaste, ansicht, sperre, loese };
+  return {
+    beiZeiger, beiKlick, beiTipp, beiZeigerDruck, beiZeigerEnde, beiTaste,
+    istFinger, ansicht, sperre, loese
+  };
 }

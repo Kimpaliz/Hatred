@@ -3,62 +3,52 @@
 
    ── Warum der Vorlauf auf demselben Blatt steht ────────────────────
 
-   Er könnte aus HTML-Knöpfen bestehen. Dann hätte das Spiel zwei
-   Bedienungen: eine mit der Schrift des Browsers und eine mit der
-   Pixelschrift, zwei Farbsätze, zwei Stellen für jeden Fehler. Hier
-   wird derselbe Zeichenweg benutzt wie im Spiel — `runtime/schrift.js`
-   auf ganzen Bildpunkten —, und damit sieht der Vorlauf aus wie das,
-   was danach kommt.
+   Er könnte aus HTML-Knöpfen bestehen - dann hätte das Spiel zwei
+   Bedienungen, zwei Schriftbilder, zwei Farbsätze, zwei Stellen für
+   jeden Fehler. Hier zeichnet derselbe Weg wie im Spiel
+   (`runtime/schrift.js`, ganze Bildpunkte), und der Vorlauf sieht aus
+   wie das, was danach kommt.
 
    ── Warum der Einladungscode alles trägt ───────────────────────────
 
    Ein Gast muss **vor** dem ersten Zug denselben Kerker bauen wie der
-   Gastgeber: dieselbe Saat, dieselbe Spielerzahl, dieselben Klassen.
-   `netz/sitzung.mjs` vergleicht beim Beitritt die Prüfzahl über den
-   ganzen Zustand — weicht ein einziges Feld ab, endet die Sitzung
-   sofort, und das ist richtig so.
-
-   Also muss all das über die Leitung, **bevor** es eine Leitung gibt.
-   Der einzige Kanal dafür ist der Einladungscode selbst. Er trägt
-   ohnehin einen Fachnamen (`netz/vermittler.mjs`), und der darf
-   Buchstaben, Ziffern und Striche haben. Daraus wird hier
+   Gastgeber: dieselbe Saat, Spielerzahl, Klassen. `netz/sitzung.mjs`
+   vergleicht beim Beitritt die Prüfzahl über den ganzen Zustand - weicht
+   ein Feld ab, endet die Sitzung sofort, zu Recht. Also muss all das
+   über die Leitung, **bevor** es eine Leitung gibt - der einzige Kanal
+   dafür ist der Einladungscode selbst, über seinen Fachnamen
+   (`netz/vermittler.mjs`, erlaubt Buchstaben, Ziffern, Striche):
 
        <8 Zeichen Lobbycode>-<Platz>-<Heldenziffern>
 
-   also zum Beispiel `K7QM3F2P-2-0135`: Der Lobbycode trägt die Saat
-   samt Prüfziffer (`netz/lobbycode.mjs`), die zweite Zahl den Platz
-   des Gastes, die letzte Gruppe je eine Ziffer für die Klasse jedes
-   Platzes — und ihre **Länge** ist zugleich die Spielerzahl. Damit
-   liest der Gast aus dem einen Code, den er ohnehin einfügt, alles,
-   was `macheLauf` braucht. Kein zweiter Code, keine Absprache.
-
-   Der Preis steht ehrlich auf dem Bildschirm: **Die Truppe stellt der
-   Gastgeber auf.** Anders ginge es nur mit einer Nachricht, die es in
-   `netz/nachrichten.mjs` nicht gibt — und diese Datei erfindet keine.
+   zum Beispiel `K7QM3F2P-2-0135`: Der Lobbycode trägt die Saat samt
+   Prüfziffer (`netz/lobbycode.mjs`), die zweite Zahl den Platz, die
+   letzte Gruppe je eine Ziffer für die Klasse jedes Platzes - ihre
+   **Länge** ist die Spielerzahl. Der Gast liest daraus alles, was
+   `macheLauf` braucht - kein zweiter Code, keine Absprache. Der Preis
+   steht ehrlich da: **Die Truppe stellt der Gastgeber auf**, anders
+   ginge es nur mit einer Nachricht, die `netz/nachrichten.mjs` nicht hat.
 
    ── Warum die Plätze nacheinander verbunden werden ─────────────────
 
-   Bei drei Gästen gäbe es drei Angebote gleichzeitig, drei Codes
-   nebeneinander auf dem Bildschirm und drei Antworten, die man
-   verwechseln kann. Nacheinander ist es genau ein Code, ein Einfügen,
-   ein Mitspieler — und der Bildschirm zeigt, bei welchem man ist.
+   Bei drei Gästen gäbe es drei Angebote gleichzeitig und drei Antworten,
+   die man verwechseln kann. Nacheinander ist es ein Code, ein Einfügen,
+   ein Mitspieler - der Bildschirm zeigt, bei welchem man ist.
 
    ── Was diese Datei nicht tut ──────────────────────────────────────
 
-   Sie entscheidet keine Regel, sie baut keinen Lauf und sie kennt
-   keinen Spielstand. Am Ende ruft sie `beiStart` mit dem, was sie
-   herausgefunden hat, und ist fertig. Die Bausteine des Netzes werden
-   **gereicht** (`netzwerk`), damit die Prüfung sie ohne Browser durch
-   erfundene ersetzen kann.
+   Sie entscheidet keine Regel, baut keinen Lauf, kennt keinen Spielstand.
+   Am Ende ruft sie `beiStart` und ist fertig. Die Bausteine des Netzes
+   werden **gereicht** (`netzwerk`), damit die Prüfung sie ohne Browser
+   durch erfundene ersetzen kann.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/start.js` (baut die Lobby, bekommt `beiStart` und würfelt
-   die Saat), `runtime/schrift.js` (jeder Buchstabe),
-   `runtime/palette.js` (jede Farbe), `spiel/katalog/helden.mjs` (die
-   sechs Klassen mit ihren Werten), `spiel/wesen.mjs` (`MAX_SPIELER`),
-   `netz/lobbycode.mjs` (Saat in acht Zeichen), `netz/vermittler.mjs`
-   (Einladungscode, Fachname), `netz/verbindung.mjs` (die Leitung),
+   `runtime/start.js` (baut die Lobby, bekommt `beiStart`, würfelt die
+   Saat), `runtime/schrift.js`, `runtime/palette.js`,
+   `spiel/katalog/helden.mjs` (sechs Klassen), `spiel/wesen.mjs`
+   (`MAX_SPIELER`), `netz/lobbycode.mjs`, `netz/vermittler.mjs`
+   (Einladungscode), `netz/verbindung.mjs` (die Leitung),
    `werkzeuge/pruefe-einstieg.mjs`. */
 
 import * as schrift from "./schrift.js";
@@ -97,10 +87,16 @@ export const SPALTE = 320;
 export const RAND = 8;
 export const MINDEST_BREITE = SPALTE + 2 * RAND;
 
-/* Die Höhen einer Zeile, ebenfalls logisch. `knopf` ist so hoch, dass
-   ein Buchstabe (7) oben und unten Luft hat — darunter trifft man ihn
-   mit der Maus nicht mehr zuverlässig. */
-const HOCH = { titel: 34, unter: 12, text: 10, leer: 6, knopf: 14, reihe: 14, feld: 14 };
+/* Luftraum zwischen den zwei Spalten im Querformat, mehr als die 2 Punkte
+   zwischen zwei Knöpfen - sonst sähe es wie eine krumme Reihe aus. */
+export const SPALTEN_LUECKE = 16;
+export const ZWEI_SPALTEN_BREITE = 2 * SPALTE + SPALTEN_LUECKE + 2 * RAND;
+
+/* Zeilenhöhen, logisch, vor `stufe` (unter 672 Punkten Breite bleibt
+   `stufe` immer 1, also echte Bildschirmpunkte). `knopf`/`reihe`/`feld`
+   sind deshalb **48** (Androids Daumen-Vorgabe, 48dp = 48 CSS-Punkte) -
+   vorher 14, für eine Maus gedacht. */
+const HOCH = { titel: 34, unter: 12, text: 10, leer: 6, knopf: 48, reihe: 48, feld: 48 };
 
 /* Zeichen, die `runtime/schrift.js` nicht hat. Ohne diese Tabelle
    stünde mitten in einem Klassenspruch des Katalogs ein leerer Kasten —
@@ -245,6 +241,53 @@ export function macheLobby({
   let stellen = [];
   let unterZeiger = null;
 
+  /* ── Das unsichtbare Feld fürs Handy ─────────────────────────────
+     Android zeigt seine Tastatur nur einem Element mit echtem Fokus, nie
+     einem Zeichenblatt. `index.html` legt dafür ein unsichtbares
+     `<input id="eingabefeld">` an, hier für Name/Saat/Code umbelegt.
+     Fehlt `document.getElementById` (Prüfung ohne Browser), bleibt
+     `feld` `null`, der alte Weg über `beiTaste` läuft unverändert. */
+  const dokument = globalThis.document;
+  const feld = (dokument && typeof dokument.getElementById === "function")
+    ? dokument.getElementById("eingabefeld") : null;
+
+  /* Welche Tastatur zu welchem Feld gehört - die Saat bekommt Ziffern
+     statt Buchstaben, alles andere Fließtext. */
+  const FELD_ART = { saat: { modus: "numeric", muster: "[0-9]*" } };
+
+  /* Ein Feld wird aktiv: Wert und Tastaturart übernehmen, dann den Fokus
+     holen - synchron in derselben Klickkette wie der Tipp (`beiKlick` →
+     `tue`), sonst verweigert Android die Tastatur wie beim Vollbild. */
+  function feldZeigen(schluessel) {
+    if (!feld) return;
+    const art = FELD_ART[schluessel] || { modus: "text", muster: "" };
+    feld.setAttribute("inputmode", art.modus);
+    if (art.muster) feld.setAttribute("pattern", art.muster); else feld.removeAttribute("pattern");
+    if (feld.value !== werte[schluessel]) feld.value = werte[schluessel] || "";
+    try { feld.focus(); } catch { /* verweigert ein Browser das, bleibt eben zu */ }
+  }
+
+  function feldVerbergen() {
+    if (feld) { try { feld.blur(); } catch { /* siehe oben */ } }
+  }
+
+  /* Jede echte Tastatureingabe landet hier - auch die, die `beiTaste` nie
+     als `keydown` sieht (Autokorrektur, Wischtippen); überschreibt am Ende
+     ohnehin mit dem wahren Feldwert, auch wenn `beiTaste` mittippt. */
+  if (feld) {
+    feld.addEventListener("input", () => {
+      if (aktivesFeld !== null) werte[aktivesFeld] = feld.value;
+    });
+  }
+
+  /* Für jede Wertänderung ohne Tastatur (Einfügen, Würfeln); läuft in
+     `zeichne()`, spätestens ein Bild später sichtbar. */
+  function feldMitziehen() {
+    if (feld && aktivesFeld !== null && feld.value !== werte[aktivesFeld]) {
+      feld.value = werte[aktivesFeld] || "";
+    }
+  }
+
   /* ── Sätze, die sagen, was zu tun ist ───────────────────────────*/
 
   function sage(text, gut = false) {
@@ -349,17 +392,22 @@ export function macheLobby({
         schluessel: `platz:${i + 1}`, text: `Platz ${i + 1}`, an: platzWahl === i + 1
       }))));
     }
-    zeilen.push(...heldenReihen(), ...heldenBlatt(), { art: "leer" });
-    zeilen.push({ art: "feld", schluessel: "name", marke: "Dein Name" });
-    zeilen.push({ art: "feld", schluessel: "saat", marke: "Saat (Zahl)" });
-    zeilen.push(knopfReihe("saatreihe", [{ schluessel: "wuerfeln", text: "Neue Saat würfeln" }]));
-    zeilen.push({ art: "leer" });
+    zeilen.push(...heldenReihen(), ...heldenBlatt());
+    /* Ab hier die zweite Spalte fürs Querformat (`spalte: 1`, siehe
+       `legeZweiSpaltig`) - im Hochformat ohne Wirkung, gleiche Reihenfolge. */
+    zeilen.push({ art: "leer", spalte: 1 });
+    zeilen.push({ art: "feld", schluessel: "name", marke: "Dein Name", spalte: 1 });
+    zeilen.push({ art: "feld", schluessel: "saat", marke: "Saat (Zahl)", spalte: 1 });
     zeilen.push({
-      art: "knopf",
-      schluessel: "los",
+      ...knopfReihe("saatreihe", [{ schluessel: "wuerfeln", text: "Neue Saat würfeln" }]),
+      spalte: 1
+    });
+    zeilen.push({ art: "leer", spalte: 1 });
+    zeilen.push({
+      art: "knopf", spalte: 1, schluessel: "los",
       text: art === "allein" ? "Losgehen" : "Runde eröffnen und Code zeigen"
     });
-    zeilen.push({ art: "knopf", schluessel: "zurueck", text: "Zurück" });
+    zeilen.push({ art: "knopf", schluessel: "zurueck", text: "Zurück", spalte: 1 });
     return zeilen;
   }
 
@@ -449,10 +497,16 @@ export function macheLobby({
 
   /* ── Aus Zeilen werden Stellen auf dem Blatt ────────────────────*/
 
-  function gesamtHoehe(zeilen) {
+  /* Summe der Zeilenhöhen - Grundlage für ein- wie zweispaltig. */
+  function summeHoehe(zeilen) {
     let summe = 0;
     for (const zeile of zeilen) summe += HOCH[zeile.art] || HOCH.text;
-    return summe + 2 * HOCH.text;
+    return summe;
+  }
+
+  /* Mit Rand am Ende, damit die letzte Zeile nicht am Bildrand klebt. */
+  function gesamtHoehe(zeilen) {
+    return summeHoehe(zeilen) + 2 * HOCH.text;
   }
 
   /* Die Vergrößerung: so groß, wie beides zulässt - Breite und Höhe.
@@ -464,29 +518,26 @@ export function macheLobby({
     return Math.max(1, Math.min(nachBreite, nachHoehe));
   }
 
-  function lege(zeilen) {
-    stufe = stufeFuer(zeilen);
-    stellen = [];
-    const spalte = SPALTE * stufe;
-    const links = Math.round((breite - spalte) / 2);
-    let y = Math.max(0, Math.round((hoehe - gesamtHoehe(zeilen) * stufe) / 2));
-
+  /* Trägt eine Spalte ein (einzeln oder eine von zweien), gibt die Höhe
+     zurück, die sie erreicht hat. */
+  function legeSpalte(zeilen, x0, y0, breite0) {
+    let y = y0;
     for (const zeile of zeilen) {
       const hoch = (HOCH[zeile.art] || HOCH.text) * stufe;
-      zeile.x = links;
+      zeile.x = x0;
       zeile.y = y;
-      zeile.breite = spalte;
+      zeile.breite = breite0;
       zeile.hoehe = hoch;
       if (zeile.art === "knopf" || zeile.art === "feld") {
-        stellen.push({ schluessel: zeile.schluessel, x: links, y, breite: spalte, hoehe: hoch });
+        stellen.push({ schluessel: zeile.schluessel, x: x0, y, breite: breite0, hoehe: hoch });
       }
       if (zeile.art === "reihe") {
         const anzahl = zeile.eintraege.length;
         const luecke = 2 * stufe;
-        const teil = Math.floor((spalte - luecke * (anzahl - 1)) / anzahl);
+        const teil = Math.floor((breite0 - luecke * (anzahl - 1)) / anzahl);
         zeile.teile = [];
         for (let i = 0; i < anzahl; i++) {
-          const x = links + i * (teil + luecke);
+          const x = x0 + i * (teil + luecke);
           zeile.teile.push({ ...zeile.eintraege[i], x, y, breite: teil, hoehe: hoch });
           stellen.push({
             schluessel: zeile.eintraege[i].schluessel, x, y, breite: teil, hoehe: hoch
@@ -495,6 +546,56 @@ export function macheLobby({
       }
       y += hoch;
     }
+    return y;
+  }
+
+  function legeEinspaltig(zeilen) {
+    stufe = stufeFuer(zeilen);
+    const spaltenBreite = SPALTE * stufe;
+    const x0 = Math.round((breite - spaltenBreite) / 2);
+    const y0 = Math.max(0, Math.round((hoehe - gesamtHoehe(zeilen) * stufe) / 2));
+    legeSpalte(zeilen, x0, y0, spaltenBreite);
+  }
+
+  /* Kopf plus die **höhere** der beiden Spalten - sie stehen nebeneinander. */
+  function hoeheZweiSpaltig(oben, links, rechts) {
+    return summeHoehe(oben) + Math.max(summeHoehe(links), summeHoehe(rechts)) + 2 * HOCH.text;
+  }
+
+  /* Kopf (Titel, Unterzeile) über die volle Breite, mittig - darunter
+     links die Heldenwahl, rechts alles mit `spalte: 1`, beide ab
+     derselben Höhe. */
+  function legeZweiSpaltig(zeilen) {
+    const oben = zeilen.filter((z) => z.art === "titel" || z.art === "unter");
+    const links = zeilen.filter((z) => z.art !== "titel" && z.art !== "unter" && z.spalte !== 1);
+    const rechts = zeilen.filter((z) => z.spalte === 1);
+    const nachBreite = Math.floor(breite / ZWEI_SPALTEN_BREITE);
+    const nachHoehe = Math.floor(hoehe / hoeheZweiSpaltig(oben, links, rechts));
+    stufe = Math.max(1, Math.min(nachBreite, nachHoehe));
+
+    const spaltenBreite = SPALTE * stufe;
+    const luecke = SPALTEN_LUECKE * stufe;
+    const blockBreite = 2 * spaltenBreite + luecke;
+    const blockLinks = Math.round((breite - blockBreite) / 2);
+    const y0 = Math.max(0, Math.round((hoehe - hoeheZweiSpaltig(oben, links, rechts) * stufe) / 2));
+
+    const yNachOben = legeSpalte(oben, blockLinks, y0, blockBreite);
+    legeSpalte(links, blockLinks, yNachOben, spaltenBreite);
+    legeSpalte(rechts, blockLinks + spaltenBreite + luecke, yNachOben, spaltenBreite);
+  }
+
+  /* Zweispaltig nur, wenn die Seite es kennt, einspaltig nicht passt UND
+     die Breite für zwei Spalten reicht - sonst lieber die gewohnte, immer
+     lesbare Reihenfolge als eine selbst nicht passende zweite Spalte. */
+  function zweiSpaltenBesser(zeilen) {
+    if (!zeilen.some((z) => z.spalte === 1)) return false;
+    if (gesamtHoehe(zeilen) * stufeFuer(zeilen) <= hoehe) return false;
+    return breite >= ZWEI_SPALTEN_BREITE;
+  }
+
+  function lege(zeilen) {
+    stellen = [];
+    if (zweiSpaltenBesser(zeilen)) legeZweiSpaltig(zeilen); else legeEinspaltig(zeilen);
     if (zeiger >= stellen.length) zeiger = Math.max(0, stellen.length - 1);
     return zeilen;
   }
@@ -525,13 +626,19 @@ export function macheLobby({
     return text(sauber, x + Math.round((b - weite) / 2), y, farbe, gross);
   }
 
+  /* Versatz, der eine Zeile im Kasten der Höhe `hoehe` mittig zeigt - ein
+     fester Versatz träfe seit HOCH.knopf/reihe/feld=48 nicht mehr. */
+  function mitteY(hoehe) {
+    return Math.max(0, Math.round(((hoehe - stufe) - schrift.ZEICHEN_HOCH * stufe) / 2));
+  }
+
   function maleKnopf(stelle, beschriftung, gewaehlt, gewaehltFarbe = FARBEN.gold1) {
     const dran = stellen[zeiger] && stellen[zeiger].schluessel === stelle.schluessel;
     const drueber = unterZeiger === stelle.schluessel;
     male(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe, FARBEN.hudGrund);
     rahmen(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe,
       gewaehlt ? gewaehltFarbe : (dran || drueber) ? FARBEN.hudSchrift : FARBEN.hudRahmen);
-    mittig(beschriftung, stelle.x, stelle.y + 3 * stufe, stelle.breite,
+    mittig(beschriftung, stelle.x, stelle.y + mitteY(stelle.hoehe), stelle.breite,
       gewaehlt ? gewaehltFarbe : FARBEN.hudSchrift);
   }
 
@@ -541,7 +648,8 @@ export function macheLobby({
     const x = zeile.x + markeBreite;
     const b = zeile.breite - markeBreite;
     const dran = aktivesFeld === zeile.schluessel;
-    text(marke, zeile.x, zeile.y + 3 * stufe, FARBEN.hudMatt);
+    const mitte = mitteY(zeile.hoehe);
+    text(marke, zeile.x, zeile.y + mitte, FARBEN.hudMatt);
     male(x, zeile.y, b, zeile.hoehe - stufe, FARBEN.hudGrund);
     rahmen(x, zeile.y, b, zeile.hoehe - stufe, dran ? FARBEN.gold1 : FARBEN.hudRahmen);
     /* Nur das Ende des Textes: Ein Code mit 274 Zeichen passt in kein
@@ -549,7 +657,7 @@ export function macheLobby({
     const passt = Math.max(1, Math.floor(b / stufe / schrift.VORSCHUB) - 1);
     const roh = werte[zeile.schluessel] || "";
     const sicht = roh.length > passt ? roh.slice(roh.length - passt) : roh;
-    text(sicht + (dran ? "_" : ""), x + 2 * stufe, zeile.y + 3 * stufe, FARBEN.hudSchrift);
+    text(sicht + (dran ? "_" : ""), x + 2 * stufe, zeile.y + mitte, FARBEN.hudSchrift);
   }
 
   /* Gibt zurück, wie viele **Flächen** gemalt wurden - Kästen, Rahmen,
@@ -557,6 +665,7 @@ export function macheLobby({
      nicht mit; eine Zahl, die beides mischte, sagte über keines von
      beiden etwas aus. */
   function zeichne() {
+    feldMitziehen();
     gezeichnet = 0;
     ctx.imageSmoothingEnabled = false;
     male(0, 0, breite, hoehe, FARBEN.leere);
@@ -640,9 +749,11 @@ export function macheLobby({
       setzeSpielerZahl(Number(schluessel.slice(8)));
       return schluessel;
     }
-    if (werte[schluessel] !== undefined) { aktivesFeld = schluessel; return schluessel; }
+    if (werte[schluessel] !== undefined) {
+      aktivesFeld = schluessel; feldZeigen(schluessel); return schluessel;
+    }
 
-    aktivesFeld = null;
+    aktivesFeld = null; feldVerbergen();
     switch (schluessel) {
       case "allein": art = "allein"; setzeSpielerZahl(1); seite = SEITE.aufstellung; break;
       case "eroeffnen": art = "gastgeber"; setzeSpielerZahl(2); seite = SEITE.aufstellung; break;
@@ -671,7 +782,7 @@ export function macheLobby({
       const stelle = stellen[zeiger];
       return stelle ? tue(stelle.schluessel) : null;
     }
-    if (taste === "Escape") { aktivesFeld = null; sage(""); return null; }
+    if (taste === "Escape") { aktivesFeld = null; feldVerbergen(); sage(""); return null; }
     if (aktivesFeld === null) return null;
     if (taste === "Backspace") {
       werte[aktivesFeld] = werte[aktivesFeld].slice(0, -1);
@@ -687,6 +798,7 @@ export function macheLobby({
     zeiger = (zeiger + richtung + stellen.length) % stellen.length;
     const schluessel = stellen[zeiger].schluessel;
     aktivesFeld = werte[schluessel] !== undefined ? schluessel : null;
+    if (aktivesFeld !== null) feldZeigen(aktivesFeld); else feldVerbergen();
   }
 
   /* Ein Einfügen aus der Zwischenablage. Es geht in das Feld, das
