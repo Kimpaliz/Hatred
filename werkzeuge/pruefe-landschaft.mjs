@@ -2,670 +2,857 @@
 
    ── Warum es das gibt / Warum so ───────────────────────────────────
 
-   Ein Kerkerbauer ist die Sorte Werkzeug, die fast immer funktioniert
-   und alle zweihundert Saaten eine Karte ausspuckt, in der ein Raum
-   hinter einer Klippe liegt. Wer das von Hand sucht, findet es nie.
-   Deshalb wird hier nicht **eine** Karte geprüft, sondern zweiundsiebzig
-   — und zwar mit den echten Schrittregeln des Spiels, nicht mit einer
-   bequemen Ersatzregel.
+   Eine erzeugte Karte hat keinen Autor, der sie durchspielt. Sie
+   entsteht aus einer Saat, und niemand sieht sie an, bevor vier Leute
+   darauf stehen. Deshalb ist diese Datei die einzige Stelle, an der
+   überhaupt jemand fragt: Kommt man da hin? Kommt man wieder zurück?
+   Ist es dunkel? Steht Lava herum, die Jannik nie bestellt hat?
 
-   Zwei Dinge sind wichtiger als alles andere:
+   Zwei Arten von Prüfung, und beide braucht es:
 
-   1. **Hin und zurück.** Vorwärts ist jede Karte erreichbar: Man fällt
-      überall hinunter. Erst rückwärts zeigt sich das Loch ohne Rampe.
-      Eine Prüfung, die nur vorwärts flutet, gewinnt immer und misst
-      nichts.
-   2. **Die Rampen müssen tragen.** Darum wird auf einer Stichprobe
-      absichtlich jede Rampe entfernt und verlangt, dass die Karte
-      dann **zerfällt**. Bliebe sie ganz, wäre sie flach und die ganze
-      Höhenmaschinerie eine Behauptung.
+   1. **Der Reihenlauf** über viele Saaten. Er behauptet nur über
+      Eigenschaften, die auf *jeder* Karte gelten müssen. Eine einzelne
+      Karte beweist nichts — der Erzeuger würfelt, und ein Fehler, der
+      jede zwanzigste Karte trifft, ist bei drei Proben unsichtbar.
+   2. **Die einzelnen Schritte** an von Hand gebauten Karten. Hier
+      steht der Fall, der ohne die Arbeit falsch wäre: die Grube, aus
+      der man nicht mehr herauskommt; die Kachel, die nur über Eck
+      verbunden ist; das Fass im einzigen Gang. Der Reihenlauf würde
+      diese Fälle vielleicht nie zu sehen bekommen.
+
+   ── Warum die Prüfung ihre eigenen Regeln nicht nachbaut ───────────
+
+   Erreichbarkeit wird mit `laufKosten`/`begehbar` aus
+   `spiel/hoehen.mjs` gefragt — denselben Funktionen, mit denen der
+   Erzeuger arbeitet und mit denen später gespielt wird. Eine eigene,
+   „offensichtlich richtige" Kopie in der Prüfung wäre die zweite
+   Wahrheit, an der beide sich gegenseitig bestätigen und trotzdem
+   falsch liegen.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `spiel/landschaft.mjs` und `spiel/rauschen.mjs` (das Geprüfte),
-   `spiel/gitter.mjs` (Feldwerte), `werkzeuge/helfer.mjs` (Gerüst),
-   `werkzeuge/karte-zeigen.mjs` (zum Ansehen, wenn hier etwas rot ist). */
+   `spiel/landschaft.mjs` (das Geprüfte, mit allen Einzelschritten),
+   `spiel/gitter.mjs` (Feldwerte, `macheKarte` für die Handkarten),
+   `spiel/hoehen.mjs` (`begehbar`, `laufKosten`), `spiel/welt-feld.mjs`
+   und `spiel/bauart.mjs` (die Höhlenformel und ihre Werte),
+   `werkzeuge/helfer.mjs` (Behauptungen), `werkzeuge/karte-zeigen.mjs`
+   (zeigt, was hier nur gezählt wird). */
 
 import { abschnitt, behaupte, gleich, wirft, ende } from "./helfer.mjs";
 import {
-  wertRauschen, fbm, macheRauschfeld, ganzHash, hash, vn, sstep, smin, smax
-} from "../spiel/rauschen.mjs";
-import {
-  macheKarte, alleFelder, RICHTUNGEN, RAMPE, HINDERNIS, FLUESSIG, BODEN, EBENEN,
-  EBENE_GRABEN
-} from "../spiel/gitter.mjs";
-import { macheZufall } from "../spiel/zufall.mjs";
-import { begehbar } from "../spiel/hoehen.mjs";
-import {
-  baueLandschaft, teileFlaeche, raeumeInBlaettern, verteileRaumArten, verbindeRaeume,
-  grabeKerker, setzeHoehen, setzeRampen, setzeZier, setzeFluessigkeiten,
-  setzeStartsUndAusgang, setzeLichter, sichereErreichbarkeit, plateauNummern,
-  raeumeFluessigkeitenAuf, flutfuellung, rueckflut, beidseitigErreichbar,
-  RAUM_ARTEN, MIN_RAUM, MIN_KARTE
+  baueLandschaft, offen, nurDiagonalen, diagonalFund, beidseitigErreichbar,
+  erreichbareFelder, laufKostenFeld, offeneGebiete, ebenenFlaechen, plateaus, gebiete,
+  rastereWaende, setzeRand, setzeEbenen, mehrheitsFilter, legeKleineEbenenZusammen,
+  roheEbenen, schneideKliffe,
+  schliesseEinzelneHohlraeume, macheSaeulen, oeffneDiagonalen, raeumeAuf,
+  verfuelleNebenraeume, verbindeMitRampen, streueZusatzRampen, aufstiegsKanten,
+  setzeWasser, setzeBoden, setzeFackeln, setzeZier, zierErlaubt, waehleStarts,
+  waehleAusgang, sammleRaeume, groesstesPlateauFeld,
+  MIN_KARTE, MIN_EBENEN_FLAECHE, FACKEL_ABSTAND, RAUM_ARTEN, ZUSATZ_RAMPEN
 } from "../spiel/landschaft.mjs";
+import {
+  macheKarte, HINDERNIS, FLUESSIG, BODEN, RAMPE, RICHTUNGEN, EBENEN, EBENE_GRABEN
+} from "../spiel/gitter.mjs";
+import { begehbar, laufKosten } from "../spiel/hoehen.mjs";
+import { macheWeltfeld } from "../spiel/welt-feld.mjs";
+import { BAUART } from "../spiel/bauart.mjs";
 
-const mitteVon = (r) => ({ x: r.x + (r.breite >> 1), y: r.y + (r.hoehe >> 1) });
+/* Sechzig Saaten sind kein Zierwert: Ein Fehler, der jede zwanzigste
+   Karte trifft, wird bei sechzig Proben mit 95 % Wahrscheinlichkeit
+   mindestens einmal gesehen. Die Maße sind kleiner als die 56 × 40 des
+   Spiels, weil sechzig volle Karten die ganze Prüfkette verdreifachen
+   würden; sechs volle Karten laufen darum zusätzlich mit. */
+const SAATEN = 60;
+const BREITE = 44;
+const HOEHE = 32;
+const VOLLE = [3, 7, 11, 19, 23, 41];
 
-const SAATEN = [];
-for (let s = 1; s <= 72; s++) SAATEN.push(s * 7919 + 13);
+/* Wie viele offene Kacheln höchstens auf eine Fackel kommen dürfen.
+   Darüber ist die Karte dunkel — nicht stimmungsvoll, sondern
+   unspielbar, weil `spiel/licht.mjs` unbeleuchtete Wesen verbirgt. */
+const OFFEN_JE_FACKEL = 40;
 
-/* ═══ Das Rauschen ══════════════════════════════════════════════════ */
+const spalte = (karte, i) => i % karte.breite;
+const zeile = (karte, i) => (i / karte.breite) | 0;
 
-abschnitt("Rauschen");
-{
-  let ausserhalb = 0;
-  for (let x = -30; x < 30; x++) {
-    for (let y = -30; y < 30; y++) {
-      const w = wertRauschen(9, x * 0.37, y * 0.41);
-      if (!(w >= 0 && w < 1)) ausserhalb++;
-    }
-  }
-  gleich(ausserhalb, 0, "wertRauschen bleibt in 0…1, auch bei negativen Stellen");
-
-  gleich(wertRauschen(4, 3.25, 8.75), wertRauschen(4, 3.25, 8.75),
-    "wertRauschen ist bei gleicher Saat gleich");
-  behaupte(wertRauschen(4, 3.25, 8.75) !== wertRauschen(5, 3.25, 8.75),
-    "wertRauschen ist bei anderer Saat anders");
-  gleich(ganzHash(7, -1, -1), ganzHash(7, -1, -1), "ganzHash ist wiederholbar");
-  behaupte(ganzHash(7, 1, 2) !== ganzHash(7, 2, 1), "ganzHash unterscheidet x und y");
-
-  /* Der Kern der Sache: Nachbarfelder müssen sich **weniger**
-     unterscheiden als beliebige Felder. Genau das trennt Rauschen von
-     Konfetti — und genau das wäre ohne Glättung falsch. */
-  const feld = macheRauschfeld(31337, 60, 60, { oktaven: 4, dauer: 0.5, weite: 10 });
-  let nachbarSumme = 0, nachbarZahl = 0, fernSumme = 0, fernZahl = 0;
-  for (let y = 0; y < 60; y++) {
-    for (let x = 0; x < 59; x++) {
-      nachbarSumme += Math.abs(feld[y * 60 + x] - feld[y * 60 + x + 1]);
-      nachbarZahl++;
-    }
-  }
-  for (let y = 0; y < 60; y++) {
-    for (let x = 0; x < 40; x++) {
-      fernSumme += Math.abs(feld[y * 60 + x] - feld[y * 60 + x + 19]);
-      fernZahl++;
-    }
-  }
-  const nachbar = nachbarSumme / nachbarZahl;
-  const fern = fernSumme / fernZahl;
-  behaupte(nachbar * 3 < fern, "Nachbarfelder ähneln sich deutlich mehr als ferne"
-    + ` (${nachbar.toFixed(4)} gegen ${fern.toFixed(4)})`);
-
-  let fbmDaneben = 0;
-  for (let x = 0; x < 40; x++) {
-    for (let y = 0; y < 40; y++) {
-      const w = fbm(77, x, y, { oktaven: 6, dauer: 0.6, weite: 5 });
-      if (!(w >= 0 && w < 1)) fbmDaneben++;
-    }
-  }
-  gleich(fbmDaneben, 0, "fbm bleibt in 0…1, auch bei sechs Oktaven");
-  behaupte(fbm(77, 3, 4, { oktaven: 1, dauer: 0.5, weite: 8 })
-    !== fbm(77, 3, 4, { oktaven: 4, dauer: 0.5, weite: 8 }),
-    "mehr Oktaven ändern das Ergebnis");
-
-  const a = macheRauschfeld(5, 20, 12, { oktaven: 3, weite: 6 });
-  const b = macheRauschfeld(5, 20, 12, { oktaven: 3, weite: 6 });
-  gleich(a.length, 240, "macheRauschfeld liefert breite × hoehe Werte");
-  let ungleich = 0;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) ungleich++;
-  gleich(ungleich, 0, "macheRauschfeld ist byteweise wiederholbar");
-  gleich(a[7 * 20 + 3], Math.fround(fbm(5, 3, 7, { oktaven: 3, weite: 6 })),
-    "macheRauschfeld[i] ist fbm an derselben Stelle");
-  wirft(() => macheRauschfeld(5, 0, 4), "macheRauschfeld wirft bei Breite 0");
-  wirft(() => macheRauschfeld(5, 4.5, 4), "macheRauschfeld wirft bei gebrochener Breite");
-
-  /* In `spiel/rauschen.mjs` wohnen zurzeit zwei Rauschfamilien: die
-     hiesige und die aus Janniks Scotophobia-Engine, die
-     `spiel/welt-feld.mjs` benutzt. `fbm` entscheidet am vierten
-     Argument, welche gemeint ist. Diese Probe hält beide auseinander —
-     ohne sie bekäme eine der beiden still die Zahlen der anderen, und
-     genau das fiele niemandem auf: Beide liefern 0…1. */
-  const meins = fbm(7, 3, 4, { oktaven: 3, dauer: 0.5, weite: 8 });
-  const scoto = fbm(7, 3, 4, 3);
-  behaupte(meins >= 0 && meins < 1 && scoto >= 0 && scoto < 1,
-    "beide Rauschfamilien bleiben in 0…1");
-  behaupte(meins !== scoto,
-    "eine Zahl als viertes Argument meint Scotophobia, ein Objekt den Kerkerbau");
-  gleich(fbm(7, 3, 4, 3), fbm(7, 3, 4, 3), "die Scotophobia-Fassung ist wiederholbar");
-  wirft(() => fbm(7, 3, 4), "fbm ohne viertes Argument wirft, statt zu raten");
-  behaupte(typeof hash(3, 4, 7) === "number" && typeof vn(3.5, 4.5, 7) === "number",
-    "die Scotophobia-Bausteine sind da — `spiel/welt-feld.mjs` liest sie");
-  gleich(sstep(0, 1, -5), 0, "sstep klemmt unterhalb der ersten Schwelle");
-  gleich(sstep(0, 1, 5), 1, "sstep klemmt oberhalb der zweiten");
-  behaupte(smin(3, 5, 2) <= 3 && smax(3, 5, 2) >= 5, "smin und smax runden in die richtige Ecke");
+/* Eine leere Handkarte: alles offen, alles Ebene 1, Rand aus Wand.
+   Von Hand gebaute Karten sind der einzige Weg, einem Schritt genau
+   den Fall vorzulegen, für den er da ist. */
+function handKarte(breite, hoehe, ebene = 1) {
+  const karte = macheKarte(breite, hoehe);
+  karte.hindernis.fill(HINDERNIS.keins);
+  karte.ebene.fill(ebene);
+  setzeRand(karte);
+  return karte;
 }
 
-/* ═══ Die Flutfüllung ══════════════════════════════════════════════ */
-
-/* Die Regel selbst gehört `spiel/hoehen.mjs` und wird dort geprüft.
-   Hier steht die Frage, die diese Datei zu verantworten hat: Flutet
-   der Kerkerbau **mit** dieser Regel — und sieht er die Falle?
-
-   Der Aufbau ist die Falle in Reinform: ein Feld auf Ebene 2 neben
-   einem Feld auf Ebene 1. Vorwärts ist alles erreichbar, denn man
-   fällt herunter. Zurück kommt man nur mit Rampe. Eine Flutfüllung,
-   die das nicht trennt, würde jede Karte durchwinken. */
-abschnitt("Flutfüllung");
-{
-  const k = macheKarte(8, 5);
-  for (const { x, y } of alleFelder(k)) {
-    k.setze(x, y, { ebene: 1, hindernis: HINDERNIS.keins });
-  }
-  for (let y = 0; y < 5; y++) {
-    k.setze(0, y, { hindernis: HINDERNIS.wand });
-    k.setze(7, y, { hindernis: HINDERNIS.wand });
-  }
-  for (let x = 0; x < 8; x++) {
-    k.setze(x, 0, { hindernis: HINDERNIS.wand });
-    k.setze(x, 4, { hindernis: HINDERNIS.wand });
-  }
-  /* Die rechte Hälfte liegt eine Stufe höher. */
-  for (let y = 1; y <= 3; y++) for (let x = 4; x <= 6; x++) k.setze(x, y, { ebene: 2 });
-
-  const start = [{ x: 1, y: 2 }];
-  const hoch = k.index(5, 2);
-  behaupte(!flutfuellung(k, start)[hoch], "ohne Rampe kommt man nicht hinauf");
-  behaupte(rueckflut(k, start)[hoch], "von oben kommt man ohne Rampe herunter — das ist die Falle");
-  behaupte(!beidseitigErreichbar(k, start)[hoch], "hin und zurück erkennt die Falle");
-
-  k.setze(3, 2, { rampe: RAMPE.ost });
-  behaupte(flutfuellung(k, start)[hoch], "mit Rampe nach Osten kommt man hinauf");
-  behaupte(beidseitigErreichbar(k, start)[hoch], "mit Rampe ist das Plateau kein Loch mehr");
-
-  k.setze(3, 2, { rampe: RAMPE.nord });
-  behaupte(!beidseitigErreichbar(k, start)[hoch], "eine Rampe in die falsche Richtung hilft nicht");
-
-  /* Die Rampe gehört auf das **tiefere** Feld. Auf dem höheren ist sie
-     wirkungslos — der häufigste Vorzeichenfehler in dieser Ecke. */
-  k.setze(3, 2, { rampe: RAMPE.keine });
-  k.setze(4, 2, { rampe: RAMPE.west });
-  behaupte(!beidseitigErreichbar(k, start)[hoch], "eine Rampe auf dem höheren Feld hilft nicht");
-
-  /* Zwei Stufen klettert niemand — auch nicht mit Rampe. */
-  k.setze(4, 2, { rampe: RAMPE.keine });
-  k.setze(3, 2, { rampe: RAMPE.ost });
-  for (let y = 1; y <= 3; y++) for (let x = 4; x <= 6; x++) k.setze(x, y, { ebene: 3 });
-  behaupte(!flutfuellung(k, start)[hoch], "zwei Stufen hinauf geht auch mit Rampe nicht");
-
-  gleich(raeumeFluessigkeitenAuf(k), 0, "ohne Wasser gibt es nichts aufzuräumen");
-  k.setze(1, 2, { fluessig: FLUESSIG.wasser, ebene: 2 });
-  gleich(raeumeFluessigkeitenAuf(k), 1, "Wasser oberhalb des Grabens wird entfernt");
-  gleich(k.fluessigBei(1, 2), FLUESSIG.keine, "das Feld ist danach trocken");
-}
-
-/* ═══ Die Bauschritte einzeln ═══════════════════════════════════════ */
-
-abschnitt("Bauschritte");
-{
-  const zufall = macheZufall(4242).zweig();
-  const blaetter = teileFlaeche(56, 40, zufall);
-  behaupte(blaetter.length >= 4, `Zweiteilung liefert Blätter (${blaetter.length})`);
-  let ausserhalb = 0, zuKlein = 0, ueberlappend = 0;
-  for (let i = 0; i < blaetter.length; i++) {
-    const b = blaetter[i];
-    if (b.x < 1 || b.y < 1 || b.x + b.breite > 55 || b.y + b.hoehe > 39) ausserhalb++;
-    if (b.breite < MIN_RAUM + 4 || b.hoehe < MIN_RAUM + 4) zuKlein++;
-    for (let j = i + 1; j < blaetter.length; j++) {
-      const c = blaetter[j];
-      if (b.x < c.x + c.breite && c.x < b.x + b.breite
-        && b.y < c.y + c.hoehe && c.y < b.y + b.hoehe) ueberlappend++;
-    }
-  }
-  gleich(ausserhalb, 0, "kein Blatt ragt über den Kartenrand");
-  gleich(zuKlein, 0, "kein Blatt ist kleiner als Raum plus Rand");
-  gleich(ueberlappend, 0, "Blätter überlappen sich nicht");
-
-  const raeume = raeumeInBlaettern(blaetter, zufall);
-  behaupte(raeume.length >= 4, `Räume entstehen (${raeume.length})`);
-  let zuSchmal = 0, zuNah = 0;
-  for (let i = 0; i < raeume.length; i++) {
-    const r = raeume[i];
-    if (r.breite < MIN_RAUM || r.hoehe < MIN_RAUM) zuSchmal++;
-    for (let j = i + 1; j < raeume.length; j++) {
-      const q = raeume[j];
-      /* Ein Feld Luft ringsum: Sonst gäbe es zwischen zwei Räumen
-         keine Wand und der Gang wäre bedeutungslos. */
-      if (r.x - 1 < q.x + q.breite && q.x - 1 < r.x + r.breite
-        && r.y - 1 < q.y + q.hoehe && q.y - 1 < r.y + r.hoehe) zuNah++;
-    }
-  }
-  gleich(zuSchmal, 0, `kein Raum unter ${MIN_RAUM}×${MIN_RAUM}`);
-  gleich(zuNah, 0, "zwischen zwei Räumen bleibt Fels");
-
-  verteileRaumArten(raeume, zufall, 56, 40);
-  gleich(raeume.filter((r) => r.art === "eingang").length, 1, "genau ein Eingangsraum");
-  gleich(raeume.filter((r) => r.art === "ausgang").length, 1, "genau ein Ausgangsraum");
-  gleich(raeume.filter((r) => !RAUM_ARTEN.includes(r.art)).length, 0,
-    "alle Raumarten stehen in RAUM_ARTEN");
-
-  const kanten = verbindeRaeume(raeume, zufall);
-  /* Der aufspannende Baum allein hätte n−1 Kanten. Mehr heißt:
-     Rundwege. Weniger hieße: nicht alle Räume hängen zusammen. */
-  behaupte(kanten.length > raeume.length - 1,
-    `Gänge bilden Rundwege, nicht nur einen Baum (${kanten.length} Kanten,` +
-    ` Baum wären ${raeume.length - 1})`);
-  const zusatz = kanten.filter((k) => k.zusatz).length;
-  const anteil = zusatz / (raeume.length - 1);
-  behaupte(zusatz >= 1 && anteil <= 0.35,
-    `Zusatzkanten im vereinbarten Rahmen (${zusatz} = ${(anteil * 100).toFixed(0)} %)`);
-  const gesehen = new Set([0]);
-  for (let runde = 0; runde < raeume.length; runde++) {
-    for (const k of kanten) {
-      if (gesehen.has(k.a)) gesehen.add(k.b);
-      if (gesehen.has(k.b)) gesehen.add(k.a);
-    }
-  }
-  gleich(gesehen.size, raeume.length, "der Kantengraph erreicht jeden Raum");
-}
-
-/* ═══ Die Rampen setzen ═════════════════════════════════════════════ */
-
-/* `setzeRampen` wird eigens geprüft, denn die Erreichbarkeitsreparatur
-   deckt seinen Ausfall zu: Nimmt man alle Rampen heraus, baut die
-   Reparatur sie mühsam wieder ein und die Karte ist am Ende doch
-   spielbar — nur sähen die Rampen aus wie hingewürfelt. Geprüft wird
-   also, dass die Rampen **vor** der Reparatur schon liegen. */
-abschnitt("Rampen setzen");
-{
-  const k = macheKarte(9, 5);
-  for (const { x, y } of alleFelder(k)) k.setze(x, y, { ebene: 1 });
-  for (let x = 0; x < 9; x++) { k.setze(x, 0, { hindernis: HINDERNIS.wand }); }
-  for (let x = 0; x < 9; x++) { k.setze(x, 4, { hindernis: HINDERNIS.wand }); }
-  for (let y = 0; y < 5; y++) { k.setze(0, y, { hindernis: HINDERNIS.wand }); }
-  for (let y = 0; y < 5; y++) { k.setze(8, y, { hindernis: HINDERNIS.wand }); }
-  for (let y = 1; y <= 3; y++) for (let x = 5; x <= 7; x++) k.setze(x, y, { ebene: 2 });
-
-  gleich(setzeRampen(k), 1, "eine Stufenkante bekommt genau eine Rampe");
-  let auf = null;
-  for (const { x, y, i } of alleFelder(k)) if (k.rampe[i] !== RAMPE.keine) auf = { x, y };
-  behaupte(auf !== null && k.ebeneBei(auf.x, auf.y) === 1,
-    "die Rampe liegt auf dem tieferen Feld");
-  gleich(auf ? k.rampeBei(auf.x, auf.y) : RAMPE.keine, RAMPE.ost, "die Rampe zeigt hinauf");
-  behaupte(beidseitigErreichbar(k, [{ x: 1, y: 2 }])[k.index(6, 2)],
-    "mit der gesetzten Rampe ist das Plateau erreichbar");
-
-  /* Zwei Stufen kann keine Rampe überbrücken — dort darf auch keine
-     liegen, sonst sieht die Karte begehbar aus, wo sie es nicht ist. */
-  const k2 = macheKarte(9, 5);
-  for (const { x, y } of alleFelder(k2)) k2.setze(x, y, { ebene: 1 });
-  for (let y = 1; y <= 3; y++) for (let x = 5; x <= 7; x++) k2.setze(x, y, { ebene: 3 });
-  gleich(setzeRampen(k2), 0, "an einer Kante von zwei Stufen entsteht keine Rampe");
-}
-
-/* Und dasselbe am gebauten Kerker: Nach `setzeRampen` — aber **vor**
-   der Reparatur — muss fast alles schon zusammenhängen. */
-abschnitt("Rampen tragen den Bau");
-{
-  let begehbarGesamt = 0, offenRoh = 0, offenMitZier = 0, ohneRampen = 0;
-  for (const saat of SAATEN.slice(0, 8)) {
-    const zufall = macheZufall(saat).zweig();
-    const karte = macheKarte(56, 40);
-    const blaetter = teileFlaeche(56, 40, zufall);
-    const raeume = raeumeInBlaettern(blaetter, zufall);
-    verteileRaumArten(raeume, zufall, 56, 40);
-    const kanten = verbindeRaeume(raeume, zufall);
-    const gebiet = grabeKerker(karte, raeume, kanten, zufall);
-    setzeHoehen(karte, raeume, kanten, gebiet, saat, zufall);
-    if (setzeRampen(karte) === 0) ohneRampen++;
-
-    const eingang = raeume.find((r) => r.art === "eingang");
-    const anker = [{ x: mitteVon(eingang).x, y: mitteVon(eingang).y }];
-    const rohGut = beidseitigErreichbar(karte, anker);
-    for (const { x, y, i } of alleFelder(karte)) {
-      if (karte.blocktBewegung(x, y)) continue;
-      begehbarGesamt++;
-      if (!rohGut[i]) offenRoh++;
-    }
-    setzeZier(karte, raeume, gebiet, zufall);
-    setzeFluessigkeiten(karte, raeume, gebiet, saat, 1, zufall);
-    setzeStartsUndAusgang(karte, raeume, gebiet, 2);
-    const gut = beidseitigErreichbar(karte, karte.starts);
-    for (const { x, y, i } of alleFelder(karte)) {
-      if (!karte.blocktBewegung(x, y) && !gut[i]) offenMitZier++;
-    }
-  }
-  gleich(ohneRampen, 0, "jeder gebaute Kerker bekommt Rampen");
-  /* Nach Höhen und Rampen, aber noch ohne Möbel, muss der nackte
-     Kerker praktisch geschlossen sein. Genau das leisten die Rampen —
-     ohne sie zerfällt er in seine Plateaus. */
-  const roh = offenRoh / begehbarGesamt;
-  behaupte(roh < 0.01, "Höhen und Rampen allein ergeben schon einen ganzen Kerker"
-    + ` (${(roh * 100).toFixed(2)} % offen)`);
-  /* Die Möbel dürfen ein paar Nischen abschneiden — dafür gibt es die
-     Reparatur —, aber nicht den halben Kerker. */
-  const mitZier = offenMitZier / begehbarGesamt;
-  behaupte(mitZier < 0.05,
-    `Zier schneidet nur Nischen ab (${(mitZier * 100).toFixed(2)} % offen)`);
-}
-
-/* ═══ Zweiundsiebzig Kerker ═════════════════════════════════════════ */
-
-abschnitt("Kerker über viele Saaten");
-
-const messung = {
-  begehbar: [], raumZahl: [], ebenen: [0, 0, 0, 0], rampen: [], plateaus: [],
-  lichter: [], gaenge: 0, raumErreichbar: 1
+const setzeBlock = (karte, x0, y0, x1, y1, werte) => {
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) karte.setze(x, y, werte);
 };
-const summen = new Map();
-const grundrisse = new Set();
-const gewuerfe = [];
-let fehlerStarts = 0, fehlerAusgang = 0, fehlerRaum = 0, fehlerHinZurueck = 0;
-let fehlerRand = 0, fehlerEbenenZahl = 0, fehlerRampenlage = 0, fehlerFluessig = 0;
-let fehlerLicht = 0, fehlerFelder = 0, fehlerStartNest = 0;
 
-for (const saat of SAATEN) {
+/* ══════════════════════════════════════════════════════════════════
+   1 · Der Reihenlauf über 60 Saaten
+   ══════════════════════════════════════════════════════════════════ */
+
+abschnitt("Reihenlauf");
+
+const fehler = {
+  rand: 0, startBegehbar: 0, startVerbunden: 0, ausgang: 0, diagonal: 0,
+  unerreichbar: 0, ebenenFlaeche: 0, verbotenNass: 0, wasserEbene: 0,
+  wasserSee: 0, dunkel: 0, startZahl: 0, ausgangAufStart: 0, raumArt: 0
+};
+const messung = {
+  offen: 0, felder: 0, rampen: 0, wasser: 0, fackeln: 0, seen: 0,
+  saeulen: 0, plateaus: 0, schlimmsteFackel: 0, kleinsteEbenenFlaeche: 1e9,
+  jeEbene: [0, 0, 0, 0], kartenOhneEbene: [0, 0, 0, 0]
+};
+const summen = new Set();
+const NASS_VERBOTEN = new Set([FLUESSIG.lava, FLUESSIG.schleim, FLUESSIG.oel]);
+
+for (let saat = 1; saat <= SAATEN; saat++) {
   const spielerZahl = 1 + (saat % 4);
-  /* Ein Wurf ist hier ein Befund, kein Absturz: Wer die Prüfung mit
-     einem Stapelabzug beendet, sieht die anderen einundsiebzig
-     Karten nie und weiß am Ende weniger als vorher. */
-  let karte = null;
-  try {
-    karte = baueLandschaft({ saat, spielerZahl, tiefe: 1 + (saat % 5) });
-  } catch (fehler) {
-    gewuerfe.push(`Saat ${saat}: ${fehler.message}`);
-    continue;
-  }
+  const karte = baueLandschaft({
+    saat, breite: BREITE, hoehe: HOEHE, spielerZahl, tiefe: 1 + (saat % 5)
+  });
+  summen.add(karte.summe());
 
-  /* (h) Der Rand ist vollständig Wand. */
+  /* (a) Rand */
   for (let x = 0; x < karte.breite; x++) {
-    if (karte.hindernisBei(x, 0) !== HINDERNIS.wand) fehlerRand++;
-    if (karte.hindernisBei(x, karte.hoehe - 1) !== HINDERNIS.wand) fehlerRand++;
+    if (karte.hindernisBei(x, 0) !== HINDERNIS.wand) fehler.rand++;
+    if (karte.hindernisBei(x, karte.hoehe - 1) !== HINDERNIS.wand) fehler.rand++;
   }
   for (let y = 0; y < karte.hoehe; y++) {
-    if (karte.hindernisBei(0, y) !== HINDERNIS.wand) fehlerRand++;
-    if (karte.hindernisBei(karte.breite - 1, y) !== HINDERNIS.wand) fehlerRand++;
+    if (karte.hindernisBei(0, y) !== HINDERNIS.wand) fehler.rand++;
+    if (karte.hindernisBei(karte.breite - 1, y) !== HINDERNIS.wand) fehler.rand++;
   }
 
-  /* (a) Jedes Startfeld ist begehbar, es sind so viele wie Spieler,
-     sie hängen aneinander und keiner steht in der Lava. */
-  if (karte.starts.length !== spielerZahl) fehlerStarts++;
-  for (const s of karte.starts) {
-    if (karte.blocktBewegung(s.x, s.y)) fehlerStarts++;
-    if (karte.fluessigBei(s.x, s.y) === FLUESSIG.lava) fehlerStarts++;
-  }
-  const nurErster = flutfuellung(karte, [karte.starts[0]]);
-  for (const s of karte.starts) if (!nurErster[karte.index(s.x, s.y)]) fehlerStartNest++;
+  /* (b) Startfelder: so viele wie Spieler, begehbar, untereinander
+     erreichbar. Gefragt wird beidseitig — zwei Jäger, die sich nur in
+     einer Richtung erreichen, stehen im selben Kerker und doch nicht
+     zusammen. */
+  if (karte.starts.length !== spielerZahl) fehler.startZahl++;
+  for (const s of karte.starts) if (karte.blocktBewegung(s.x, s.y)) fehler.startBegehbar++;
+  const gut = beidseitigErreichbar(karte, [karte.starts[0]]);
+  for (const s of karte.starts) if (!gut[karte.index(s.x, s.y)]) fehler.startVerbunden++;
 
-  const gut = beidseitigErreichbar(karte, karte.starts);
+  /* (c) Ausgang mit den echten Höhenregeln erreichbar */
+  const aus = karte.ausgang;
+  if (!aus || !gut[karte.index(aus.x, aus.y)]) fehler.ausgang++;
+  if (aus && karte.starts.some((s) => s.x === aus.x && s.y === aus.y)) fehler.ausgangAufStart++;
 
-  /* (b) Der Ausgang ist von jedem Startfeld aus erreichbar — und zurück. */
-  for (const s of karte.starts) {
-    const hin = flutfuellung(karte, [s]);
-    const zurueck = rueckflut(karte, [s]);
-    const ai = karte.index(karte.ausgang.x, karte.ausgang.y);
-    if (!hin[ai] || !zurueck[ai]) fehlerAusgang++;
-  }
+  /* (d) keine Nur-Diagonale */
+  fehler.diagonal += nurDiagonalen(karte).length;
 
-  /* (c) Jeder eingetragene Raum hat mindestens ein erreichbares Feld. */
-  for (const r of karte.raeume) {
-    let erreichbar = 0, begehbarImRaum = 0;
-    for (let y = r.y; y < r.y + r.hoehe; y++) {
-      for (let x = r.x; x < r.x + r.breite; x++) {
-        if (karte.blocktBewegung(x, y)) continue;
-        begehbarImRaum++;
-        if (gut[karte.index(x, y)]) erreichbar++;
-      }
-    }
-    if (erreichbar < 1) fehlerRaum++;
-    if (begehbarImRaum > 0) {
-      messung.raumErreichbar = Math.min(messung.raumErreichbar, erreichbar / begehbarImRaum);
-    }
-  }
-
-  /* (d) Kein begehbares Feld liegt hinter einer Ebenenkante ohne Rampe.
-     Das ist die scharfe Fassung: Es genügt nicht, dass die Räume
-     zusammenhängen — kein einziges Feld darf eine Falle sein. */
-  let begehbar = 0;
+  /* (e) jede offene Kachel erreichbar — hin und zurück */
+  let offeneKacheln = 0, wasserKacheln = 0;
   const jeEbene = [0, 0, 0, 0];
-  for (const { x, y, i } of alleFelder(karte)) {
-    if (karte.blocktBewegung(x, y)) {
-      if (karte.rampe[i] !== RAMPE.keine) fehlerRampenlage++;
-      continue;
-    }
-    begehbar++;
+  for (let i = 0; i < karte.anzahl; i++) {
+    if (NASS_VERBOTEN.has(karte.fluessig[i])) fehler.verbotenNass++;
+    if (karte.hindernis[i] === HINDERNIS.saeule) messung.saeulen++;
+    if (karte.rampe[i] !== RAMPE.keine) messung.rampen++;
+    if (!offen(karte, i)) continue;
+    offeneKacheln++;
     jeEbene[karte.ebene[i]]++;
-    if (!gut[i]) fehlerHinZurueck++;
-    /* Wasser und Lava gehören in den Graben, sonst steht der See auf
-       dem Hochplateau. */
-    const f = karte.fluessig[i];
-    if ((f === FLUESSIG.wasser || f === FLUESSIG.lava) && karte.ebene[i] !== EBENE_GRABEN) {
-      fehlerFluessig++;
+    if (!gut[i]) fehler.unerreichbar++;
+    /* (j) Wasser nur in Ebene 0 */
+    if (karte.fluessig[i] === FLUESSIG.wasser) {
+      wasserKacheln++;
+      if (karte.ebene[i] !== EBENE_GRABEN) fehler.wasserEbene++;
     }
-    /* Eine Rampe liegt auf dem tieferen Feld und zeigt genau eine
-       Stufe hinauf — alles andere ist Zierde am falschen Ort. */
-    const rampe = karte.rampe[i];
-    if (rampe !== RAMPE.keine) {
-      const r = RICHTUNGEN.find((ri) => ri.rampe === rampe);
-      if (!r || karte.ebeneBei(x + r.dx, y + r.dy) !== karte.ebene[i] + 1) fehlerRampenlage++;
-    }
-    if (karte.boden[i] > BODEN.holz || karte.ebene[i] >= EBENEN) fehlerFelder++;
   }
 
-  /* (g) Mindestens zwei verschiedene Ebenen kommen wirklich vor. */
-  if (jeEbene.filter((z) => z > 0).length < 2) fehlerEbenenZahl++;
+  /* (j) und jede Wasserfläche ist eine Senke ab der Mindestgröße */
+  const seen = gebiete(karte, (i) => karte.fluessig[i] === FLUESSIG.wasser, () => true);
+  for (const zahl of seen.groessen) if (zahl < BAUART.wasserMindestSee) fehler.wasserSee++;
 
-  for (const licht of karte.lichter) {
-    if (!karte.drin(licht.x, licht.y) || !(licht.staerke > 0) || typeof licht.art !== "string") {
-      fehlerLicht++;
-    }
-    if (licht.art === "fackel"
-      && karte.hindernisBei(licht.x, licht.y) !== HINDERNIS.fackelsockel) fehlerLicht++;
+  /* (h) keine Ebenenfläche unter drei Kacheln */
+  for (const zahl of ebenenFlaechen(karte).groessen) {
+    if (zahl < MIN_EBENEN_FLAECHE) fehler.ebenenFlaeche++;
+    if (zahl < messung.kleinsteEbenenFlaeche) messung.kleinsteEbenenFlaeche = zahl;
   }
 
-  let rampenZahl = 0;
-  for (let i = 0; i < karte.anzahl; i++) if (karte.rampe[i] !== RAMPE.keine) rampenZahl++;
-  const plateau = plateauNummern(karte);
-  let plateauZahl = 0;
-  for (const p of plateau) if (p + 1 > plateauZahl) plateauZahl = p + 1;
+  /* (k) Licht */
+  const fackeln = karte.lichter.filter((l) => l.art === "fackel").length;
+  const jeFackel = offeneKacheln / Math.max(1, fackeln);
+  if (fackeln === 0 || jeFackel > OFFEN_JE_FACKEL) fehler.dunkel++;
+  if (jeFackel > messung.schlimmsteFackel) messung.schlimmsteFackel = jeFackel;
 
-  messung.begehbar.push(begehbar / karte.anzahl);
-  messung.raumZahl.push(karte.raeume.length);
-  messung.rampen.push(rampenZahl);
-  messung.plateaus.push(plateauZahl);
-  messung.lichter.push(karte.lichter.length);
-  for (let e = 0; e < 4; e++) messung.ebenen[e] += jeEbene[e];
+  for (const r of karte.raeume) if (!RAUM_ARTEN.includes(r.art)) fehler.raumArt++;
 
-  summen.set(karte.summe(), (summen.get(karte.summe()) ?? 0) + 1);
-  grundrisse.add(karte.raeume.map((r) => `${r.x},${r.y},${r.breite},${r.hoehe}`).join(";"));
+  messung.offen += offeneKacheln;
+  messung.felder += karte.anzahl;
+  messung.wasser += wasserKacheln;
+  messung.fackeln += fackeln;
+  messung.seen += seen.groessen.length;
+  messung.plateaus += plateaus(karte).groessen.length;
+  for (let e = 0; e < EBENEN; e++) {
+    messung.jeEbene[e] += jeEbene[e];
+    if (jeEbene[e] === 0) messung.kartenOhneEbene[e]++;
+  }
 }
 
-gleich(gewuerfe.length, 0,
-  `baueLandschaft kommt mit jeder Saat zurecht${gewuerfe.length ? " — " + gewuerfe[0] : ""}`);
-gleich(fehlerRand, 0, "(h) der Rand jeder Karte ist vollständig Wand");
-gleich(fehlerStarts, 0, "(a) alle Startfelder sind begehbar, zahlreich genug und lavafrei");
-gleich(fehlerStartNest, 0, "(a) die Startfelder hängen aneinander");
-gleich(fehlerAusgang, 0, "(b) der Ausgang ist von jedem Startfeld aus erreichbar — hin und zurück");
-gleich(fehlerRaum, 0, "(c) jeder eingetragene Raum hat mindestens ein erreichbares Feld");
-gleich(fehlerHinZurueck, 0, "(d) kein begehbares Feld liegt hinter einer Kante ohne Rampe");
-gleich(fehlerEbenenZahl, 0, "(g) jede Karte zeigt mindestens zwei verschiedene Ebenen");
-gleich(fehlerRampenlage, 0, "jede Rampe liegt auf dem tieferen Feld und zeigt eine Stufe hinauf");
-gleich(fehlerFluessig, 0, "Wasser und Lava liegen nur in Ebene 0");
-gleich(fehlerLicht, 0, "jedes Licht steht auf der Karte, jede Fackel auf einem Sockel");
-gleich(fehlerFelder, 0, "alle Feldwerte bleiben im gültigen Bereich");
-gleich(summen.size, SAATEN.length, "(f) verschiedene Saaten geben verschiedene Karten");
-/* Die Prüfsumme allein genügt hier nicht: Ein Bauer, der die Saat nur
-   ins Höhenrauschen reicht und den Grundriss immer gleich legt, gibt
-   auch verschiedene Prüfsummen — und trotzdem jedes Mal denselben
-   Kerker. Deshalb wird der Grundriss selbst verglichen. */
-gleich(grundrisse.size, SAATEN.length,
-  "(f) verschiedene Saaten geben verschiedene Grundrisse, nicht nur andere Höhen");
+gleich(fehler.rand, 0, `(a) der Rand ist auf allen ${SAATEN} Karten vollständig Wand`);
+gleich(fehler.startZahl, 0, "(b) jede Karte hat genau so viele Startfelder wie Spieler");
+gleich(fehler.startBegehbar, 0, "(b) jedes Startfeld ist begehbar");
+gleich(fehler.startVerbunden, 0, "(b) die Startfelder erreichen einander hin und zurück");
+gleich(fehler.ausgang, 0, "(c) der Ausgang ist mit den echten Höhenregeln erreichbar");
+gleich(fehler.ausgangAufStart, 0, "(c) der Ausgang liegt auf keinem Startfeld");
+gleich(fehler.diagonal, 0, "(d) es gibt keine nur-diagonale Verbindung mehr");
+gleich(fehler.unerreichbar, 0, "(e) jede offene Kachel ist hin und zurück erreichbar");
+gleich(fehler.ebenenFlaeche, 0,
+  `(h) keine Ebenenfläche unter ${MIN_EBENEN_FLAECHE} Kacheln`);
+gleich(fehler.verbotenNass, 0, "(i) nirgends Lava, Schleim oder Öl — Janniks Vorgabe");
+gleich(fehler.wasserEbene, 0, "(j) jedes Wasserfeld liegt in Ebene 0");
+gleich(fehler.wasserSee, 0,
+  `(j) jeder See hat mindestens ${BAUART.wasserMindestSee} Kacheln`);
+gleich(fehler.dunkel, 0, `(k) mindestens eine Fackel je ${OFFEN_JE_FACKEL} offene Kacheln`);
+gleich(fehler.raumArt, 0, "jede Raumart steht in RAUM_ARTEN");
 
-/* ═══ (e) Dieselbe Saat gibt byteweise dieselbe Karte ═══════════════ */
-
-abschnitt("Wiederholbarkeit");
-{
-  let ungleich = 0, summeUngleich = 0;
-  for (const saat of gewuerfe.length ? [] : SAATEN.slice(0, 12)) {
-    const a = baueLandschaft({ saat, spielerZahl: 3, tiefe: 2 });
-    const b = baueLandschaft({ saat, spielerZahl: 3, tiefe: 2 });
-    if (a.summe() !== b.summe()) summeUngleich++;
-    for (const reihe of ["boden", "ebene", "hindernis", "fluessig", "rampe"]) {
-      for (let i = 0; i < a.anzahl; i++) if (a[reihe][i] !== b[reihe][i]) ungleich++;
-    }
-    if (JSON.stringify(a.starts) !== JSON.stringify(b.starts)) ungleich++;
-    if (JSON.stringify(a.ausgang) !== JSON.stringify(b.ausgang)) ungleich++;
-    if (JSON.stringify(a.lichter) !== JSON.stringify(b.lichter)) ungleich++;
-    if (JSON.stringify(a.raeume) !== JSON.stringify(b.raeume)) ungleich++;
-  }
-  gleich(summeUngleich, 0, "(e) dieselbe Saat gibt dieselbe Prüfsumme");
-  gleich(ungleich, 0, "(e) dieselbe Saat gibt byteweise dieselben Reihen, Starts und Lichter");
+/* (h) Alle vier Ebenen kommen im Mittel vor. Auf einer einzelnen
+   kleinen Karte darf Ebene 3 fehlen — sie ist das Hochplateau und
+   selten; fehlte sie im Mittel, wäre die Höhe keine Spielregel mehr,
+   sondern Zierde. */
+for (let e = 0; e < EBENEN; e++) {
+  behaupte(messung.jeEbene[e] / SAATEN >= 5,
+    `(h) Ebene ${e} kommt im Mittel vor: ${(messung.jeEbene[e] / SAATEN).toFixed(1)}` +
+    ` Kacheln je Karte, auf ${messung.kartenOhneEbene[e]} Karten gar nicht`);
 }
 
-/* ═══ Tragen die Rampen wirklich? ═══════════════════════════════════ */
+/* (g) Verschiedene Saaten geben verschiedene Karten. Ohne diese Probe
+   bliebe unbemerkt, wenn die Saat irgendwo verlorenginge — jede Karte
+   sähe gleich aus, und alle anderen Prüfungen wären trotzdem grün. */
+gleich(summen.size, SAATEN, `(g) ${SAATEN} Saaten geben ${SAATEN} verschiedene Karten`);
 
-/* Ohne diese Probe könnte die ganze Höhenmaschinerie eine flache Karte
-   erzeugen und jede Erreichbarkeitsprüfung bestehen. */
-abschnitt("Rampen tragen");
+/* (f) Dieselbe Saat gibt byteweise dieselbe Karte. Der teuerste
+   Fehler, den es im Internet-Koop gibt: Zwei Rechner bauen aus
+   derselben Saat verschiedene Kerker und halten beide sich für
+   richtig. Geprüft wird nicht nur `summe()` — die deckt nur die fünf
+   Reihen ab —, sondern auch Starts, Ausgang und Lichter. */
+let ungleich = 0;
+for (let saat = 1; saat <= SAATEN; saat += 5) {
+  const a = baueLandschaft({ saat, breite: BREITE, hoehe: HOEHE, spielerZahl: 3 });
+  const b = baueLandschaft({ saat, breite: BREITE, hoehe: HOEHE, spielerZahl: 3 });
+  if (a.summe() !== b.summe()) ungleich++;
+  if (JSON.stringify(a.starts) !== JSON.stringify(b.starts)) ungleich++;
+  if (JSON.stringify(a.ausgang) !== JSON.stringify(b.ausgang)) ungleich++;
+  if (JSON.stringify(a.lichter) !== JSON.stringify(b.lichter)) ungleich++;
+}
+gleich(ungleich, 0, "(f) dieselbe Saat gibt byteweise dieselbe Karte");
+
+/* Die vollen Maße des Spiels laufen mit — kleinere Karten könnten
+   einen Fehler verdecken, der erst ab zwei Skelettsektoren auftritt. */
+let volleFehler = 0;
+for (const saat of VOLLE) {
+  const karte = baueLandschaft({ saat, spielerZahl: 4 });
+  const gutV = beidseitigErreichbar(karte, [karte.starts[0]]);
+  for (let i = 0; i < karte.anzahl; i++) if (offen(karte, i) && !gutV[i]) volleFehler++;
+  if (nurDiagonalen(karte).length) volleFehler++;
+  if (karte.starts.length !== 4) volleFehler++;
+  if (!gutV[karte.index(karte.ausgang.x, karte.ausgang.y)]) volleFehler++;
+}
+gleich(volleFehler, 0, `${VOLLE.length} volle Karten 56 × 40 sind ebenso spielbar`);
+
+/* ══════════════════════════════════════════════════════════════════
+   2 · Die einzelnen Schritte
+   ══════════════════════════════════════════════════════════════════ */
+
+abschnitt("Rastern und Rand");
+
 {
-  let zerfallen = 0;
-  const probe = gewuerfe.length ? [] : SAATEN.slice(0, 20);
-  for (const saat of probe) {
-    const karte = baueLandschaft({ saat, spielerZahl: 2 });
-    karte.rampe.fill(RAMPE.keine);
-    const ohne = beidseitigErreichbar(karte, karte.starts);
-    let abgeschnitten = 0;
-    for (const { x, y, i } of alleFelder(karte)) {
-      if (!karte.blocktBewegung(x, y) && !ohne[i]) abgeschnitten++;
-    }
-    if (abgeschnitten > 0) zerfallen++;
+  const welt = macheWeltfeld(7, null);
+  const karte = macheKarte(24, 24);
+  const wandNaehe = rastereWaende(karte, welt);
+  let fels = 0, offenZahl = 0;
+  for (let i = 0; i < karte.anzahl; i++) {
+    if (karte.hindernis[i] === HINDERNIS.wand) fels++; else offenZahl++;
   }
-  behaupte(probe.length > 0 && zerfallen === probe.length,
-    "ohne Rampen zerfällt jede Karte — die Ebenen trennen also wirklich");
+  behaupte(fels > 0 && offenZahl > 0, "das Rastern macht Fels und Hohlraum, nicht nur eines");
+  /* Die Mittelprobe ist das Vorzeichen der Kachel: Wand heißt Fels,
+     also positive Distanz. Ohne diese Probe könnte die Wandnähe
+     irgendein Wert sein, und der Boden legte Geröll in die Raummitte. */
+  let vorzeichenFehler = 0;
+  for (let i = 0; i < karte.anzahl; i++) {
+    const istWand = karte.hindernis[i] === HINDERNIS.wand;
+    if (istWand && wandNaehe[i] < -8) vorzeichenFehler++;
+    if (!istWand && wandNaehe[i] > 8) vorzeichenFehler++;
+  }
+  gleich(vorzeichenFehler, 0, "die zurückgegebene Wandnähe passt zur gerasterten Kachel");
+
+  const leer = macheKarte(10, 10);
+  leer.hindernis.fill(HINDERNIS.keins);
+  gleich(setzeRand(leer), 36, "der Rand setzt genau den Umfang einer 10 × 10-Karte");
+  let randLoch = 0;
+  for (let x = 0; x < 10; x++) {
+    if (leer.hindernisBei(x, 0) !== HINDERNIS.wand) randLoch++;
+    if (leer.hindernisBei(x, 9) !== HINDERNIS.wand) randLoch++;
+    if (leer.hindernisBei(0, x) !== HINDERNIS.wand) randLoch++;
+    if (leer.hindernisBei(9, x) !== HINDERNIS.wand) randLoch++;
+  }
+  gleich(randLoch, 0, "und lässt kein Loch im Rand");
+  gleich(setzeRand(leer), 0, "ein zweiter Aufruf ändert nichts mehr");
 }
 
-/* ═══ Die Reparatur ═════════════════════════════════════════════════ */
+abschnitt("Ebenen");
 
-/* Die Erreichbarkeitsreparatur muss auch dann greifen, wenn jemand
-   ihr eine kaputte Karte hinlegt — und sie darf nicht endlos laufen. */
-abschnitt("Reparatur");
 {
-  const zufall = macheZufall(9001).zweig();
-  const karte = macheKarte(56, 40);
-  const blaetter = teileFlaeche(56, 40, zufall);
-  const raeume = raeumeInBlaettern(blaetter, zufall);
-  verteileRaumArten(raeume, zufall, 56, 40);
-  const kanten = verbindeRaeume(raeume, zufall);
-  const gebiet = grabeKerker(karte, raeume, kanten, zufall);
-  setzeHoehen(karte, raeume, kanten, gebiet, 9001, zufall);
-  setzeRampen(karte);
-  setzeZier(karte, raeume, gebiet, zufall);
-  setzeFluessigkeiten(karte, raeume, gebiet, 9001, 1, zufall);
-  setzeStartsUndAusgang(karte, raeume, gebiet, 2);
+  /* Der Fall, der ohne den Mehrheitsfilter falsch wäre: eine einzelne
+     Kachel Ebene 3 mitten in Ebene 1. Sie ist keine Stufe, die man
+     besteigen könnte — sie ist zwei Stufen hoch und damit eine Wand,
+     die wie Boden aussieht. */
+  const karte = handKarte(9, 9);
+  karte.setze(4, 4, { ebene: 3 });
+  gleich(karte.ebeneBei(4, 4), 3, "vor dem Filter steht der Ausrutscher noch da");
+  const geaendert = mehrheitsFilter(karte);
+  gleich(karte.ebeneBei(4, 4), 1, "der Mehrheitsfilter räumt den Ausrutscher weg");
+  gleich(geaendert, 1, "und ändert genau diese eine Kachel");
 
-  /* Mutwillig kaputt: alle Rampen weg, dazu ein Ring aus Fässern um
-     ein Feld herum. Beides muss die Reparatur heilen. */
-  karte.rampe.fill(RAMPE.keine);
-  const opfer = raeume[0];
-  const ox = opfer.x + 1, oy = opfer.y + 1;
-  karte.setze(ox, oy, { hindernis: HINDERNIS.keins });
-  for (const r of RICHTUNGEN) karte.setze(ox + r.dx, oy + r.dy, { hindernis: HINDERNIS.fass });
-  const bericht = sichereErreichbarkeit(karte, karte.starts, gebiet);
-  behaupte(bericht.runden >= 1, `die Reparatur musste arbeiten (${bericht.runden} Runden)`);
-  behaupte(bericht.rampen > 0, `die Reparatur hat Rampen gesetzt (${bericht.rampen})`);
-  const gut = beidseitigErreichbar(karte, karte.starts);
-  let offen = 0;
-  for (const { x, y, i } of alleFelder(karte)) {
-    if (!karte.blocktBewegung(x, y) && !gut[i]) offen++;
+  /* Der Filter allein genügt nicht. Am Kartenrand ist sein Fenster
+     beschnitten, und dort überlebt eine Splitterfläche die Mehrheit —
+     gezeigt an einer echten Rohkarte, damit die Probe nicht an einem
+     ausgedachten Muster hängt. */
+  const rohWelt = macheWeltfeld(5, null);
+  const roh = macheKarte(44, 32);
+  rastereWaende(roh, rohWelt);
+  setzeRand(roh);
+  /* Nicht `setzeEbenen`, sondern seine Schritte einzeln und in
+     derselben Reihenfolge — sonst prüft man das Ergebnis und nicht den
+     Schritt. Seit die Kliffe dazwischenliegen (06.09.2026) hat
+     `setzeEbenen` das Zusammenlegen schon erledigt, und die Frage „gab
+     es überhaupt zu kleine Flächen?" wäre immer mit Nein beantwortet. */
+  roheEbenen(roh, rohWelt);
+  mehrheitsFilter(roh);
+  const kliffe = schneideKliffe(roh);
+  const klein = (k) => ebenenFlaechen(k).groessen.filter((z) => z < MIN_EBENEN_FLAECHE).length;
+  const vorher = klein(roh);
+  behaupte(kliffe > 0, `die Kliffe schneiden ${kliffe} Böschungskachel(n) weg`);
+  behaupte(vorher > 0,
+    `nach Filter und Kliffen sind noch ${vorher} Ebenenflächen zu klein — deshalb Schritt 2`);
+  const runden = legeKleineEbenenZusammen(roh);
+  gleich(klein(roh), 0, "das Zusammenlegen räumt sie alle weg");
+  behaupte(runden >= 1, `es brauchte ${runden} Durchgang/Durchgänge`);
+
+  /* Und die Grenze wird nicht überschritten: Eine Fläche von genau
+     drei Kacheln bleibt stehen. Ohne diese Probe könnte die Prüfung
+     grün sein, weil einfach alles eingeebnet wurde. */
+  const drei = handKarte(9, 9);
+  drei.setze(4, 3, { ebene: 2 });
+  drei.setze(4, 4, { ebene: 2 });
+  drei.setze(4, 5, { ebene: 2 });
+  legeKleineEbenenZusammen(drei);
+  gleich(drei.ebeneBei(4, 4), 2, "eine Fläche von genau drei Kacheln bleibt stehen");
+}
+
+abschnitt("Aufräumen");
+
+{
+  const karte = handKarte(9, 9);
+  setzeBlock(karte, 3, 3, 5, 5, { hindernis: HINDERNIS.wand });
+  karte.setze(4, 4, { hindernis: HINDERNIS.keins });
+  gleich(schliesseEinzelneHohlraeume(karte), 1, "das einzelne Loch im Fels wird geschlossen");
+  gleich(karte.hindernisBei(4, 4), HINDERNIS.wand, "und ist danach Wand");
+
+  const saeule = handKarte(9, 9);
+  saeule.setze(4, 4, { hindernis: HINDERNIS.wand });
+  gleich(macheSaeulen(saeule), 1, "die einzelne Wandkachel im Offenen wird zur Säule");
+  gleich(saeule.hindernisBei(4, 4), HINDERNIS.saeule, "sie bleibt stehen, statt zu fallen");
+  behaupte(saeule.blocktBewegung(4, 4) && saeule.blocktSicht(4, 4),
+    "eine Säule blockt weiter Bewegung und Sicht — sie ist Deckung, kein Boden");
+}
+
+{
+  /* Die Nur-Diagonale: (3,3) und (4,4) offen, (4,3) und (3,4) Wand.
+     Im Bild ein Durchgang, im Spiel keiner — dieses Spiel läuft in
+     vier Richtungen. */
+  const karte = handKarte(9, 9);
+  setzeBlock(karte, 1, 1, 7, 7, { hindernis: HINDERNIS.wand });
+  karte.setze(3, 3, { hindernis: HINDERNIS.keins, ebene: 2 });
+  karte.setze(4, 4, { hindernis: HINDERNIS.keins, ebene: 1 });
+  const fund = diagonalFund(karte, 3, 3);
+  behaupte(fund !== null, "die Nur-Diagonale wird gefunden");
+  behaupte(!begehbar(karte, 3, 3, 4, 4), "und ist mit den echten Regeln kein Schritt");
+  gleich(nurDiagonalen(karte).length, 1, "die Karte hat genau einen solchen Fund");
+
+  const geoeffnet = oeffneDiagonalen(karte);
+  gleich(geoeffnet.length, 1, "genau eine Sperrkachel wird geöffnet");
+  gleich(nurDiagonalen(karte).length, 0, "danach ist keine Nur-Diagonale mehr übrig");
+  const z = geoeffnet[0];
+  gleich(karte.ebene[z], 1, "die geöffnete Kachel bekommt die niedrigere der beiden Ebenen");
+  const zx = spalte(karte, z), zy = zeile(karte, z);
+  behaupte(begehbar(karte, 3, 3, zx, zy) || begehbar(karte, zx, zy, 3, 3),
+    "und verbindet die beiden Kacheln wirklich");
+  behaupte(laufKosten(karte, zx, zy, 4, 4) !== null, "auch zur zweiten Kachel hin");
+}
+
+{
+  /* Eine Säule darf einen Durchgang nicht vortäuschen. Ohne die Frage
+     nach `offen` (statt nach „ist Wand") bliebe genau dieser Fall
+     stehen: zwei Säulen über Eck, dazwischen kein Weg. */
+  const karte = handKarte(9, 9);
+  karte.setze(4, 3, { hindernis: HINDERNIS.saeule });
+  karte.setze(3, 4, { hindernis: HINDERNIS.saeule });
+  gleich(nurDiagonalen(karte).length, 1, "auch zwei Säulen über Eck sind eine Nur-Diagonale");
+  oeffneDiagonalen(karte);
+  gleich(nurDiagonalen(karte).length, 0, "und werden aufgelöst");
+}
+
+{
+  /* Der ganze Aufräumlauf läuft zusammen und lässt nichts stehen. */
+  const welt = macheWeltfeld(5, null);
+  const karte = macheKarte(44, 32);
+  rastereWaende(karte, welt);
+  setzeRand(karte);
+  setzeEbenen(karte, welt);
+  const vorherDiagonalen = nurDiagonalen(karte).length;
+  const bericht = raeumeAuf(karte);
+  behaupte(vorherDiagonalen > 0,
+    `die rohe Rasterung hatte ${vorherDiagonalen} Nur-Diagonalen — deshalb der Schritt`);
+  gleich(nurDiagonalen(karte).length, 0, "nach dem Aufräumen ist keine mehr übrig");
+  gleich(ebenenFlaechen(karte).groessen.filter((z) => z < MIN_EBENEN_FLAECHE).length, 0,
+    "und keine Ebenenfläche ist zu klein");
+  behaupte(bericht.runden <= 8, `der Aufräumlauf brauchte ${bericht.runden} Durchgänge`);
+}
+
+abschnitt("Nebenräume");
+
+{
+  /* Zwei Höhlen ohne Verbindung: Die kleinere wird Fels. Ohne diesen
+     Schritt stellte `spiel/lauf.mjs` dort Brut auf, die niemand je
+     findet — und der Lauf endete nie. */
+  const karte = handKarte(20, 9);
+  setzeBlock(karte, 10, 1, 10, 7, { hindernis: HINDERNIS.wand });
+  gleich(offeneGebiete(karte).groessen.length, 2, "die Karte hat zwei getrennte Gebiete");
+  const verfuellt = verfuelleNebenraeume(karte);
+  gleich(offeneGebiete(karte).groessen.length, 1, "danach nur noch eines");
+  gleich(verfuellt, 7 * 8, "und das kleinere ist vollständig verfüllt");
+  behaupte(!karte.blocktBewegung(2, 2), "das größere Gebiet bleibt unangetastet");
+}
+
+abschnitt("Rampen");
+
+{
+  /* Der Aufstieg. Ohne Rampe kommt niemand auf das Plateau — und die
+     Rampe gehört auf die **tiefere** Kachel und muss hinauf zeigen
+     (Fehlerbuch A2). Wer sie oben hinlegt, baut eine Karte, auf der
+     man weder hinauf noch hinunter kommt. */
+  const karte = handKarte(20, 10);
+  setzeBlock(karte, 12, 1, 18, 8, { ebene: 2 });
+  const vorher = beidseitigErreichbar(karte, [{ x: 2, y: 5 }]);
+  gleich(vorher[karte.index(14, 5)], 0, "ohne Rampe ist das Plateau nicht erreichbar");
+
+  const bericht = verbindeMitRampen(karte);
+  const nachher = beidseitigErreichbar(karte, [{ x: 2, y: 5 }]);
+  gleich(nachher[karte.index(14, 5)], 1, "mit Rampe schon");
+  behaupte(bericht.rampen > 0, `${bericht.rampen} Rampe(n) wurden dafür gesetzt`);
+  gleich(bericht.verfuellt, 0, "und nichts musste verfüllt werden");
+
+  let obenFalsch = 0, untenRichtig = 0;
+  for (let y = 1; y < 9; y++) {
+    if (karte.rampeBei(12, y) !== RAMPE.keine) obenFalsch++;
+    if (karte.rampeBei(11, y) === RAMPE.ost) untenRichtig++;
   }
-  gleich(offen, 0, "nach der Reparatur ist jedes begehbare Feld hin und zurück erreichbar");
-  setzeLichter(karte);
-  behaupte(karte.lichter.length > 0, "Lichter entstehen");
+  behaupte(untenRichtig > 0, "die Rampe liegt auf der tieferen Kachel und zeigt nach oben");
+  gleich(obenFalsch, 0, "und keine liegt auf der oberen Kachel");
+  behaupte(begehbar(karte, 11, 5, 12, 5), "der Aufstieg ist mit den echten Regeln erlaubt");
+  gleich(laufKosten(karte, 11, 5, 12, 5), 2, "und kostet die zwei Punkte aus hoehen.mjs");
+}
 
-  /* Eine Karte, die sich nicht heilen lässt, muss werfen statt
-     endlos zu laufen: ein Raumfeld ohne jeden Zugang. */
-  const eng = macheKarte(24, 24);
-  const engGebiet = new Int16Array(eng.anzahl).fill(0);
+{
+  /* Die Grube — der Fall, den eine Prüfung übersieht, die nur
+     vorwärts flutet. Hinab kommt man überall; ohne Rampe kommt man
+     nie wieder heraus, und der erste Spieler, der hineinfällt, ist
+     für den Rest des Laufs weg. */
+  const karte = handKarte(16, 12);
+  setzeBlock(karte, 6, 5, 8, 7, { ebene: 0 });
+  const vor = erreichbareFelder(karte, [{ x: 2, y: 2 }]);
+  const zurueck = erreichbareFelder(karte, [{ x: 2, y: 2 }], true);
+  gleich(vor[karte.index(7, 6)], 1, "in die Grube kommt man auch ohne Rampe");
+  gleich(zurueck[karte.index(7, 6)], 0, "aber nicht wieder heraus");
+
+  verbindeMitRampen(karte);
+  const gutJetzt = beidseitigErreichbar(karte, [{ x: 2, y: 2 }]);
+  gleich(gutJetzt[karte.index(7, 6)], 1, "nach dem Rampenschritt kommt man hin und zurück");
+  let hinaus = 0;
+  for (let y = 5; y <= 7; y++) {
+    for (let x = 6; x <= 8; x++) if (karte.rampeBei(x, y) !== RAMPE.keine) hinaus++;
+  }
+  behaupte(hinaus > 0, "die Rampe liegt in der Grube — auf der tieferen Kachel");
+}
+
+{
+  /* Zwei Stufen auf einmal kann niemand steigen. Was dahinterliegt,
+     wird verfüllt statt stehengelassen: Ein Plateau, das niemand
+     betreten kann, ist Fels, der so tut als wäre er Boden. */
+  const karte = handKarte(16, 10);
+  setzeBlock(karte, 10, 1, 14, 8, { ebene: 3 });
+  const bericht = verbindeMitRampen(karte);
+  behaupte(bericht.verfuellt > 0, `${bericht.verfuellt} unerreichbare Kacheln wurden Fels`);
+  const gutJetzt = beidseitigErreichbar(karte, [{ x: 2, y: 5 }]);
+  let uebrig = 0;
+  for (let i = 0; i < karte.anzahl; i++) if (offen(karte, i) && !gutJetzt[i]) uebrig++;
+  gleich(uebrig, 0, "und es bleibt keine unerreichbare offene Kachel übrig");
+}
+
+{
+  /* Die zusätzlichen Rampen sind gesät, nicht gewürfelt: dieselbe
+     Saat, dieselben Rampen. Und sie bleiben zwischen 0 und allem. */
+  const bau = () => {
+    const k = handKarte(20, 20);
+    setzeBlock(k, 10, 1, 18, 18, { ebene: 2 });
+    return k;
+  };
+  const a = bau(), b = bau(), keine = bau(), alle = bau();
+  const kanten = aufstiegsKanten(a).length;
+  const zahlA = streueZusatzRampen(a, 12345);
+  const zahlB = streueZusatzRampen(b, 12345);
+  gleich(zahlA, zahlB, "dieselbe Saat streut dieselbe Zahl Zusatzrampen");
+  gleich(a.summe(), b.summe(), "und dieselben Rampen an denselben Stellen");
+  gleich(streueZusatzRampen(keine, 12345, 0), 0, "mit Anteil 0 wird keine gesetzt");
+  gleich(streueZusatzRampen(alle, 12345, 1), kanten, `mit Anteil 1 alle ${kanten} Aufstiege`);
+  behaupte(zahlA > 0 && zahlA < kanten,
+    `mit ${ZUSATZ_RAMPEN} sind es ${zahlA} von ${kanten} — mehr als eine, nicht alle`);
+  let obenFalsch = 0;
+  for (const kante of aufstiegsKanten(alle)) {
+    if (alle.rampe[kante.hoch] !== RAMPE.keine && alle.rampe[kante.tief] === RAMPE.keine) {
+      obenFalsch++;
+    }
+  }
+  gleich(obenFalsch, 0, "auch die Zusatzrampen liegen auf der tieferen Kachel");
+}
+
+abschnitt("Wasser");
+
+{
+  /* Eine Senke von drei Kacheln ist kein See. Ohne die Mindestgröße
+     stünden einzelne nasse Kacheln im Trockenen — das sieht nach
+     einem Fehler aus, nicht nach Wasser. */
+  const karte = handKarte(20, 12);
+  setzeBlock(karte, 2, 2, 2, 4, { ebene: EBENE_GRABEN });
+  setzeBlock(karte, 10, 4, 13, 7, { ebene: EBENE_GRABEN });
+  const welt = macheWeltfeld(1, null);
+  const bericht = setzeWasser(karte, welt);
+  gleich(karte.fluessigBei(2, 3), FLUESSIG.keine, "die kleine Senke bleibt trocken");
+  gleich(karte.fluessigBei(11, 5), FLUESSIG.wasser, "die große wird zum See");
+  gleich(bericht.seen, 1, "genau ein See");
+  gleich(bericht.felder, 16, "mit genau den 16 Kacheln der großen Senke");
+  gleich(laufKosten(karte, 11, 4, 11, 5), 2, "und Wasser kostet den Punkt aus hoehen.mjs");
+
+  let verboten = 0;
+  for (let i = 0; i < karte.anzahl; i++) {
+    if (NASS_VERBOTEN.has(karte.fluessig[i])) verboten++;
+  }
+  gleich(verboten, 0, "der Erzeuger setzt keine Lava, keinen Schleim, kein Öl");
+}
+
+abschnitt("Boden");
+
+{
+  /* Geröll liegt am Wandfuß, Stein in der Mitte. Geprüft mit einer
+     von Hand gesetzten Wandnähe — sonst prüfte man das Rauschen und
+     nicht die Regel. */
+  const welt = macheWeltfeld(3, null);
+  const karte = handKarte(24, 24);
+  const wandNaehe = new Float32Array(karte.anzahl).fill(-200);
+  wandNaehe[karte.index(5, 5)] = -1;
+  wandNaehe[karte.index(6, 5)] = 0;
+  const zahlen = setzeBoden(karte, welt, wandNaehe);
+  gleich(karte.bodenBei(5, 5), BODEN.erde, "dicht an der Wand liegt Erde");
+  gleich(karte.bodenBei(6, 5), BODEN.erde, "auch genau auf der Kante");
+  behaupte(karte.bodenBei(12, 12) !== BODEN.erde, "weit von der Wand liegt keine Erde");
+  gleich(zahlen.erde, 2, "genau die zwei gesetzten Kacheln sind Erde");
+  behaupte(zahlen.stein > 0, "und Stein ist die Regel");
+
+  /* Der Boden ist gesät, nicht gewürfelt — und die Saat wirkt auch
+     wirklich: Ohne diese zweite Hälfte könnte sie stillschweigend
+     weggelassen sein, und jede Karte trüge dieselben Knochenflecken. */
+  const zwei = handKarte(24, 24);
+  setzeBoden(zwei, welt, wandNaehe);
+  gleich(zwei.summe(), karte.summe(), "derselbe Boden bei derselben Saat");
+  /* Eine Welt **ohne Hallen**: Sonst verschöbe eine andere Saat auch
+     die Hallen, und der Unterschied im Bild bewiese nichts über die
+     Knochen. So bleibt genau ein Unterschied übrig — die Saat des
+     Knochenrauschens. */
+  const ohneHallen = (s) => ({
+    bauart: BAUART, saat: s, sektor: 200,
+    versatz: (X, Y, raus) => { raus[0] = 0; raus[1] = 0; },
+    raumBei: () => ({ x: 0, y: 0, r: 0, halle: false })
+  });
+  const knochenBild = (w) => {
+    const k = handKarte(24, 24);
+    setzeBoden(k, w, wandNaehe);
+    let bild = "";
+    for (let i = 0; i < k.anzahl; i++) bild += k.boden[i] === BODEN.knochen ? "1" : "0";
+    return bild;
+  };
+  const bildA = knochenBild(ohneHallen(3)), bildB = knochenBild(ohneHallen(99));
+  behaupte(bildA.includes("1"), "auf 24 × 24 liegt mindestens ein Knochenfleck");
+  behaupte(bildA !== bildB, "eine andere Saat legt die Knochenflecken anderswohin");
+}
+
+abschnitt("Zier und Licht");
+
+{
+  /* Der einzige Gang. Ein Fass darin wäre eine Karte, auf der der
+     halbe Kerker nicht mehr erreichbar ist — und niemand sähe es. */
+  const karte = handKarte(15, 9);
+  setzeBlock(karte, 7, 1, 7, 7, { hindernis: HINDERNIS.wand });
+  karte.setze(7, 4, { hindernis: HINDERNIS.keins });
+  gleich(zierErlaubt(karte, 7, 4), false, "im einzigen Gang darf nichts stehen");
+  gleich(zierErlaubt(karte, 3, 4), true, "mitten im Raum schon");
+  gleich(karte.hindernisBei(7, 4), HINDERNIS.keins, "die Probe lässt die Karte, wie sie war");
+
+  /* Eine Zierde darf auch keine neue Nur-Diagonale schaffen. */
+  const ecke = handKarte(9, 9);
+  ecke.setze(4, 3, { hindernis: HINDERNIS.wand });
+  gleich(zierErlaubt(ecke, 3, 4), false,
+    "kein Hindernis, das über Eck eine Scheinverbindung macht");
+}
+
+{
+  const karte = handKarte(24, 18);
+  const zahl = setzeFackeln(karte);
+  const fackeln = karte.lichter.filter((l) => l.art === "fackel");
+  behaupte(zahl > 0, `in einem 24 × 18-Saal stehen ${zahl} Fackeln`);
+  gleich(fackeln.length, zahl, "jeder Sockel trägt genau ein Licht");
+  let falscherOrt = 0, zuNah = 0;
+  for (const f of fackeln) {
+    if (karte.hindernisBei(f.x, f.y) !== HINDERNIS.fackelsockel) falscherOrt++;
+    let anWand = false;
+    for (const r of RICHTUNGEN) {
+      if (karte.hindernisBei(f.x + r.dx, f.y + r.dy) === HINDERNIS.wand) anWand = true;
+    }
+    if (!anWand) falscherOrt++;
+    if (f.staerke !== 1) falscherOrt++;
+    for (const g of fackeln) {
+      if (g === f) continue;
+      if (Math.max(Math.abs(g.x - f.x), Math.abs(g.y - f.y)) < FACKEL_ABSTAND) zuNah++;
+    }
+  }
+  gleich(falscherOrt, 0, "jede Fackel steht auf ihrem Sockel an einer Wand, Stärke 1");
+  gleich(zuNah, 0, `keine zwei Fackeln stehen näher als ${FACKEL_ABSTAND} Kacheln`);
+}
+
+{
+  /* Die Zier verstopft nichts. Geprüft wird nicht die Zier, sondern
+     die Karte danach: Was vorher erreichbar war, ist es noch. */
+  const welt = macheWeltfeld(23, null);
+  const karte = baueLandschaft({ saat: 23, breite: 40, hoehe: 28, spielerZahl: 2 });
+  const gutV = beidseitigErreichbar(karte, [karte.starts[0]]);
+  let verloren = 0;
+  for (let i = 0; i < karte.anzahl; i++) if (offen(karte, i) && !gutV[i]) verloren++;
+  gleich(verloren, 0, "nach dem Setzen aller Zier ist noch alles erreichbar");
+
+  const nochmal = setzeZier(karte, welt, 23);
+  gleich(Object.values(nochmal).reduce((a, b) => a + b, 0), 0,
+    "ein zweiter Lauf setzt nichts mehr — jede Stelle ist schon vergeben");
+  /* Auch die Zier hängt an der Saat. Der Reihenlauf könnte das nicht
+     zeigen: Dort ändert sich mit der Saat ohnehin die ganze Höhle,
+     und eine festgenagelte Zier-Saat fiele nicht auf. */
+  const saal = () => handKarte(30, 20);
+  const eins = saal(), zwei = saal();
+  setzeZier(eins, welt, 1);
+  setzeZier(zwei, welt, 2);
+  behaupte(eins.summe() !== zwei.summe(), "zwei Saaten stellen die Zier verschieden auf");
+  const nochEins = saal();
+  setzeZier(nochEins, welt, 1);
+  gleich(nochEins.summe(), eins.summe(), "dieselbe Saat stellt sie gleich auf");
+
+  const altaere = karte.lichter.filter((l) => l.art === "arkan");
+  let ohneAltar = 0;
+  for (const l of altaere) {
+    if (karte.hindernisBei(l.x, l.y) !== HINDERNIS.altar) ohneAltar++;
+  }
+  gleich(ohneAltar, 0, "jedes arkane Licht steht auf einem Altar");
+}
+
+abschnitt("Starts, Ausgang, Räume");
+
+{
+  /* Der Ausgang liegt am Ende des **Weges**, nicht am Ende der
+     Luftlinie. Auf dieser U-Karte ist (9,3) die Luftlinie-fernste
+     Kachel; laufen muss man dorthin aber nur 10 Punkte, während (1,3)
+     achtzehn kostet. */
+  const karte = macheKarte(11, 5);
+  karte.hindernis.fill(HINDERNIS.wand);
+  karte.ebene.fill(1);
+  setzeBlock(karte, 1, 1, 9, 1, { hindernis: HINDERNIS.keins });
+  setzeBlock(karte, 1, 3, 9, 3, { hindernis: HINDERNIS.keins });
+  karte.setze(9, 2, { hindernis: HINDERNIS.keins });
+  const start = [{ x: 1, y: 1 }];
+  const kosten = laufKostenFeld(karte, start);
+  gleich(kosten[karte.index(9, 3)], 10, "bis zur Luftlinie-fernsten Kachel sind es 10 Punkte");
+  gleich(kosten[karte.index(1, 3)], 18, "bis zur weg-fernsten achtzehn");
+  const aus = waehleAusgang(karte, start);
+  gleich(`${aus.x},${aus.y}`, "1,3", "der Ausgang liegt am Ende des Weges");
+}
+
+{
+  /* Die Startgruppe sucht den geräumigsten Fleck. Auf dieser Karte
+     gibt es einen Saal und eine Sackgasse; ohne die Suche nach den
+     meisten Nachbarn stünden vier Jäger in der Sackgasse und
+     verlören ihren ersten Zug damit, sich aneinander vorbeizuschieben. */
+  const eng = macheKarte(24, 12);
   eng.hindernis.fill(HINDERNIS.wand);
-  for (let y = 2; y <= 4; y++) for (let x = 2; x <= 4; x++) {
-    eng.setze(x, y, { hindernis: HINDERNIS.keins, ebene: 1 });
-  }
-  for (let y = 10; y <= 12; y++) for (let x = 10; x <= 12; x++) {
-    eng.setze(x, y, { hindernis: HINDERNIS.keins, ebene: 1 });
-  }
-  wirft(() => sichereErreichbarkeit(eng, [{ x: 2, y: 2 }], engGebiet, 4),
-    "sichereErreichbarkeit wirft, statt endlos zu laufen");
+  eng.ebene.fill(1);
+  /* Die Sackgasse liegt **vor** dem Saal: Wer einfach die erste
+     brauchbare Kachel nähme, landete dort. */
+  setzeBlock(eng, 1, 1, 8, 2, { hindernis: HINDERNIS.keins });
+  setzeBlock(eng, 9, 2, 11, 2, { hindernis: HINDERNIS.keins });
+  setzeBlock(eng, 11, 3, 11, 4, { hindernis: HINDERNIS.keins });
+  setzeBlock(eng, 12, 4, 21, 10, { hindernis: HINDERNIS.keins });
+  const starts = waehleStarts(eng, 4);
+  gleich(starts.length, 4, "vier Startfelder werden gefunden");
+  let imSaal = 0;
+  for (const s of starts) if (s.x >= 12) imSaal++;
+  gleich(imSaal, 4, "und alle vier liegen im Saal, nicht in der Sackgasse");
+
+  /* Das größte Plateau ist der Anker der Rampensuche. */
+  const zweiPlateaus = handKarte(20, 12);
+  setzeBlock(zweiPlateaus, 1, 1, 4, 10, { ebene: 2 });
+  const anker = groesstesPlateauFeld(zweiPlateaus);
+  gleich(zweiPlateaus.ebene[anker], 1, "der Anker liegt auf dem größeren Plateau");
+  const nurFels = macheKarte(8, 8);
+  nurFels.hindernis.fill(HINDERNIS.wand);
+  gleich(groesstesPlateauFeld(nurFels), -1, "eine Karte ganz aus Fels hat keinen Anker");
+  wirft(() => waehleStarts(nurFels, 1), "und trägt keinen Start");
 }
 
-/* ═══ Randfälle des Bauers ══════════════════════════════════════════ */
-
-abschnitt("Randfälle");
 {
-  wirft(() => baueLandschaft({ saat: 1.5 }), "gebrochene Saat wird abgelehnt");
-  wirft(() => baueLandschaft({}), "fehlende Saat wird abgelehnt");
-  wirft(() => baueLandschaft({ saat: 1, breite: MIN_KARTE - 1 }), "zu schmale Karte fällt durch");
-  wirft(() => baueLandschaft({ saat: 1, hoehe: MIN_KARTE - 1 }), "zu flache Karte wird abgelehnt");
-  wirft(() => baueLandschaft({ saat: 1, spielerZahl: 0 }), "null Spieler wird abgelehnt");
-  wirft(() => baueLandschaft({ saat: 1, spielerZahl: 5 }), "fünf Spieler werden abgelehnt");
-  wirft(() => baueLandschaft({ saat: 1, breite: 56.5 }), "gebrochene Breite wird abgelehnt");
-
-  const klein = baueLandschaft({ saat: 3, breite: MIN_KARTE, hoehe: MIN_KARTE, spielerZahl: 1 });
-  gleich(klein.starts.length, 1, "die kleinste erlaubte Karte trägt einen Spieler");
-  behaupte(klein.raeume.length >= 4, `die kleinste Karte hat Räume (${klein.raeume.length})`);
-
-  const gross = baueLandschaft({ saat: 3, breite: 96, hoehe: 72, spielerZahl: 4 });
-  gleich(gross.starts.length, 4, "eine große Karte trägt vier Spieler");
-  behaupte(gross.raeume.length > klein.raeume.length, "größere Karten haben mehr Räume");
-  gleich(gross.tiefe, 1, "karte.tiefe wird gesetzt");
-  gleich(gross.saat, 3, "karte.saat wird gesetzt");
-
-  for (const spielerZahl of [1, 2, 3, 4]) {
-    const k = baueLandschaft({ saat: 555, spielerZahl });
-    gleich(k.starts.length, spielerZahl, `${spielerZahl} Spieler geben ${spielerZahl} Startfelder`);
+  const karte = baueLandschaft({ saat: 41, breite: 40, hoehe: 28, spielerZahl: 4 });
+  gleich(karte.starts.length, 4, "vier Spieler bekommen vier Startfelder");
+  const alle = new Set(karte.starts.map((s) => `${s.x},${s.y}`));
+  gleich(alle.size, 4, "und zwar vier verschiedene");
+  let weit = 0, nass = 0;
+  for (const s of karte.starts) {
+    const d = Math.abs(s.x - karte.starts[0].x) + Math.abs(s.y - karte.starts[0].y);
+    if (d > 4) weit++;
+    if (karte.fluessigBei(s.x, s.y) !== FLUESSIG.keine) nass++;
   }
+  gleich(weit, 0, "die Startfelder liegen beieinander");
+  gleich(nass, 0, "und keines steht im Wasser");
+
+  const arten = karte.raeume.map((r) => r.art);
+  behaupte(arten.includes("eingang"), "ein Raum ist als Eingang gekennzeichnet");
+  behaupte(arten.includes("ausgang"), "einer als Ausgang");
+  behaupte(karte.raeume.length >= 2, `${karte.raeume.length} Räume auf 40 × 28`);
+  let ausserhalb = 0;
+  for (const r of karte.raeume) if (!karte.drin(r.x, r.y)) ausserhalb++;
+  gleich(ausserhalb, 0, "jeder Raum liegt auf der Karte");
+
+  /* Die Raumliste kommt aus der Engine und wird erst danach beschriftet
+     — `sammleRaeume` selbst kennt nur Halle und Kammer. */
+  const roh = sammleRaeume(karte, macheWeltfeld(41, null));
+  gleich(roh.length, karte.raeume.length, "die Raumliste ist so lang wie die der Karte");
+  const rohArten = new Set(roh.map((r) => r.art));
+  behaupte(!rohArten.has("eingang") && !rohArten.has("ausgang"),
+    "vor der Beschriftung gibt es nur Hallen und Kammern");
+  behaupte(rohArten.has("halle") || rohArten.has("kammer"), "und mindestens eine davon");
 }
 
-/* ═══ Es ist wirklich dieselbe Regel ════════════════════════════════ */
+abschnitt("Grenzfälle");
 
-/* Der Kerkerbau darf keine eigene, mildere Schrittregel führen. Diese
-   Probe hält die Flutfüllung gegen `begehbar` aus `spiel/hoehen.mjs`,
-   Feld für Feld und Richtung für Richtung: Was der Bau für gangbar
-   hält, muss das Spiel auch für gangbar halten. */
-abschnitt("Dieselbe Regel wie im Zug");
+wirft(() => baueLandschaft({}), "ohne Saat wird geworfen");
+wirft(() => baueLandschaft({ saat: 1.5 }), "eine gebrochene Saat wird abgelehnt");
+wirft(() => baueLandschaft({ saat: 1, breite: MIN_KARTE - 1 }), "eine zu schmale Karte auch");
+wirft(() => baueLandschaft({ saat: 1, hoehe: MIN_KARTE - 1 }), "und eine zu flache");
+wirft(() => baueLandschaft({ saat: 1, breite: 40.5 }), "eine gebrochene Breite ebenso");
+wirft(() => baueLandschaft({ saat: 1, spielerZahl: 0 }), "null Spieler werden abgelehnt");
+wirft(() => baueLandschaft({ saat: 1, spielerZahl: 5 }), "fünf auch");
+wirft(() => baueLandschaft({ saat: 1, tiefe: 0 }), "und die Tiefe 0");
+
 {
-  let abweichung = 0, geprueft = 0;
-  for (const saat of gewuerfe.length ? [] : SAATEN.slice(0, 6)) {
-    const karte = baueLandschaft({ saat, spielerZahl: 2 });
-    const erreicht = flutfuellung(karte, karte.starts);
-    for (const { x, y, i } of alleFelder(karte)) {
-      if (!erreicht[i]) continue;
-      for (const r of RICHTUNGEN) {
-        const nx = x + r.dx, ny = y + r.dy;
-        geprueft++;
-        /* Jeder Nachbar, den die Flut erreicht hat, muss auch nach der
-           Spielregel von hier aus betretbar sein — oder auf einem
-           anderen Weg erreicht worden sein. Umgekehrt darf kein nach
-           der Spielregel betretbarer Nachbar unerreicht bleiben. */
-        if (begehbar(karte, x, y, nx, ny) && !erreicht[karte.index(nx, ny)]) abweichung++;
+  const klein = baueLandschaft({
+    saat: 5, breite: MIN_KARTE, hoehe: MIN_KARTE, spielerZahl: 1
+  });
+  gleich(klein.starts.length, 1, "die kleinste erlaubte Karte trägt einen Start");
+  behaupte(klein.ausgang !== null, "und einen Ausgang");
+  const gutK = beidseitigErreichbar(klein, [klein.starts[0]]);
+  gleich(gutK[klein.index(klein.ausgang.x, klein.ausgang.y)], 1, "der auch erreichbar ist");
+
+  const gross = baueLandschaft({ saat: 5, breite: 80, hoehe: 60, spielerZahl: 4 });
+  gleich(gross.starts.length, 4, "eine 80 × 60-Karte trägt vier Starts");
+  gleich(nurDiagonalen(gross).length, 0, "und hat keine Nur-Diagonale");
+  behaupte(gross.summe() !== klein.summe(), "die beiden Karten sind verschieden");
+
+  /* Die Saat steht auf der Karte — `spiel/lauf.mjs` zieht daraus den
+     Strom für die Gegneraufstellung. */
+  gleich(klein.saat, 5, "die Karte trägt ihre Saat");
+  gleich(baueLandschaft({ saat: 5, breite: 24, hoehe: 24, tiefe: 4 }).tiefe, 4,
+    "und ihre Tiefe");
+
+  /* Eine eigene Bauart wird durchgereicht: mehr Fels, weniger offen.
+     Ohne diese Probe könnte `bauart` still ignoriert werden. */
+  const eng = baueLandschaft({ saat: 5, breite: 40, hoehe: 28, bauart: { schwelle: 0.80 } });
+  const weit = baueLandschaft({ saat: 5, breite: 40, hoehe: 28, bauart: { schwelle: 0.60 } });
+  let engOffen = 0, weitOffen = 0;
+  for (let i = 0; i < eng.anzahl; i++) {
+    if (offen(eng, i)) engOffen++;
+    if (offen(weit, i)) weitOffen++;
+  }
+  behaupte(engOffen < weitOffen,
+    `eine höhere Schwelle macht engere Höhlen: ${engOffen} gegen ${weitOffen} offene Kacheln`);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   2b · Die Absturzkanten — die Zahl, an der der Stoß hängt
+   ══════════════════════════════════════════════════════════════════
+
+   Gemessen am 06.09.2026, bevor `schneideKliffe` gebaut war: **1,8**
+   Absturzkanten je Karte gegen 260,5 einstufige. Der Stoß war damit
+   tot — man kann niemanden hinunterstoßen, wo es nirgends hinunter
+   geht. `docs/SPIEL.md` 3 nennt ihn „die Aktion, die aus dem
+   Höhensystem ein Spiel macht"; eine Regel, die auf der erzeugten
+   Karte nie greift, ist keine.
+
+   Nach dem Kliffschnitt: **13,3**. Die Schranke steht bei 5 und nicht
+   bei 13 — sie soll den Rückfall fangen, nicht die Bauart einfrieren.
+   Wer die Höhen umbaut, sieht hier zuerst, wenn die Kanten verschwinden. */
+const KANTEN_JE_KARTE_MIND = 5;
+{
+  abschnitt("Absturzkanten");
+  let kanten = 0, stufen = 0, karten = 0;
+  for (let n = 0; n < 20; n++) {
+    const k = baueLandschaft({ saat: 1000 + n * 7, breite: BREITE, hoehe: HOEHE });
+    karten++;
+    for (let y = 0; y < k.hoehe; y++) {
+      for (let x = 0; x < k.breite; x++) {
+        if (k.blocktBewegung(x, y)) continue;
+        const e = k.ebeneBei(x, y);
+        for (const r of RICHTUNGEN) {
+          const nx = x + r.dx, ny = y + r.dy;
+          if (!k.drin(nx, ny) || k.blocktBewegung(nx, ny)) continue;
+          const d = e - k.ebeneBei(nx, ny);
+          if (d >= 2) kanten++;
+          else if (d === 1) stufen++;
+        }
       }
     }
   }
-  behaupte(geprueft > 10000, `genug Schritte geprüft (${geprueft})`);
-  gleich(abweichung, 0, "die Flutfüllung lässt kein nach Spielregel gangbares Feld aus");
+  const jeKarte = kanten / karten;
+  console.log(`      · ${karten} Karten: ${jeKarte.toFixed(1)} Absturzkanten je Karte` +
+    ` (mindestens ${KANTEN_JE_KARTE_MIND}), ${(stufen / karten).toFixed(1)} einstufige`);
+  behaupte(jeKarte >= KANTEN_JE_KARTE_MIND,
+    `${jeKarte.toFixed(1)} Absturzkanten je Karte — ohne sie ist der Stoß wirkungslos`);
+  behaupte(stufen > kanten,
+    "einstufige Kanten bleiben die Regel, Absturzkanten die Ausnahme");
 }
 
-/* ═══ Die gemessenen Zahlen ═════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════════
+   3 · Die Messwerte
+   ══════════════════════════════════════════════════════════════════ */
 
-const mittel = (l) => (l.length ? l.reduce((a, b) => a + b, 0) / l.length : 0);
-const kleinste = (l) => (l.length ? l.reduce((a, b) => Math.min(a, b)) : 0);
-const groesste = (l) => (l.length ? l.reduce((a, b) => Math.max(a, b)) : 0);
-const ebenenSumme = Math.max(1, messung.ebenen.reduce((a, b) => a + b, 0));
-console.log("");
-console.log(`  Gemessen über ${SAATEN.length} Saaten, je 56×40 = 2240 Felder:`);
-console.log(`    begehbare Felder   ${(mittel(messung.begehbar) * 100).toFixed(1)} %` +
-  ` (${(kleinste(messung.begehbar) * 100).toFixed(1)} … ` +
-  `${(groesste(messung.begehbar) * 100).toFixed(1)} %)`);
-console.log(`    Räume je Karte     ${mittel(messung.raumZahl).toFixed(2)}` +
-  ` (${kleinste(messung.raumZahl)} … ${groesste(messung.raumZahl)})`);
-console.log(`    Plateaus je Karte  ${mittel(messung.plateaus).toFixed(2)}` +
-  ` (${kleinste(messung.plateaus)} … ${groesste(messung.plateaus)})`);
-console.log(`    Rampen je Karte    ${mittel(messung.rampen).toFixed(2)}` +
-  ` (${kleinste(messung.rampen)} … ${groesste(messung.rampen)})`);
-console.log(`    Lichter je Karte   ${mittel(messung.lichter).toFixed(2)}` +
-  ` (${kleinste(messung.lichter)} … ${groesste(messung.lichter)})`);
-console.log(`    Ebenenverteilung   ` + messung.ebenen
-  .map((z, e) => `${e}: ${(100 * z / ebenenSumme).toFixed(1)} %`).join("   "));
-console.log(`    schlechtester Raum ${(messung.raumErreichbar * 100).toFixed(1)} %` +
-  " seiner begehbaren Felder erreichbar");
-console.log("");
+const je = (w) => (w / SAATEN).toFixed(1);
+console.log(`      · ${SAATEN} Karten ${BREITE} × ${HOEHE}, je Karte im Mittel:` +
+  ` ${je(messung.offen)} offene Kacheln` +
+  ` (${(100 * messung.offen / messung.felder).toFixed(1)} %)`);
+console.log(`      · Ebenen je Karte: ` +
+  messung.jeEbene.map((z, e) => `${e}:${je(z)}`).join("  ") +
+  `  ·  Karten ohne die Ebene: ${messung.kartenOhneEbene.join("/")}`);
+console.log(`      · Rampen ${je(messung.rampen)} · Säulen ${je(messung.saeulen)}` +
+  ` · Plateaus ${je(messung.plateaus)} · Seen ${je(messung.seen)}` +
+  ` · Wasserkacheln ${je(messung.wasser)}`);
+console.log(`      · Fackeln ${je(messung.fackeln)} je Karte, schlimmstenfalls eine je` +
+  ` ${messung.schlimmsteFackel.toFixed(1)} offene Kacheln (erlaubt: ${OFFEN_JE_FACKEL})`);
+console.log(`      · kleinste Ebenenfläche über alle Karten: ` +
+  `${messung.kleinsteEbenenFlaeche} Kacheln (mindestens ${MIN_EBENEN_FLAECHE})`);
 
 ende("Landschaft");

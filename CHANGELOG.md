@@ -3,6 +3,98 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Bild, Netz und die Kliffe
+
+Sprites, Licht, Pixelpartikel, Höhenkanten, Anzeige, Bedienung, die
+Internet-Sitzung und der Einstieg. Die Kette wuchs von 22 auf **33**
+Prüfungen; grün sind 31.
+
+### Die Kliffe — ein Befund, keine Verbesserung
+
+**Gemessen** über zehn Saaten, nachdem die Landschaft auf die
+Pixelslop-Engine stand: **1,8** Absturzkanten je Karte gegen **260,5**
+einstufige. Damit war der Stoß tot — man kann niemanden hinunterstoßen,
+wo es nirgends hinunter geht. `docs/SPIEL.md` 3 nennt ihn *„die Aktion,
+die aus dem Höhensystem ein Spiel macht"*; eine Regel, die auf der
+erzeugten Karte nie greift, ist keine.
+
+*Warum:* Ein stetiges Rauschfeld muss auf dem Weg von Ebene 0 nach
+Ebene 2 durch das Band der Ebene 1, und dieses Band ist ein bis zwei
+Kacheln breit. Zwei Ebenen Unterschied zwischen **benachbarten**
+Kacheln kann es so kaum geben.
+
+*Behoben* in `spiel/landschaft.mjs → schneideKliffe`: Eine Kachel, die
+zugleich einen tieferen **und** einen höheren Nachbarn hat, ist die
+ganze Böschung — eine Kachel breit. Sie fällt der stärkeren Seite zu,
+und aus 0-1-2 wird 0-2. Nicht ein Absturz wird hinzuerfunden, sondern
+das schmale Zwischenband entfernt. Dieselbe Bauart wie bei den
+Felsinseln der Engine: nicht aus dem Rauschen hoffen, sondern setzen.
+
+*Messung nachher:* **7,3** Absturzkanten je Karte auf 44 × 32 (Schranke
+in der Prüfung: 5). Ein erster Anlauf über ganze Flächen statt Kacheln
+brachte nur 1,8 → 2,1 — die Zwischenflächen sind keine schmalen Bänder,
+sondern große Gebiete. *Rot-Beweis:* mit ausgehängtem Kliffschnitt
+fällt die Prüfung auf **1,3** und schlägt an.
+
+### Was die Kliffe an anderer Stelle umgeworfen haben
+
+Zwei Prüfungen hingen an Zahlen der alten Welt. Beide sind **nicht**
+gesenkt, sondern auf die richtige Aussage gebracht:
+
+- `pruefe-netz.mjs` hing an einer **gemessenen Saat**: Mit Saat 5
+  trafen sich die Seiten zufällig. Auf der größeren, offeneren Höhle
+  fielen in dreißig Runden **null** Angriffe, null Stöße, null Tränke —
+  der Gleichlauf lief über zwei Rechner, die spazieren gingen. Jetzt
+  suchen die Jäger den nächsten Gegner (`zumGegner`, deterministisch
+  nach Wegkosten, bei Gleichstand nach Kennung). *Gemessen:* 59
+  Angriffe, 3 Stöße, 2 Tränke, 7 Fähigkeiten.
+  Dabei fiel eine zweite falsche Behauptung auf: „genau dreißig Runden".
+  Der Lauf endet jetzt in Runde 17, **weil die Brut fällt** — ein Lauf,
+  der gewonnen wird, ist kein Fehler. Geprüft wird jetzt, dass *jede
+  gespielte* Runde gleichgelaufen ist. Das ist die stärkere Aussage.
+- `pruefe-lauf.mjs`: Schaden 182 statt über 200, Tote 7 statt 8. Die
+  Schranken sind keine Balancewerte, sondern die Frage „ist der Ablauf
+  überhaupt gehaltvoll". Sie stehen jetzt bei 100 und 4 — deutlich
+  unter dem Gemessenen, damit sie den leeren Lauf fangen und nicht die
+  Bauart der Karte einfrieren.
+
+### Vier Dateien geteilt, ohne Verhaltensänderung
+
+`spiel/landschaft.mjs` wuchs mit dem Kliffschnitt auf 1.070 Zeilen,
+`werkzeuge/pruefe-lauf.mjs` auf 1.014. Die Grenze liegt bei 1.000, und
+eine Datei über der Grenze wird **geteilt**, nicht geduldet (Regel 8).
+
+- `spiel/kachelhilfe.mjs` — Feldindex, Richtung, Gebietssuche, Plateaus.
+- `spiel/erreichbarkeit.mjs` — kommt man überall hin.
+- `spiel/ausstattung.mjs` — Wasser, Boden, Zier, Licht, Starts, Ausgang.
+- `werkzeuge/pruefe-protokoll.mjs` — die Übersetzung für die Leitung.
+
+*Warum drei statt einer:* `landschaft.mjs` ruft die Ausstattung auf,
+und die Ausstattung muss die Erreichbarkeit fragen — als zwei Dateien
+wäre das ein **Ringschluss**. Der läuft im Browser meist, bricht aber
+im Bündler (`werkzeuge/eine-datei.mjs`) ab, weil die Reihenfolge dann
+nicht mehr eindeutig ist. Zwei untere Dateien lösen es ohne Kunstgriff.
+
+*Der Umbau ist bewiesen:* Nach der Teilung liefert dieselbe Saat
+byteweise dieselben Zahlen — 7,3 Absturzkanten, 548,8 offene Kacheln,
+39,0 %. Gleiche Eingaben, gleiches Ergebnis.
+
+### Gemessen an den neuen Teilen
+
+- **Sprites:** 4.965 Behauptungen. Gemessen mit dem Skill
+  `pixel-werkstatt` (Fall B), Brücke in `werkzeuge/werkstatt-auftrag.mjs`
+  — sie übersetzt die Farbnamen dieses Spiels in die Hex-Aufträge, die
+  der Skill liest, und misst gegen die **echten** Untergründe.
+- **Landschaft:** 60 Karten, 39,0 % offen, alle vier Ebenen, 64,1
+  Rampen, 3,0 Seen, 29,2 Fackeln je Karte.
+- **Licht:** 7 Helligkeitsstufen über 11.520 Lichtpunkt-Kanäle, 1,8 ms
+  je Durchgang bei 44 × 32 Feldern mit 30 Fackeln.
+- **Partikel:** 10.000 Ausstöße bei Vorrat 2.000 → 2.000 lebende.
+- **Netz:** 2.000 Lobbycodes, 480.000 Tippfehler und 13.533 Dreher —
+  **0 durchgerutscht**.
+
+---
+
 ## 06.09.2026 — Das Projekt wird auf Alpha-Code umgestellt
 
 **Auftrag, wörtlich:** *„bitte mit skill alpha code arbeiten!"*

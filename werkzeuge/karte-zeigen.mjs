@@ -5,23 +5,34 @@
    Eine Landschaftsprüfung sagt, ob eine Karte **richtig** ist. Ob sie
    **gut** ist, sagt sie nicht: Ein Kerker kann jede Prüfung bestehen
    und trotzdem aus vier Kämmerchen in einer Reihe bestehen. Das sieht
-   man erst, wenn man ihn ansieht. Genau dafür ist dieses Werkzeug da —
-   und weil das Spiel keine Bilddateien kennt, ist das Bild Text.
+   man erst, wenn man ihn ansieht — und weil dieses Spiel keine
+   Bilddateien kennt, ist das Bild Text.
 
    Drei Tafeln, weil eine Tafel drei Fragen gleichzeitig beantworten
    müsste und dann keine beantwortet:
    · **Kerker** — was steht wo (Wände, Fässer, Pfützen, Rampen).
    · **Ebenen** — nur die Höhen, damit man die Plateaus als Flächen
      sieht und die Rampen an ihren Kanten wiederfindet.
-   · **Zahlen** — was die Karte an Messwerten hergibt.
+   · **Zahlen** — was die Karte an Messwerten hergibt: offener Anteil,
+     Ebenenverteilung, Rampen, Seen, Fackeln.
+
+   ── Aufruf ─────────────────────────────────────────────────────────
+
+   `node werkzeuge/karte-zeigen.mjs [saat] [--breite N] [--hoehe N]`,
+   dazu `--tiefe N` und `--spieler N`.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `spiel/landschaft.mjs` (baut die Karte), `spiel/gitter.mjs` (die
+   `spiel/landschaft.mjs` (baut die Karte, liefert `plateaus`,
+   `beidseitigErreichbar`, `offen`), `spiel/gitter.mjs` (die
    Feldwerte). Ändert nichts, schreibt nichts — nur lesen und drucken. */
 
-import { baueLandschaft, plateauNummern, beidseitigErreichbar } from "../spiel/landschaft.mjs";
-import { BODEN, FLUESSIG, HINDERNIS, RAMPE, EBENEN, alleFelder } from "../spiel/gitter.mjs";
+import {
+  baueLandschaft, plateaus, beidseitigErreichbar, offen, gebiete
+} from "../spiel/landschaft.mjs";
+import {
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, EBENEN, alleFelder
+} from "../spiel/gitter.mjs";
 
 const ZEICHEN_HINDERNIS = {
   [HINDERNIS.wand]: "#",
@@ -105,8 +116,8 @@ function zeichenEbenen(karte) {
   for (let y = 0; y < karte.hoehe; y++) {
     let zeile = "";
     for (let x = 0; x < karte.breite; x++) {
-      zeile += karte.blocktBewegung(x, y) && karte.hindernisBei(x, y) === HINDERNIS.wand
-        ? "#" : String(karte.ebene[karte.index(x, y)]);
+      const i = karte.index(x, y);
+      zeile += offen(karte, i) ? String(karte.ebene[i]) : "#";
     }
     zeilen.push(zeile);
   }
@@ -115,18 +126,25 @@ function zeichenEbenen(karte) {
 
 function tafel(titel, zeilen) {
   const breite = zeilen.length ? zeilen[0].length : 0;
-  const kopf = `┌─ ${titel} ${"─".repeat(Math.max(0, breite - titel.length - 2))}┐`;
-  console.log(kopf);
+  console.log(`┌─ ${titel} ${"─".repeat(Math.max(0, breite - titel.length - 2))}┐`);
   for (const z of zeilen) console.log(`│${z}│`);
   console.log(`└${"─".repeat(breite)}┘`);
 }
 
+/* Wie viele Seen — nicht wie viele nasse Kacheln. Ein See ist ein
+   zusammenhängendes Wasserstück; die Zahl sagt, ob das Wasser eine
+   Pfütze ist oder ein Graben, der die Karte teilt. */
+function seenZahl(karte) {
+  const { groessen } = gebiete(karte,
+    (i) => karte.fluessig[i] === FLUESSIG.wasser, () => true);
+  return groessen.length;
+}
+
 function zahlen(karte) {
-  let begehbar = 0;
+  let begehbar = 0, rampen = 0;
   const jeEbene = new Array(EBENEN).fill(0);
   const jeFluessig = new Array(6).fill(0);
   const jeBoden = new Array(8).fill(0);
-  let rampen = 0;
   for (const { x, y, i } of alleFelder(karte)) {
     if (karte.rampe[i] !== RAMPE.keine) rampen++;
     if (karte.blocktBewegung(x, y)) continue;
@@ -138,17 +156,17 @@ function zahlen(karte) {
   const gut = beidseitigErreichbar(karte, karte.starts);
   let erreichbar = 0;
   for (let i = 0; i < gut.length; i++) erreichbar += gut[i];
-  const plateaus = plateauNummern(karte);
-  let plateauZahl = 0;
-  for (const p of plateaus) if (p + 1 > plateauZahl) plateauZahl = p + 1;
+  const plateauZahl = plateaus(karte).groessen.length;
+  const fackeln = karte.lichter.filter((l) => l.art === "fackel").length;
 
   console.log(`  Saat ${karte.saat} · Tiefe ${karte.tiefe} · ${karte.breite}×${karte.hoehe}` +
     ` = ${karte.anzahl} Felder · Prüfsumme ${karte.summe()}`);
   console.log(`  Räume ${karte.raeume.length} · Plateaus ${plateauZahl} · Rampen ${rampen}` +
-    ` · Lichter ${karte.lichter.length}`);
-  console.log(`  Begehbar ${begehbar} (${(100 * begehbar / karte.anzahl).toFixed(1)} %)` +
+    ` · Seen ${seenZahl(karte)} · Fackeln ${fackeln} · Lichter ${karte.lichter.length}`);
+  console.log(`  Offen ${begehbar} (${(100 * begehbar / karte.anzahl).toFixed(1)} %)` +
     ` · davon hin und zurück erreichbar ${erreichbar}` +
-    ` (${(100 * erreichbar / Math.max(1, begehbar)).toFixed(1)} %)`);
+    ` (${(100 * erreichbar / Math.max(1, begehbar)).toFixed(1)} %)` +
+    ` · eine Fackel je ${(begehbar / Math.max(1, fackeln)).toFixed(1)} offene Felder`);
   console.log(`  Ebenen: ${jeEbene.map((z, e) => `${e}:${z}`).join("  ")}`);
   const fName = ["–", "Wasser", "Blut", "Schleim", "Lava", "Öl"];
   console.log(`  Flüssig: ${jeFluessig.map((z, f) => `${fName[f]}:${z}`).join("  ")}`);

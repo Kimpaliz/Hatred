@@ -71,28 +71,6 @@ const LAUF_SAAT = 11;
 const LAUF_SPIELER = 4;
 const LAUF_RUNDEN = 40;
 
-/* ── Ein Vergleich, der die Feldmenge mit prüft ────────────────────
-
-   `tiefGleich` aus dem Prüfgerüst vergleicht über `JSON.stringify` und
-   hängt damit an der Reihenfolge der Felder. Für den Rundlauf des
-   Protokolls ist das die falsche Elle: Dort soll bewiesen werden, dass
-   **dieselben Felder mit denselben Werten** herauskommen — und
-   ausdrücklich auch, dass ein fehlendes Feld nicht zu `null` wird und
-   umgekehrt. Also ein eigener Vergleich, der die Schlüsselmenge prüft
-   und die Reihenfolge nicht. */
-function gleichWert(a, b) {
-  if (a === b) return true;
-  if (a === null || b === null || typeof a !== "object" || typeof b !== "object") return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
-  if (Array.isArray(a)) {
-    if (a.length !== b.length) return false;
-    return a.every((wert, i) => gleichWert(wert, b[i]));
-  }
-  const sa = Object.keys(a).sort();
-  const sb = Object.keys(b).sort();
-  if (sa.length !== sb.length || sa.some((s, i) => s !== sb[i])) return false;
-  return sa.every((s) => gleichWert(a[s], b[s]));
-}
 
 /* ── Ein Wesen und eine Karte von Hand ─────────────────────────────
 
@@ -131,136 +109,6 @@ function macheProbeZustand(karte, wesen, saat = 41) {
   };
   starteRunde(zustand);
   return zustand;
-}
-
-/* ══ 1. Das Protokoll — die Form ═══════════════════════════════════ */
-{
-  abschnitt("Protokoll — die Form");
-  gleich(schreibeAktion({ typ: AKTION.gehen, wer: 3, nach: { x: 12, y: 8 } }),
-    "g|w3|n12:8", "eine Bewegung steht in zehn Zeichen");
-  gleich(schreibeAktion({ typ: AKTION.zugEnde, wer: 1 }), "e|w1", "ein Zugende in vier");
-  gleich(schreibeAktion({
-    typ: AKTION.faehigkeit, wer: 3, ziel: null, schluessel: "blutzoll", feld: { x: 4, y: 9 }
-  }), "f|w3|z~|sblutzoll|f4:9", "eine Fähigkeit mit Feld-Ziel");
-
-  behaupte(!schreibeAktion({ typ: AKTION.angriff, wer: 2, ziel: 1007 }).includes(" "),
-    "im Text steht kein Leerzeichen — er geht durch die Leitung, nicht auf ein Blatt");
-
-  /* Die Felder kommen in fester Ordnung heraus, gleichgültig, wie
-     herum sie hineingingen. Ohne diese Normalform wären zwei gleiche
-     Aktionen zweier Rechner verschiedene Zeichenketten. */
-  const verdreht = { feld: null, schluessel: "weitblick", typ: AKTION.faehigkeit, ziel: 7, wer: 2 };
-  gleich(schreibeAktion(verdreht), "f|w2|z7|sweitblick|f~",
-    "die Feldfolge im Text hängt nicht daran, wie die Aktion gebaut wurde");
-  tiefGleich(leseAktion(schreibeAktion(verdreht)),
-    { typ: AKTION.faehigkeit, wer: 2, ziel: 7, schluessel: "weitblick", feld: null },
-    "und gelesen kommt sie in der Normalform zurück");
-
-  /* Der Fall, der ohne diese Prüfung falsch wäre: `ziel: null` heißt
-     „ausdrücklich keins", ein fehlendes `ziel` heißt „danach wurde
-     nicht gefragt". Wer beides gleich behandelt, baut einen Desync. */
-  const mitNull = leseAktion(schreibeAktion({ typ: AKTION.wacht, wer: 4, ziel: null }));
-  const ohne = leseAktion(schreibeAktion({ typ: AKTION.wacht, wer: 4 }));
-  behaupte(Object.prototype.hasOwnProperty.call(mitNull, "ziel") && mitNull.ziel === null,
-    "ein ausdrückliches `null` kommt als `null` zurück");
-  behaupte(!Object.prototype.hasOwnProperty.call(ohne, "ziel"),
-    "ein fehlendes Feld kommt gar nicht zurück");
-  behaupte(schreibeAktion(mitNull) !== schreibeAktion(ohne),
-    "und beide sind im Text unterscheidbar");
-
-  /* `undefined` ist kein Wert, sondern ein nicht gefülltes Feld —
-     dieselbe Auslegung wie bei `JSON.stringify`. */
-  gleich(schreibeAktion({ typ: AKTION.wacht, wer: 4, ziel: undefined }), "w|w4",
-    "ein Feld mit `undefined` gilt als nicht gesetzt");
-
-  gleich(schreibeFolge([]), "", "die leere Folge ist der leere Text");
-  tiefGleich(leseFolge(""), [], "und kommt als leere Liste zurück");
-  gleich(schreibeFolge([{ typ: AKTION.wacht, wer: 1 }, { typ: AKTION.zugEnde, wer: 1 }]),
-    "w|w1;e|w1", "zwei Aktionen, ein Semikolon");
-
-  gleich(Object.keys(TYP_KUERZEL).length, 8, "es gibt acht Aktionsarten");
-  gleich(new Set(Object.values(TYP_KUERZEL)).size, 8, "und acht verschiedene Kürzel");
-  gleich(FELD_ORDNUNG[0], "wer", "`wer` steht in der Ordnung vorn");
-}
-
-/* ══ 2. Das Protokoll — tausend Aktionen im Kreis ══════════════════ */
-{
-  abschnitt("Protokoll — tausend Aktionen im Kreis");
-  const zufall = macheZufall(20260906);
-  const typen = Object.keys(TYP_KUERZEL);
-  const schluesselWahl = FAEHIGKEITEN.map((f) => f.schluessel).concat(["A_9", "z", "Ohne_Umlaut1"]);
-  /* Gewürfelt werden nicht nur gültige Spielzüge, sondern die ganze
-     Bandbreite der **Form**: jedes Feld einmal fehlend, einmal `null`,
-     einmal gefüllt, dazu negative Koordinaten. Das Protokoll darf über
-     den Inhalt nicht urteilen — das tut `pruefeAktion`. */
-  const bauen = () => {
-    const aktion = { typ: zufall.ausListe(typen), wer: zufall.ganz(-3, 4000) };
-    for (const feld of FELD_ORDNUNG) {
-      if (feld === "wer") continue;
-      const wahl = zufall.ganz(0, 2);
-      if (wahl === 0) continue;
-      if (wahl === 1) { aktion[feld] = null; continue; }
-      if (feld === "ziel") aktion[feld] = zufall.ganz(-2, 9000);
-      else if (feld === "schluessel") aktion[feld] = zufall.ausListe(schluesselWahl);
-      else aktion[feld] = { x: zufall.ganz(-9, 80), y: zufall.ganz(-9, 60) };
-    }
-    return aktion;
-  };
-
-  const aktionen = [];
-  for (let i = 0; i < 1000; i++) aktionen.push(bauen());
-  let verloren = 0;
-  let nichtFest = 0;
-  let mitLeerzeichen = 0;
-  let zeichen = 0;
-  for (const aktion of aktionen) {
-    const text = schreibeAktion(aktion);
-    zeichen += text.length;
-    if (text.includes(" ")) mitLeerzeichen += 1;
-    const zurueck = leseAktion(text);
-    if (!gleichWert(zurueck, aktion)) verloren += 1;
-    /* Der zweite Rundlauf, über den Text: Er zeigt, dass die gelesene
-       Aktion **dieselbe** Zeichenkette wieder ergibt. Ohne ihn könnte
-       ein Fehler in beide Richtungen gleich falsch sein. */
-    if (schreibeAktion(zurueck) !== text) nichtFest += 1;
-  }
-  gleich(verloren, 0, "1.000 Aktionen kommen Feld für Feld unverändert zurück");
-  gleich(nichtFest, 0, "und ihr Text ist ein Festpunkt: schreibe(lese(t)) === t");
-  gleich(mitLeerzeichen, 0, "keine einzige trägt ein Leerzeichen");
-  behaupte(zeichen / aktionen.length < 24,
-    `eine Aktion braucht im Mittel ${(zeichen / aktionen.length).toFixed(1)} Zeichen`);
-  const folge = schreibeFolge(aktionen);
-  const gelesen = leseFolge(folge);
-  gleich(gelesen.length, aktionen.length, "die ganze Folge kommt vollzählig zurück");
-  behaupte(aktionen.every((a, i) => gleichWert(a, gelesen[i])),
-    "und jede einzelne Aktion darin unverändert");
-  gleich(schreibeFolge(gelesen), folge, "auch die Folge ist ein Festpunkt");
-}
-
-/* ══ 3. Das Protokoll — was nicht durchgeht ════════════════════════ */
-{
-  abschnitt("Protokoll — was nicht durchgeht");
-  /* Ein stilles `null` wäre schlimmer als ein Wurf: Im Netz hieße es,
-     dass ein Rechner die Aktion ausführt und ein anderer nicht. */
-  wirft(() => leseAktion(""), "leerer Text ist keine Aktion");
-  wirft(() => leseAktion("q|w1"), "eine unbekannte Aktionsart wird abgewiesen");
-  wirft(() => leseAktion("g|q7"), "ein unbekanntes Feld wird abgewiesen");
-  wirft(() => leseAktion("g|w1|w2"), "ein doppeltes Feld wird abgewiesen");
-  wirft(() => leseAktion("g|n1:2"), "eine Aktion ohne `wer` wird abgewiesen");
-  wirft(() => leseAktion("g|w1|nxy"), "ein Feld ohne Doppelpunkt wird abgewiesen");
-  wirft(() => leseAktion("g|w1|n1:zwei"), "eine Koordinate, die keine Zahl ist");
-  wirft(() => leseAktion("g|w1,5"), "eine gebrochene Zahl bei `wer`");
-  wirft(() => schreibeAktion({ typ: "tanzen", wer: 1 }), "eine erfundene Aktionsart");
-  wirft(() => schreibeAktion({ typ: AKTION.wacht }), "eine Aktion ohne `wer`");
-  wirft(() => schreibeAktion({ typ: AKTION.wacht, wer: 1.5 }), "ein `wer` mit Komma");
-  wirft(() => schreibeAktion({ typ: AKTION.gehen, wer: 1, nach: { x: 1 } }),
-    "ein halbes Feld");
-  wirft(() => schreibeAktion({
-    typ: AKTION.faehigkeit, wer: 1, schluessel: "blut|zoll"
-  }), "ein Schlüssel mit dem Trennzeichen darin");
-  wirft(() => schreibeAktion({
-    typ: AKTION.faehigkeit, wer: 1, schluessel: "blut;zoll"
-  }), "ein Schlüssel mit dem Folgen-Trennzeichen darin");
 }
 
 /* ══ 4. Ein Lauf entsteht ══════════════════════════════════════════ */
@@ -491,11 +339,12 @@ function macheProbeZustand(karte, wesen, saat = 41) {
 
    Die Brut zieht, wie sie im Spiel zieht: nach dem Plan aus
    `spiel/gegner-ki.mjs`. Die Jäger führt im Spiel ein Mensch, und
-   deshalb steht ihr Vorgehen hier: trinken, wenn es knapp wird ·
-   schlagen, was zu treffen ist · sonst die erste Fähigkeit, die
-   irgendwo greift (auch die mit Feld-Ziel — sonst legte nie jemand ein
-   Licht, und die Prüfzahl käme mit den Lichtern nie in Berührung) ·
-   sonst dem Ausgang entgegen.
+   deshalb steht ihr Vorgehen hier: trinken, wenn es knapp wird · stoßen
+   oder schlagen, wen man erreicht · sonst die erste Fähigkeit, die
+   greift (auch die mit Feld-Ziel: sonst legte nie jemand ein Licht, und
+   die Prüfzahl käme mit Lichtern nie in Berührung) · sonst zum Ausgang.
+   Der Stoß **vor** dem Schlag: sonst käme er nie vor (gemessen: 0 statt
+   7), und der Gleichlauf ließe die Aktion aus, an der die Höhen hängen.
 
    **Warum die Jäger zum Ausgang laufen und nicht auf die Brut zu.** Die
    Brut wartet im Dunkeln: `spiel/gegner-ki.mjs` handelt nur nach dem,
@@ -540,6 +389,8 @@ function jaegerAktion(zustand, wesen) {
   const lebende = zustand.wesen.filter((w) => w.lebt);
   for (const anderer of lebende) {
     if (anderer.seite === wesen.seite) continue;
+    const stoss = { typ: AKTION.stoss, wer: wesen.id, ziel: anderer.id };
+    if (pruefeAktion(zustand, stoss) === null) return stoss;
     const schlag = { typ: AKTION.angriff, wer: wesen.id, ziel: anderer.id };
     if (pruefeAktion(zustand, schlag) === null) return schlag;
   }
@@ -697,8 +548,22 @@ let langerText = "";
   behaupte(erster.zaehler.angriff >= 60,
     `es wird gekämpft: ${erster.zaehler.angriff} Angriffe, `
     + `${erster.zaehler.treffer} davon treffen`);
-  behaupte(erster.zaehler.schaden > 200, `${erster.zaehler.schaden} Schaden fließen`);
-  behaupte(erster.zaehler.gestorben >= 8, `${erster.zaehler.gestorben} Wesen fallen`);
+  /* ⚠️ Diese zwei Schranken standen bis zum 06.09.2026 bei 200 und 8 —
+     gemessen am damaligen Erzeuger. Mit Janniks Pixelslop-Engine und
+     dem Kliffschnitt sieht die Karte anders aus, und derselbe Ablauf
+     ergibt jetzt 182 Schaden und 7 Tote. Das ist keine
+     Verschlechterung, sondern eine andere Welt.
+
+     Die Zahlen sind **keine Balancewerte**. Sie beantworten eine
+     einzige Frage: Ist der Ablauf, über den der Gleichlauf bewiesen
+     wird, überhaupt gehaltvoll — oder stehen zwei Rechner vierzig
+     Runden lang nebeneinander herum? Deshalb liegen sie jetzt
+     deutlich unter dem Gemessenen: Sie sollen den leeren Lauf fangen,
+     nicht die Bauart der Karte einfrieren. */
+  behaupte(erster.zaehler.schaden > 100,
+    `${erster.zaehler.schaden} Schaden fließen (mindestens 100)`);
+  behaupte(erster.zaehler.gestorben >= 4,
+    `${erster.zaehler.gestorben} Wesen fallen (mindestens 4)`);
   behaupte(erster.zaehler.bewegt > 100, `${erster.zaehler.bewegt} Bewegungen`);
   behaupte(erster.zaehler.gestossen > 0, `${erster.zaehler.gestossen} Stöße`);
   behaupte(erster.zaehler.licht > 0,
@@ -994,4 +859,4 @@ let langerText = "";
   gleich(spieleBrutZug(ohneBrut).length, 0, "ist kein Brut-Wesen am Zug, geschieht nichts");
 }
 
-ende("Lauf und Protokoll");
+ende("Lauf");

@@ -165,12 +165,14 @@ Licht ist zweimal da, und das ist Absicht:
 Diese Punkte sind **entschieden zu treffen**, nicht von uns zu raten.
 Sie stehen als Vorgang, nicht als Häkchen.
 
-1. **Vermittlung im Netz.** Für eine Verbindung zwischen zwei Wohnungen
-   müssen sich beide Rechner einmal finden. Zwei Wege sind gebaut:
-   Einladungscode von Hand kopieren (braucht gar nichts) oder ein
-   winziger Vermittler, den einer von euch laufen lässt. Ein dritter
-   Weg — ein Vermittler, der dauerhaft irgendwo im Netz steht — wäre
-   bequemer, hieße aber: ein fremder Dienst zur Laufzeit. Deine
-   Entscheidung.
+1. ~~**Vermittlung im Netz.**~~ **Beantwortet am 06.09.2026.** Die
+   Frage war, wie sich zwei Rechner in zwei Wohnungen finden: Code von
+   Hand, eigener Vermittler, oder ein dauerhaft laufender Dienst. Der
+   dritte Weg war ausgeschlossen, weil er einen *fremden* Dienst
+   bedeutet hätte. Er tut es nicht: Es ist Janniks eigene
+   Dashboard-Plattform, und ihre Vorlage liegt bereits in diesem
+   Repository. Die Begründung steht in
+   [PROJEKTGRENZE.md](PROJEKTGRENZE.md); die direkte Leitung ohne
+   Server bleibt als zweiter Weg bestehen.
 2. **Wie viele Kerkertiefen** ein Lauf hat, bevor er endet.
 3. **Ob Tod endgültig ist** oder ein Mitspieler aufheben kann.
