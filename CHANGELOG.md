@@ -3,6 +3,31 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Rüstzeug für verteiltes Arbeiten
+
+**Auftrag, wörtlich:** *„nutte subagent orchestation skill"*
+
+- `.claude/subagent-profile.md` — die stillen Fallen dieser Fläche, damit sie
+  in jeden Auftrag wörtlich hineingehen statt als Verweis. Zehn Stück, alle
+  aus dieser Sitzung gemessen: halbe Bildpunkte, zurückgesetzte Glättung,
+  **doppelt ausgelöste Aktionen bei Tipp auf Android**, fehlendes Schweben,
+  krummes `devicePixelRatio`, Doppeltipp-Zoom, Vollbild ohne Nutzergeste,
+  48 Bildpunkte Mindestmaß.
+- `WORKCLAIM.md` — vier Ansprüche eingetragen, einer je Fläche.
+
+**Ein Fehler dabei, und er ist lehrreich:** Beide Dateien lagen beim Anlegen
+der Arbeitsbäume **noch nicht im Commit**. Die drei Agenten arbeiteten
+deshalb ohne das Profil — einer meldete es („`.claude/subagent-profile.md`
+gibt es nicht"), ein zweiter trug sich regelkonform selbst in `WORKCLAIM.md`
+ein und schrieb damit in eine fremde Datei. Beides war richtig gehandelt und
+mein Versäumnis.
+
+*Die Lehre:* Was ein Agent lesen soll, muss **committet** sein, bevor der
+Arbeitsbaum entsteht — ein Arbeitsbaum kennt nur Commits, keine offenen
+Änderungen. Steht jetzt im Profil.
+
+---
+
 ## 06.09.2026 — Das Spiel ist im Netz erreichbar
 
 **Auftrag, wörtlich:** *„linl zum spielen?"*
