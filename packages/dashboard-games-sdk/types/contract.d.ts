@@ -1,0 +1,21 @@
+export declare const SDK_VERSION: "2.0.0";
+export declare const MANIFEST_SCHEMA_VERSION: 2;
+export declare const GAME_API_COMPATIBILITY: "games-v1";
+export declare const GAMES_V1_API_PATH: "/api/modules/games/v1";
+export declare const DASHBOARD_GAME_WORKFLOW: ".github/workflows/dashboard-game.yml";
+export declare const DASHBOARD_GAME_MANIFEST: ".dashboard/game.yml";
+export declare const DASHBOARD_GAME_RESULT_ARTIFACT: "dashboard-game-result";
+export declare const DASHBOARD_GAME_RESULT_FILE: "dashboard-game-result.json";
+export declare const DEFAULT_INVITE_HANDOFF_TTL_MS: number;
+export declare const MAX_INVITE_HANDOFF_TTL_MS: number;
+export declare const CANONICAL_MEDIA_PATHS: Readonly<Record<"cover" | "hero" | "icon", string>>;
+export declare const ALLOWED_MEDIA_EXTENSIONS: readonly ["avif", "png", "jpg", "jpeg", "webp"];
+export declare const GAME_SERVICE_ENDPOINTS: Readonly<{
+  exchange: string;
+  heartbeat(sessionId: string): string;
+  progress(playerId: string): string;
+  checkpoint(sessionId: string): string;
+  finish(sessionId: string): string;
+  events: string;
+}>;
+export declare const GAME_RUNTIME_ENDPOINTS: Readonly<Record<"platform" | "session" | "currentSession" | "webSocketToken" | "guestSession", string>>;
