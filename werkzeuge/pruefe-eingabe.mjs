@@ -858,7 +858,6 @@ abschnitt("Ein Tipp, eine Aktion");
     "und zwar die auf das angetippte Feld");
   berichte.push("Android-Folge: 2× pointerdown+pointerup+mousedown+click = 1 Aktion");
 
-  /* Ein zweiter Finger auf dem Blatt ist kein zweiter Befehl. */
   const zwei = macheProbe();
   const p = punktVon(zwei.kamera, 6, 4);
   const druck = (nummer) => zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer });
@@ -901,7 +900,6 @@ abschnitt("Ein Tipp, eine Aktion");
   tiefGleich(kampf.eingabe.ansicht().zeigerFeld, { x: 6, y: 4 },
     "und zwar von vorn: Eine angenommene Aktion nimmt die Anwahl mit");
 
-  /* Unerreichbar bleibt unerreichbar, gesperrt bleibt taub. */
   const fern = macheProbe();
   tippeAuf(fern, 14, 10);
   gleich(tippeAuf(fern, 14, 10), null, "auch zweimal getippt geht es nicht dorthin");
@@ -923,8 +921,33 @@ abschnitt("Ein Tipp, eine Aktion");
   gleich(feld.geschickt.length, 0,
     `und keiner der ${BREITE * HOEHE} Tipps auf je ein anderes Feld führt aus`);
 
-  /* Der Ausweg: Auf dem Handy gibt es kein `Esc`. Verglichen wird Feld
-     für Feld — ein halb geräumter Zustand bliebe sonst unsichtbar. */
+  /* Die Leiste: Ihre Maße kommen von der Anzeige und werden hier nicht
+     nachgerechnet — zwei Rechnungen sind zwei Wahrheiten (Fehlerbuch E2). */
+  const knopf = (zusatz = {}) => [{
+    id: "zugEnde", art: "zugEnde", x: 0, y: 0, breite: 60, hoehe: 60, taste: " ",
+    aktion: { typ: AKTION.zugEnde, wer: 1 }, beschriftung: "Zug beenden", aktiv: true, ...zusatz
+  }];
+  gleich(macheProbe().eingabe.beiTipp(10, 10), null, "ohne Leiste ist (10,10) ein Feld");
+  const mit = macheProbe({ felderLesen: () => knopf() });
+  tiefGleich(mit.eingabe.beiTipp(10, 10), { typ: AKTION.zugEnde, wer: 1 },
+    "ein Tipp auf ein aktives Feld schickt dessen Aktion");
+  gleich(mit.geschickt.length, 1, "sofort und ohne zweiten Tipp — ein Knopf ist eindeutig");
+  gleich(mit.geschickt.filter((a) => a.typ === AKTION.gehen).length, 0,
+    "und das Kartenfeld darunter wird gar nicht erst angefasst");
+  gleich(mit.eingabe.beiTipp(70, 70), null, "ein Tipp neben den Knopf geht wieder an die Karte");
+  const grau = macheProbe({ felderLesen: () => knopf({ aktiv: false }) });
+  grau.eingabe.beiTipp(10, 10);
+  gleich(grau.geschickt.length, 0, "ein Feld ohne `aktiv` ist kein Knopf und schickt nichts");
+
+  /* `felderLesen` darf fehlen und darf werfen — sonst wäre die Eingabe
+     ohne fertig gezeichnete Leiste unbrauchbar. */
+  const kaputt = macheProbe({ felderLesen: () => { throw new Error("nichts"); } });
+  kaputt.eingabe.beiTipp(10, 10);
+  gleich(kaputt.geschickt.length, 0, "wirft `felderLesen`, geht der Tipp nicht verloren");
+  behaupte(kaputt.eingabe.ansicht().zeigerFeld !== null, "sondern an die Karte");
+
+  /* Der Ausweg: Auf dem Handy gibt es kein `Esc`. Verglichen wird Feld für
+     Feld — ein halb geräumter Zustand bliebe sonst unsichtbar. */
   const soll = abbild(macheProbe().eingabe.ansicht());
   const raus = macheProbe();
   raus.eingabe.beiTaste("4", true);

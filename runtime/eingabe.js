@@ -74,8 +74,18 @@
    her, den `macheEingabe` gerade gebaut hat — Zeiger auf der eigenen
    Figur, Modus Gehen, keine Warnung, Übersichtskarte zu.
 
+   ── Warum die Knopfleiste ihre Maße selbst behält ──────────────────
+
+   Wo ein Knopf liegt, weiß nur die Anzeige, die ihn gezeichnet hat.
+   Rechnete diese Datei die Maße ein zweites Mal nach, gäbe es zwei
+   Wahrheiten, und die liefen auseinander (Fehlerbuch E2). Deshalb
+   fragt sie `felderLesen()` — die Liste, die `runtime/oberflaeche.js`
+   **beim Zeichnen** füllt — und trifft nur die Entscheidung, ob der
+   Punkt in einem wählbaren Feld liegt. `felderLesen` darf fehlen.
+
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
+   `runtime/oberflaeche.js` (`felder()` — die Maße der Knopfleiste),
    `spiel/wegfindung.mjs` (`erreichbareFelder`, `pfadAus` — Vorschau
    und Kosten), `spiel/aktionen.mjs` (`pruefeAktion`, `kostenVon` —
    die einzige Wahrheit über „erlaubt"), `spiel/hoehen.mjs`
@@ -157,7 +167,8 @@ const LEERE_REICHWEITE = new Map();
 const KEIN_ZUG = "Gerade ist niemand von euch am Zug.";
 
 export function macheEingabe({
-  leinwand = null, kamera = null, zustand = null, sende = null, platz = null
+  leinwand = null, kamera = null, zustand = null, sende = null, platz = null,
+  felderLesen = null
 } = {}) {
   if (typeof sende !== "function") {
     throw new Error("macheEingabe: `sende` muss eine Funktion sein — die Eingabe wendet "
@@ -673,6 +684,9 @@ export function macheEingabe({
 
   function beiZeiger(px, py) {
     if (gesperrt) return null;
+    /* Über einem Knopf steht kein Kartenfeld: Sonst zeigte die Vorschau
+       unter der Leiste einen Weg, den niemand angesteuert hat. */
+    if (knopfUnter(px, py)) return null;
     const feld = feldAus(px, py);
     zeigerFeld = feld;
     rechne();
@@ -697,9 +711,54 @@ export function macheEingabe({
     return null;
   }
 
+  /* Das Feld der Knopfleiste unter diesem Bildpunkt — oder nichts.
+
+     Die Maße kommen von der Anzeige und werden hier **nicht**
+     nachgerechnet: Zwei Stellen, die Knopfmaße rechnen, sind zwei
+     Wahrheiten, und die laufen auseinander (Fehlerbuch E2). Gefragt
+     wird bei jedem Zeigerereignis neu, weil `felder()` beim Zeichnen
+     gefüllt wird und damit sagt, was gerade wirklich auf dem Schirm
+     steht.
+
+     `felderLesen` darf fehlen und darf werfen — vor dem ersten Bild
+     gibt es noch keine Leiste. Eine Eingabe, die dann unbrauchbar
+     wäre, wäre auf halbem Wege gebaut. */
+  function knopfUnter(px, py) {
+    if (typeof felderLesen !== "function") return null;
+    let liste = null;
+    try { liste = felderLesen(); } catch { return null; }
+    if (!Array.isArray(liste)) return null;
+    /* Von hinten nach vorn: Was zuletzt gezeichnet wurde, liegt oben. */
+    for (let i = liste.length - 1; i >= 0; i--) {
+      const f = liste[i];
+      if (!f || f.aktiv !== true) continue;
+      if (!Number.isFinite(f.x) || !Number.isFinite(f.y)) continue;
+      if (px < f.x || py < f.y) continue;
+      if (px >= f.x + f.breite || py >= f.y + f.hoehe) continue;
+      return f;
+    }
+    return null;
+  }
+
+  /* Ein Knopf ist eindeutig, ein Feld nicht — deshalb läuft er sofort
+     los und nicht über die zwei Schritte. Und das Kartenfeld darunter
+     wird gar nicht erst gesucht: Sonst liefe die Figur los, während der
+     Spieler „Zug beenden" gedrückt hat. */
+  function drueckeKnopf(knopfFeld) {
+    anwahl = null;
+    anwahlStufe = 0;
+    if (knopfFeld.aktion) return sendeAktion(knopfFeld.aktion);
+    /* Ein Feld ohne Aktion schaltet nur die Anzeige um. Es verschluckt
+       das Ereignis trotzdem — sonst ginge die Figur unter der Leiste. */
+    if (knopfFeld.art === "karte") ganzeKarte = !ganzeKarte;
+    return null;
+  }
+
   function beiKlick(px, py, knopf = KNOPF_LINKS, art = ZEIGER_MAUS) {
     zeigerArt = art;
     if (gesperrt) return null;
+    const knopfFeld = knopfUnter(px, py);
+    if (knopfFeld) return drueckeKnopf(knopfFeld);
     const feld = feldAus(px, py);
     if (!feld) {
       /* Neben die Karte getippt. Auf dem Handy ist das das einzige
