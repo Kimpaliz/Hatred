@@ -1,5 +1,5 @@
-/* [Aufgabe: Oberfläche] Die Bedienung: aus Maus und Tastatur werden
-   Aktionen — und aus nichts sonst.
+/* [Aufgabe: Oberfläche] Die Bedienung: aus Zeiger — Maus, Finger,
+   Stift — und Tastatur werden Aktionen, und aus nichts sonst.
 
    ── Warum diese Datei nichts entscheidet ───────────────────────────
 
@@ -26,6 +26,16 @@
    ändert. `sperre(true)` macht die Eingabe deshalb vollständig taub —
    und wirft beim Entsperren die gemerkte Reichweite weg, weil die
    Ereignisse sie ungültig gemacht haben.
+
+   ── Warum es hier keine Mausereignisse mehr gibt ───────────────────
+
+   Ein Tipp auf Android erzeugt nach `touchend` **zusätzlich**
+   `mousedown` und `click`. Wer beide Wege hört, führt jede Aktion
+   zweimal aus: zwei Züge, zwei Angriffe — und der zweite geht ins
+   Leere, weil die Punkte vom ersten schon weg sind. Deshalb hört diese
+   Datei nur noch auf Zeigerereignisse. Die bedienen Maus, Finger und
+   Stift zugleich, und der Nachschlag aus dem Browser findet keinen
+   Hörer mehr vor. `pointerType` sagt, womit gerade bedient wird.
 
    ── Warum die Tastatur allein reichen muss ─────────────────────────
 
@@ -117,6 +127,13 @@ export const EIGENE_TASTEN = new Set([
 
 export const WARNUNG = { sturz: "sturz", abgelehnt: "abgelehnt" };
 
+/* Die drei Arten, mit denen ein Zeigerereignis kommen kann. Der Browser
+   schreibt sie so in `pointerType`; als Namen, weil `"touch"` an der
+   Aufrufstelle wie eine beliebige Zeichenkette aussieht. */
+export const ZEIGER_MAUS = "mouse";
+export const ZEIGER_FINGER = "touch";
+export const ZEIGER_STIFT = "pen";
+
 /* Eine Karte, die nie jemand füllt: die Antwort auf „Reichweite?",
    solange niemand von uns am Zug ist. Ein `null` an dieser Stelle
    zwänge jeden Zeichner zu einer Fallunterscheidung. */
@@ -146,6 +163,15 @@ export function macheEingabe({
   let wegVorschau = null;
   let kosten = null;
   let ziel = null;
+
+  /* Womit zuletzt bedient wurde. Am Anfang die Maus: Ein Rechner, an
+     dem nie jemand tippt, soll nicht in der Fingerbedienung starten. */
+  let zeigerArt = ZEIGER_MAUS;
+
+  /* Der Zeiger, der gerade unten ist. Ein zweiter, der dazukommt, wird
+     nicht angenommen — auf einem Handy liegt schnell ein Daumen mit auf
+     dem Blatt, und zwei Zeiger hießen zwei Aktionen. */
+  let aktiverZeiger = null;
 
   /* Die gemerkte Lage. Sie hängt an einem Schlüssel aus allem, was sie
      ungültig machen kann; ändert sich einer der Werte, wird neu
@@ -566,6 +592,19 @@ export function macheEingabe({
     };
   }
 
+  /* Womit dieses Ereignis kommt. Ein Browser ohne `pointerType` gibt es
+     nicht mehr, aber ein nachgestelltes Ereignis in einer Prüfung sehr
+     wohl — und dort ist die Maus die harmlose Annahme. */
+  function artVon(ereignis) {
+    return ereignis && ereignis.pointerType ? ereignis.pointerType : ZEIGER_MAUS;
+  }
+
+  /* Die Nummer des Zeigers. `pointerId` darf 0 sein, deshalb wird auf
+     den Typ geprüft und nicht auf Wahrheit. */
+  function nummerVon(ereignis) {
+    return ereignis && typeof ereignis.pointerId === "number" ? ereignis.pointerId : 1;
+  }
+
   function haengeAn() {
     if (!leinwand || typeof leinwand.addEventListener !== "function") return;
     const tastenZiel = leinwand.ownerDocument || leinwand;
@@ -573,9 +612,25 @@ export function macheEingabe({
       if (typeof ereignis.preventDefault === "function") ereignis.preventDefault();
     };
     const paare = [
-      [leinwand, "mousemove", (e) => { const p = punktAus(e); beiZeiger(p.x, p.y); }],
-      [leinwand, "mousedown", (e) => { halteAn(e); const p = punktAus(e);
-        beiKlick(p.x, p.y, e.button); }],
+      /* Ein Finger schwebt nicht: Auf dem Handy kommt `pointermove` erst,
+         wenn er schon unten ist, und würde die Anwahl unter dem Finger
+         wegziehen. Das Schweben bleibt der Maus und dem Stift. */
+      [leinwand, "pointermove", (e) => {
+        zeigerArt = artVon(e);
+        if (zeigerArt === ZEIGER_FINGER) return;
+        const p = punktAus(e);
+        beiZeiger(p.x, p.y);
+      }],
+      [leinwand, "pointerdown", (e) => {
+        halteAn(e);
+        const p = punktAus(e);
+        beiZeigerDruck(p.x, p.y,
+          { art: artVon(e), knopf: e.button, nummer: nummerVon(e) });
+      }],
+      /* Losgelassen wird am Schriftstück und nicht am Blatt: Wer neben
+         dem Blatt loslässt, machte die Eingabe sonst dauerhaft taub. */
+      [tastenZiel, "pointerup", (e) => { beiZeigerEnde(nummerVon(e)); }],
+      [tastenZiel, "pointercancel", (e) => { beiZeigerEnde(nummerVon(e)); }],
       [leinwand, "contextmenu", halteAn],
       [tastenZiel, "keydown", (e) => { if (EIGENE_TASTEN.has(e.key)) halteAn(e);
         beiTaste(e.key, true); }],
@@ -597,13 +652,42 @@ export function macheEingabe({
     return zeigerFeld;
   }
 
-  function beiKlick(px, py, knopf = KNOPF_LINKS) {
+  /* Ein Zeiger geht nieder. Der zweite, der dazukommt, während der
+     erste noch unten ist, wird verworfen — sonst schickte ein
+     mitliegender Daumen dieselbe Aktion ein zweites Mal. */
+  function beiZeigerDruck(px, py, angaben = {}) {
+    const nummer = angaben.nummer === undefined ? 1 : angaben.nummer;
+    if (aktiverZeiger !== null && aktiverZeiger !== nummer) return null;
+    aktiverZeiger = nummer;
+    const knopf = angaben.knopf === undefined ? KNOPF_LINKS : angaben.knopf;
+    return beiKlick(px, py, knopf, angaben.art || ZEIGER_MAUS);
+  }
+
+  /* Losgelassen oder vom Browser abgenommen (Wischen, Zoomen). Ohne
+     `pointercancel` bliebe der Zeiger für immer als unten vermerkt. */
+  function beiZeigerEnde(nummer) {
+    if (nummer === undefined || aktiverZeiger === nummer) aktiverZeiger = null;
+    return null;
+  }
+
+  function beiKlick(px, py, knopf = KNOPF_LINKS, art = ZEIGER_MAUS) {
+    zeigerArt = art;
     if (gesperrt) return null;
     const feld = feldAus(px, py);
     if (!feld) return null;
     zeigerFeld = feld;
     rechne();
     return bestaetige(knopf === KNOPF_RECHTS);
+  }
+
+  /* Ein Tipp mit dem Finger — dasselbe wie ein Zeigerereignis vom Typ
+     `touch`, nur ohne nachgestelltes Ereignis. */
+  function beiTipp(px, py, knopf = KNOPF_LINKS) {
+    return beiKlick(px, py, knopf, ZEIGER_FINGER);
+  }
+
+  function istFinger() {
+    return zeigerArt === ZEIGER_FINGER;
   }
 
   function beiTaste(taste, gedrueckt = true) {
@@ -640,6 +724,10 @@ export function macheEingabe({
     merkSchluessel = "";
     merkReichweite = LEERE_REICHWEITE;
     merkKandidaten = new Map();
+    /* Während der Sperre ist das Loslassen womöglich verlorengegangen.
+       Ein Zeiger, der als unten gilt, machte die Eingabe für immer
+       taub — und das fiele erst im Spiel auf. */
+    aktiverZeiger = null;
     rechne();
     return false;
   }
@@ -657,7 +745,11 @@ export function macheEingabe({
       kosten,
       warnung,
       ganzeKarte,
-      gesperrt
+      gesperrt,
+      /* Damit die Anzeige weiß, ob sie Knöpfe für einen Daumen bauen
+         muss — und ob die Vorschau vom Schweben oder vom ersten Tipp
+         kommt. */
+      istFinger: istFinger()
     };
   }
 
@@ -668,5 +760,8 @@ export function macheEingabe({
   haengeAn();
   raeumeAuf();
 
-  return { beiZeiger, beiKlick, beiTaste, ansicht, sperre, loese };
+  return {
+    beiZeiger, beiKlick, beiTipp, beiZeigerDruck, beiZeigerEnde, beiTaste,
+    istFinger, ansicht, sperre, loese
+  };
 }

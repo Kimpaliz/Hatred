@@ -784,24 +784,30 @@ abschnitt("Leinwand");
   const blatt = macheLeinwandErsatz();
   const probe = macheProbe({ leinwand: blatt, brutBei: { x: 6, y: 4 } });
   tiefGleich(blatt.namen(),
-    ["blatt:contextmenu", "blatt:mousedown", "blatt:mousemove",
-      "schrift:keydown", "schrift:keyup"].sort(),
-    "die Eingabe meldet sich für fünf Ereignisse an");
+    ["blatt:contextmenu", "blatt:pointerdown", "blatt:pointermove",
+      "schrift:keydown", "schrift:keyup",
+      "schrift:pointercancel", "schrift:pointerup"].sort(),
+    "die Eingabe meldet sich für sieben Ereignisse an");
+  gleich(blatt.namen().filter((n) => /mouse|click/.test(n)).length, 0,
+    "und für kein einziges Mausereignis — sonst käme der Nachschlag vom Finger an");
 
   /* Die Leinwand ist 640×480 groß und wird auch so angezeigt — also
      ist ein Fensterpunkt ein Blattpunkt. */
   const ziel = punktVon(probe.kamera, 4, 4);
-  const bewegung = macheEreignis({ clientX: ziel.x, clientY: ziel.y });
-  gleich(blatt.feuere("mousemove", bewegung), 1, "die Mausbewegung erreicht einen Hörer");
+  const bewegung = macheEreignis({ clientX: ziel.x, clientY: ziel.y, pointerType: "mouse" });
+  gleich(blatt.feuere("pointermove", bewegung), 1, "die Mausbewegung erreicht einen Hörer");
   tiefGleich(probe.eingabe.ansicht().zeigerFeld, { x: 4, y: 4 },
     "und setzt den Zeiger auf das Feld unter dem Mauspunkt");
 
-  const druck = macheEreignis({ clientX: ziel.x, clientY: ziel.y, button: 0 });
-  blatt.feuere("mousedown", druck);
+  const druck = macheEreignis({
+    clientX: ziel.x, clientY: ziel.y, button: 0, pointerType: "mouse", pointerId: 1
+  });
+  blatt.feuere("pointerdown", druck);
   gleich(probe.geschickt.length, 1, "ein Mausdruck erzeugt die Aktion");
   tiefGleich(probe.geschickt[0], { typ: AKTION.gehen, wer: 1, nach: { x: 4, y: 4 } },
     "und zwar die richtige");
   behaupte(druck.gehalten() > 0, "der Browser bekommt den Druck nicht mehr zu sehen");
+  blatt.feuere("pointerup", macheEreignis({ pointerType: "mouse", pointerId: 1 }));
 
   const menue = macheEreignis({});
   blatt.feuere("contextmenu", menue);
@@ -821,8 +827,62 @@ abschnitt("Leinwand");
   probe.eingabe.loese();
   gleich(blatt.anzahl(), 0, "loese() meldet jeden Hörer wieder ab");
   const nachher = probe.geschickt.length;
-  blatt.feuere("mousedown", macheEreignis({ clientX: ziel.x, clientY: ziel.y, button: 0 }));
+  blatt.feuere("pointerdown", macheEreignis({
+    clientX: ziel.x, clientY: ziel.y, button: 0, pointerType: "mouse", pointerId: 1
+  }));
   gleich(probe.geschickt.length, nachher, "danach kommt über das Blatt nichts mehr an");
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   12b · Die wichtigste Behauptung dieser Datei: ein Tipp ist eine
+   Aktion. Android schickt nach `touchend` **zusätzlich** `mousedown`
+   und `click` hinterher. Wer beide Wege hört, geht zwei Felder weit —
+   und der zweite Zug geht ins Leere, weil die Punkte weg sind.
+   ══════════════════════════════════════════════════════════════════ */
+
+abschnitt("Ein Tipp, eine Aktion");
+{
+  const blatt = macheLeinwandErsatz();
+  const probe = macheProbe({ leinwand: blatt });
+  const ziel = punktVon(probe.kamera, 6, 4);
+  const tipp = (name, zusatz = {}) => blatt.feuere(name, macheEreignis({
+    clientX: ziel.x, clientY: ziel.y, button: 0, pointerType: "touch", pointerId: 5, ...zusatz
+  }));
+
+  /* Die Folge, die ein Android-Browser wirklich schickt — in dieser
+     Reihenfolge, mit dem Nachschlag am Ende. */
+  tipp("pointerdown");
+  tipp("pointerup");
+  const nachZeiger = probe.geschickt.length;
+  gleich(tipp("mousedown"), 0, "auf `mousedown` hört niemand mehr");
+  gleich(tipp("click"), 0, "auf `click` auch nicht");
+  gleich(probe.geschickt.length, nachZeiger,
+    "der Nachschlag aus dem Browser erzeugt keine zweite Aktion");
+  berichte.push(`Android-Folge: ${probe.geschickt.length} Aktion(en) aus `
+    + "pointerdown+pointerup+mousedown+click");
+
+  /* Und ein zweiter Finger, der danebenliegt, ist kein zweiter Befehl. */
+  const zwei = macheProbe();
+  const p = punktVon(zwei.kamera, 6, 4);
+  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 1 });
+  const nachErstem = zwei.geschickt.length;
+  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 2 });
+  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 2 });
+  gleich(zwei.geschickt.length, nachErstem,
+    "solange ein Finger unten ist, wird kein zweiter angenommen");
+  behaupte(zwei.eingabe.istFinger(), "nach einem Tipp meldet istFinger() den Finger");
+
+  /* Und ein `pointercancel` — der Browser nimmt die Geste an sich —
+     lässt die Eingabe nicht taub zurück. */
+  zwei.eingabe.beiZeigerEnde(1);
+  zwei.eingabe.beiZeigerDruck(p.x, p.y, { art: "touch", nummer: 9 });
+  behaupte(zwei.geschickt.length >= nachErstem,
+    "nach dem Loslassen wird der nächste Finger wieder angenommen");
+
+  const maus = macheProbe();
+  behaupte(!maus.eingabe.istFinger(), "eine frische Eingabe steht auf Maus, nicht auf Finger");
+  klickeAuf(maus, 6, 4);
+  behaupte(!maus.eingabe.istFinger(), "und ein Mausklick lässt sie dort");
 }
 
 /* ══════════════════════════════════════════════════════════════════
