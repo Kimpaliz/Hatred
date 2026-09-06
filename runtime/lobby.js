@@ -97,10 +97,20 @@ export const SPALTE = 320;
 export const RAND = 8;
 export const MINDEST_BREITE = SPALTE + 2 * RAND;
 
-/* Die Höhen einer Zeile, ebenfalls logisch. `knopf` ist so hoch, dass
-   ein Buchstabe (7) oben und unten Luft hat — darunter trifft man ihn
-   mit der Maus nicht mehr zuverlässig. */
-const HOCH = { titel: 34, unter: 12, text: 10, leer: 6, knopf: 14, reihe: 14, feld: 14 };
+/* Die Höhen einer Zeile, ebenfalls logisch — vor der Vergrößerung durch
+   `stufe`. Auf einem Handy im Hochformat (bis etwa 412 Punkte breit) bleibt
+   `stufe` immer bei 1 (`MINDEST_BREITE` unten passt kein zweites Mal
+   hinein), und dann sind diese Zahlen die **echten** Bildschirmpunkte.
+
+   `knopf`, `reihe` und `feld` sind deshalb **48**: Das ist Androids eigene
+   Vorgabe für eine Fläche, die ein Daumen zuverlässig trifft (die
+   Bedienungshilfen von Android verlangen 48dp; ein `dp` ist hier dasselbe
+   wie ein Bildschirmpunkt, weil das Blatt seine Bildpunkte in CSS-Maßen
+   bekommt, siehe `runtime/start.js`, `masse()`). Vorher stand hier 14 — das
+   war für eine Maus gedacht und auf dem Handy weniger als ein Drittel der
+   Mindestgröße. Gemessen: `werkzeuge/pruefe-einstieg.mjs` (Baustein 2 der
+   Android-Aufgabe, RUECKMELDUNG-C.md trägt die Zahlen vorher/nachher). */
+const HOCH = { titel: 34, unter: 12, text: 10, leer: 6, knopf: 48, reihe: 48, feld: 48 };
 
 /* Zeichen, die `runtime/schrift.js` nicht hat. Ohne diese Tabelle
    stünde mitten in einem Klassenspruch des Katalogs ein leerer Kasten —
@@ -244,6 +254,68 @@ export function macheLobby({
   let zeiger = 0;
   let stellen = [];
   let unterZeiger = null;
+
+  /* ── Das unsichtbare Feld fürs Handy ─────────────────────────────
+
+     Android zeigt seine Tastatur nur einem Element mit echtem Fokus,
+     nie einem Zeichenblatt. `index.html` legt dafür ein einziges
+     unsichtbares `<input id="eingabefeld">` an; hier wird es geholt und
+     bei jedem Feldwechsel neu belegt - dieselbe Fläche für Name, Saat
+     und Code, nacheinander. Fehlt `document.getElementById` (die
+     Prüfung läuft ohne Browser, oder ihr erfundenes Blatt kennt die
+     Methode nicht), bleibt `feld` einfach `null`, und es bleibt beim
+     alten Weg über `beiTaste` - die Prüfung tippt weiterhin so. */
+  const dokument = globalThis.document;
+  const feld = (dokument && typeof dokument.getElementById === "function")
+    ? dokument.getElementById("eingabefeld") : null;
+
+  /* Welche Tastatur zu welchem Feld gehört. Ohne das eigene `inputmode`
+     böte Android der Saat dieselbe Buchstabentastatur wie dem Namen -
+     eine Zahl einzutippen wäre doppelt so mühsam wie nötig. */
+  const FELD_ART = { saat: { modus: "numeric", muster: "[0-9]*" } };
+
+  /* Ein Feld wird aktiv: Wert und Tastaturart übernehmen, dann den
+     Fokus holen. Der Aufruf steht immer in derselben Klickkette wie der
+     Tipp des Menschen (`beiKlick` → `tue`) - ohne diese Nähe zur
+     Nutzergeste verweigert Android die Tastatur, genau wie beim
+     Vollbild (`runtime/start.js`, `vollbild()`). */
+  function feldZeigen(schluessel) {
+    if (!feld) return;
+    const art = FELD_ART[schluessel] || { modus: "text", muster: "" };
+    feld.setAttribute("inputmode", art.modus);
+    if (art.muster) feld.setAttribute("pattern", art.muster);
+    else feld.removeAttribute("pattern");
+    if (feld.value !== werte[schluessel]) feld.value = werte[schluessel] || "";
+    try { feld.focus(); } catch { /* verweigert ein Browser das, bleibt eben zu */ }
+  }
+
+  function feldVerbergen() {
+    if (!feld) return;
+    try { feld.blur(); } catch { /* siehe oben */ }
+  }
+
+  /* Jede Tastatureingabe über das native Feld landet hier - auch die,
+     die `beiTaste` als `keydown` nie zu sehen bekommt: Autokorrektur,
+     Wischtippen, ein zusammengesetztes Zeichen. Der alte Weg über
+     `beiTaste` bleibt daneben bestehen (physische Tastatur, Prüfung
+     ohne Browser): Tippt eine echte Taste zusätzlich mit, überschreibt
+     dieser Hörer `werte[aktivesFeld]` am Ende ohnehin mit dem wahren
+     Wert des Feldes - ein Zeichen kommt nie doppelt an. */
+  if (feld) {
+    feld.addEventListener("input", () => {
+      if (aktivesFeld !== null) werte[aktivesFeld] = feld.value;
+    });
+  }
+
+  /* Für jede Änderung des Feldwerts **außerhalb** einer Tastatureingabe
+     - Einfügen, Würfeln. Aufgerufen aus `zeichne()`, also spätestens ein
+     Bild später sichtbar; früher zu sein bräuchte es nicht, weil vor dem
+     nächsten Bild niemand weitertippt. */
+  function feldMitziehen() {
+    if (!feld || aktivesFeld === null) return;
+    const soll = werte[aktivesFeld] || "";
+    if (feld.value !== soll) feld.value = soll;
+  }
 
   /* ── Sätze, die sagen, was zu tun ist ───────────────────────────*/
 
@@ -525,13 +597,23 @@ export function macheLobby({
     return text(sauber, x + Math.round((b - weite) / 2), y, farbe, gross);
   }
 
+  /* Der senkrechte Versatz, der eine Textzeile in einem Kasten der
+     Höhe `hoehe` mittig stehen lässt - unabhängig davon, wie hoch die
+     Zeile gerade ist. Bei den früheren 14 Bildpunkten traf ein fester
+     Versatz von 3 die Mitte nur zufällig; seit `HOCH.knopf`/`reihe`/
+     `feld` auf 48 stehen (Androids Mindestmaß für den Daumen), säße
+     derselbe feste Versatz oben angeklebt statt mittig im Kasten. */
+  function mitteY(hoehe) {
+    return Math.max(0, Math.round(((hoehe - stufe) - schrift.ZEICHEN_HOCH * stufe) / 2));
+  }
+
   function maleKnopf(stelle, beschriftung, gewaehlt, gewaehltFarbe = FARBEN.gold1) {
     const dran = stellen[zeiger] && stellen[zeiger].schluessel === stelle.schluessel;
     const drueber = unterZeiger === stelle.schluessel;
     male(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe, FARBEN.hudGrund);
     rahmen(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe,
       gewaehlt ? gewaehltFarbe : (dran || drueber) ? FARBEN.hudSchrift : FARBEN.hudRahmen);
-    mittig(beschriftung, stelle.x, stelle.y + 3 * stufe, stelle.breite,
+    mittig(beschriftung, stelle.x, stelle.y + mitteY(stelle.hoehe), stelle.breite,
       gewaehlt ? gewaehltFarbe : FARBEN.hudSchrift);
   }
 
@@ -541,7 +623,8 @@ export function macheLobby({
     const x = zeile.x + markeBreite;
     const b = zeile.breite - markeBreite;
     const dran = aktivesFeld === zeile.schluessel;
-    text(marke, zeile.x, zeile.y + 3 * stufe, FARBEN.hudMatt);
+    const mitte = mitteY(zeile.hoehe);
+    text(marke, zeile.x, zeile.y + mitte, FARBEN.hudMatt);
     male(x, zeile.y, b, zeile.hoehe - stufe, FARBEN.hudGrund);
     rahmen(x, zeile.y, b, zeile.hoehe - stufe, dran ? FARBEN.gold1 : FARBEN.hudRahmen);
     /* Nur das Ende des Textes: Ein Code mit 274 Zeichen passt in kein
@@ -549,7 +632,7 @@ export function macheLobby({
     const passt = Math.max(1, Math.floor(b / stufe / schrift.VORSCHUB) - 1);
     const roh = werte[zeile.schluessel] || "";
     const sicht = roh.length > passt ? roh.slice(roh.length - passt) : roh;
-    text(sicht + (dran ? "_" : ""), x + 2 * stufe, zeile.y + 3 * stufe, FARBEN.hudSchrift);
+    text(sicht + (dran ? "_" : ""), x + 2 * stufe, zeile.y + mitte, FARBEN.hudSchrift);
   }
 
   /* Gibt zurück, wie viele **Flächen** gemalt wurden - Kästen, Rahmen,
@@ -557,6 +640,7 @@ export function macheLobby({
      nicht mit; eine Zahl, die beides mischte, sagte über keines von
      beiden etwas aus. */
   function zeichne() {
+    feldMitziehen();
     gezeichnet = 0;
     ctx.imageSmoothingEnabled = false;
     male(0, 0, breite, hoehe, FARBEN.leere);
@@ -640,9 +724,14 @@ export function macheLobby({
       setzeSpielerZahl(Number(schluessel.slice(8)));
       return schluessel;
     }
-    if (werte[schluessel] !== undefined) { aktivesFeld = schluessel; return schluessel; }
+    if (werte[schluessel] !== undefined) {
+      aktivesFeld = schluessel;
+      feldZeigen(schluessel);
+      return schluessel;
+    }
 
     aktivesFeld = null;
+    feldVerbergen();
     switch (schluessel) {
       case "allein": art = "allein"; setzeSpielerZahl(1); seite = SEITE.aufstellung; break;
       case "eroeffnen": art = "gastgeber"; setzeSpielerZahl(2); seite = SEITE.aufstellung; break;
@@ -671,7 +760,7 @@ export function macheLobby({
       const stelle = stellen[zeiger];
       return stelle ? tue(stelle.schluessel) : null;
     }
-    if (taste === "Escape") { aktivesFeld = null; sage(""); return null; }
+    if (taste === "Escape") { aktivesFeld = null; feldVerbergen(); sage(""); return null; }
     if (aktivesFeld === null) return null;
     if (taste === "Backspace") {
       werte[aktivesFeld] = werte[aktivesFeld].slice(0, -1);
@@ -687,6 +776,8 @@ export function macheLobby({
     zeiger = (zeiger + richtung + stellen.length) % stellen.length;
     const schluessel = stellen[zeiger].schluessel;
     aktivesFeld = werte[schluessel] !== undefined ? schluessel : null;
+    if (aktivesFeld !== null) feldZeigen(aktivesFeld);
+    else feldVerbergen();
   }
 
   /* Ein Einfügen aus der Zwischenablage. Es geht in das Feld, das
