@@ -3,6 +3,40 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Das Spiel ist im Netz erreichbar
+
+**Auftrag, wörtlich:** *„linl zum spielen?"*
+
+<https://kimpaliz.github.io/Hatred-/> — Zweig `gh-pages`, ausgeliefert
+von GitHub Pages.
+
+*Warum ein eigener Zweig und kein Bauschritt:* Der Zweig trägt genau
+den Ordner, der auch daheim läuft — `index.html`, `runtime/`, `spiel/`,
+`netz/`. Was live geht, ist byteweise das, was
+`node werkzeuge/vorschau.mjs` ausliefert. Ein Bauschritt dazwischen
+wäre eine zweite Wahrheit, in der ein Fehler stecken könnte, den daheim
+niemand sieht.
+
+*Warum `.nojekyll`:* Ohne diese leere Datei schiebt GitHub Pages jede
+Auslieferung durch Jekyll, und Jekyll schluckt stillschweigend jeden
+Ordner mit führendem Unterstrich — ohne Fehlermeldung.
+
+**Gemessen, weil `github.io` aus dieser Umgebung nicht erreichbar ist:**
+Der Zweig wurde lokal aus einem **Unterordner** über HTTP ausgeliefert
+(`http://127.0.0.1:8155/Hatred-/`) und im echten Browser durchgespielt —
+Titelbild, Heldenwahl, Kerker, keine Fehler außer dem `favicon.ico`,
+das jeder Browser von selbst anfragt. Der Unterordner ist der Punkt:
+Genau dort scheitern absolute Pfade, und genau dagegen steht Regel 14.
+
+Bestätigt hat es GitHub selbst: der Lauf *pages build and deployment*
+auf `gh-pages` steht auf **completed / success**.
+
+⚠️ Sobald das Repository von `Hatred-` auf `hatred` umbenannt ist,
+lautet die Adresse <https://kimpaliz.github.io/hatred/>; die alte
+leitet weiter.
+
+---
+
 ## 06.09.2026 — Die fünf Phasen haben ihre Vorgänge
 
 **Auftrag:** Jannik hat auf die Frage aus dem letzten Bericht mit „ja"
