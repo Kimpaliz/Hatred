@@ -553,6 +553,44 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
 
   /* ── Die Welt ────────────────────────────────────────────────────*/
 
+  /* Nie gesehene Felder noch einmal schwärzen — siehe die Begründung
+     an der Aufrufstelle in `bild`. Nur die Felder im Fenster, und nur
+     die wirklich ungesehenen: Ein erinnertes Feld bleibt matt sichtbar,
+     sonst vergäße die Karte, was man schon erkundet hat. */
+  function deckeUngesehenes(karte, sichtbar, erinnert) {
+    if (!sichtbar && !erinnert) return 0;
+    /* ⚠️ **Nicht `istDrin` benutzen.** Das liefert für eine fehlende
+       Menge absichtlich `true` („kein Nebel gesetzt, also alles
+       sichtbar") — hier wäre das genau falsch herum: Fehlt die
+       Erinnerungsmenge, gälte jedes Feld als erinnert, und die
+       Abdeckung träfe kein einziges. Genau so ist der braune Schleier
+       beim ersten Anlauf stehen geblieben. */
+    const drin = (menge, i) => {
+      if (!menge) return false;
+      if (typeof menge.has === "function") return menge.has(i);
+      return menge[i] === 1 || menge[i] === true;
+    };
+    /* ⚠️ **Nicht `kameraFenster()`.** Das liefert Bildpunkte
+       (`x`, `y`, `breite`, `hoehe`) und keine Feldgrenzen — beim
+       ersten Anlauf stand hier `f.vonY`, war `undefined`, und die
+       Schleife lief kein einziges Mal. Aufgefallen ist es nicht, weil
+       jeder Lauf eine andere Saat hat und das Bild trotzdem plausibel
+       aussah. */
+    const f = kamera.sichtbareFelder();
+    let gezeichnet = 0;
+    for (let y = f.vonY; y <= f.bisY; y++) {
+      for (let x = f.vonX; x <= f.bisX; x++) {
+        if (!karte.drin(x, y)) continue;
+        const i = y * karte.breite + x;
+        if (drin(sichtbar, i) || drin(erinnert, i)) continue;
+        const ecke = kamera.feldNachBild(x, y);
+        kasten(ecke.x, ecke.y, 0, 0, KACHEL, KACHEL, FARBEN.leere);
+        gezeichnet++;
+      }
+    }
+    return gezeichnet;
+  }
+
   /* `sichtbar` und `erinnert` sind Mengen von Feldnummern. Drei
      Zustände, und der mittlere ist der, den man vergisst: Was man nie
      gesehen hat, ist fast schwarz; was man **einmal** gesehen hat,
@@ -753,6 +791,20 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
          Farbe stimmt danach nicht mehr, und die nächste Fläche käme
          in der Farbe des letzten Lichtpunktes. */
       rechtecke += lichtwerk.zeichneAuf(ctx, kameraFenster());
+      letzteFarbe = null;
+      /* ── Das Licht wieder von dem nehmen, was niemand gesehen hat ──
+         Die Lichtkarte weiß nichts vom Nebel des Krieges: Sie legt ihre
+         warmen Anteile über das **ganze** Fenster, auch über Fels, in
+         dem noch nie jemand stand. Im Bild wurde daraus ein
+         brauner Schleier über der halben Karte — genau das Gegenteil
+         der Vorlage, auf die Jannik gezeigt hat („schwarze Tiefe
+         ringsum").
+
+         Deshalb bekommen nie gesehene Felder ihr Schwarz **nach** dem
+         Licht ein zweites Mal. Das ist billiger und ehrlicher, als der
+         Lichtkarte die Sichtbarkeit beizubringen: Sie rechnet, was
+         leuchtet; was man davon sehen darf, entscheidet der Nebel. */
+      rechtecke += deckeUngesehenes(karte, ansicht.sichtbar, ansicht.erinnert);
       letzteFarbe = null;
     }
     if (partikelwerk) {

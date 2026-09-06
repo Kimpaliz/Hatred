@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| `werkzeuge/pruefe-app.mjs`, `werkzeuge/pruefe-lauf.mjs`, `runtime/start.js`, `runtime/oberflaeche.js` | Claude (Sitzung Durchspielen) | Das ganze Spiel ohne Browser durchspielen und beheben, was dabei bricht | 06.09.2026 16:30 |
+| frei | frei | – | – |
 
 ## Format
 

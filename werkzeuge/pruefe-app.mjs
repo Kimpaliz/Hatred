@@ -60,7 +60,9 @@ import { macheSpiel, starte } from "../runtime/start.js";
 import { macheSitzung } from "../netz/sitzung.mjs";
 import { macheLauf, naechsteTiefe, zustandsSumme } from "../spiel/lauf.mjs";
 import { AKTION, moeglicheAktionen } from "../spiel/aktionen.mjs";
-import { amZugWesen, SEITE_JAEGER } from "../spiel/zug.mjs";
+import {
+  amZugWesen, fuegeSchadenZu, laufEndeEintragen, SEITE_JAEGER
+} from "../spiel/zug.mjs";
 import { planeZug } from "../spiel/gegner-ki.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 
@@ -631,31 +633,49 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
    Der Fall, der ohne diese Arbeit falsch wäre: Nach dem letzten Jäger
    malt das Spiel weiter — es zeigt die Schlusszeile. Wirft es dort,
    sieht der Spieler statt „Die Truppe ist gefallen" ein eingefrorenes
-   Bild und weiß nicht einmal, dass er verloren hat. */
+   Bild und weiß nicht einmal, dass er verloren hat.
+
+   Die Niederlage wird **herbeigeführt** und nicht abgewartet: Ob ein
+   gewürfelter Jäger auf einer erzeugten Karte fällt, hängt an der
+   Karte — und diese Prüfung hinge damit an der Landschaft statt am
+   Spiel. Zugefügt wird der Schaden mit `fuegeSchadenZu` aus
+   `spiel/zug.mjs`, also mit der Rechnung des Kerns und nicht mit einer
+   zweiten daneben. */
 {
   abschnitt("Niederlage");
   const welt = macheBrowserErsatz();
   try {
-    const lauf = spieleRunden(SAAT_NIEDERLAGE, welt, { runden: RUNDEN });
+    const lauf = spieleRunden(SAAT_NIEDERLAGE, welt, { runden: 3 });
     gleich(lauf.wurf, null, "auch der Lauf in die Niederlage wirft nicht");
     gleich(lauf.festgefahren, false, "auch dieser Lauf fährt sich nicht fest");
-    gleich(lauf.zustand.vorbei, "niederlage",
-      `auf Saat ${SAAT_NIEDERLAGE} fällt der einzelne Jäger in Runde ${lauf.runden + 1}`);
-    behaupte((lauf.arten.get("gestorben") || 0) > 0,
-      `${lauf.arten.get("gestorben")} Wesen sind gefallen`);
-    behaupte((lauf.arten.get("laufEnde") || 0) > 0, "das Laufende ist ein Ereignis");
+    gleich(lauf.zustand.vorbei, null, "nach drei Runden steht die Truppe noch");
+
+    const ereignisse = [];
+    for (const wesen of lauf.zustand.wesen) {
+      if (wesen.seite !== SEITE_JAEGER) continue;
+      fuegeSchadenZu(wesen, wesen.lp, "prüfung", "sturz", ereignisse);
+    }
+    for (const e of laufEndeEintragen(lauf.zustand)) ereignisse.push(e);
+    lauf.spiel.abspieler.lege(ereignisse);
+
+    gleich(lauf.zustand.vorbei, "niederlage", "mit dem letzten Jäger endet der Lauf");
+    behaupte(ereignisse.some((e) => e.art === "gestorben"),
+      `${ereignisse.filter((e) => e.art === "gestorben").length} Jäger sind gefallen`);
+    behaupte(ereignisse.some((e) => e.art === "laufEnde"), "das Laufende ist ein Ereignis");
 
     let wurf = null;
     const vorher = welt.ctx.rechtecke();
     let zeit = 9;
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 60; i++) {
       zeit += 1 / 60;
       try { lauf.spiel.bild(zeit); } catch (fund) { wurf = fund.message; break; }
     }
-    gleich(wurf, null, "nach der Niederlage malt das Spiel dreißig Bilder weiter");
+    gleich(wurf, null, "nach der Niederlage malt das Spiel sechzig Bilder weiter");
     behaupte(welt.ctx.rechtecke() > vorher, "und es kommt wirklich noch etwas auf das Blatt");
     gleich(lauf.spiel.stand().vorbei, "niederlage", "der Stand sagt, wie es ausging");
-    messungen.push(`Niederlage auf Saat ${SAAT_NIEDERLAGE} nach ${lauf.runden} Runden`);
+    gleich(welt.ctx.bruch(), null, "auch die Schlusszeile liegt auf ganzen Bildpunkten");
+    messungen.push(`Niederlage auf Saat ${SAAT_NIEDERLAGE}: ${lauf.runden} Runden gespielt, `
+      + `dann alle Jäger gefallen — ${welt.ctx.rechtecke() - vorher} Rechtecke danach`);
   } finally {
     welt.raeumeAuf();
   }

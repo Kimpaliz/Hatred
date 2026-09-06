@@ -722,4 +722,52 @@ abschnitt("12 · Das ganze Bild");
     + `${rechtecke} Rechtecke`);
 }
 
+abschnitt("13 · Der Nebel deckt auch das Licht ab");
+{
+  /* ⚠️ Dieser Abschnitt steht hier wegen eines Fehlers, den **zwei**
+     Anläufe nicht gefangen haben und den keine Zahl gezeigt hat.
+
+     Die Lichtkarte weiß nichts vom Nebel des Krieges: Sie legt ihre
+     warmen Anteile additiv über das ganze Fenster — auch über Fels, in
+     dem noch nie jemand stand. Im Bild wurde daraus ein brauner
+     Schleier über der halben Karte, also genau das Gegenteil der
+     Vorlage („schwarze Tiefe ringsum").
+
+     Der erste Anlauf einer Abdeckung benutzte `istDrin`, das für eine
+     fehlende Menge absichtlich `true` liefert — damit galt jedes Feld
+     als erinnert und nichts wurde abgedeckt. Der zweite las die
+     Feldgrenzen aus `kameraFenster()`, das Bildpunkte liefert; die
+     Schleife lief kein einziges Mal. **Beide Male sah das Bild
+     plausibel aus**, weil jeder Lauf eine andere Saat hat.
+
+     Deshalb wird hier nicht die Absicht geprüft, sondern die Wirkung:
+     Liegt am Ende auf einem nie gesehenen Feld die Leerfarbe? */
+  const karte = macheProbeKarte();
+  karte.lichter = [{ x: 6, y: 6, art: "fackel", staerke: 1 }];
+  const stand = macheStand(karte);
+  stand.zeichner.setzeFenster(320, 180);
+
+  /* Genau ein Feld ist sichtbar, alles andere war nie zu sehen. */
+  const sichtbar = new Set([karte.index(6, 6)]);
+  stand.ctx.aufrufe.length = 0;
+  stand.zeichner.bild({ karte, wesen: [] },
+    { sichtbar, erinnert: new Set() }, 0.5);
+
+  const fenster = stand.kamera.sichtbareFelder(0);
+  const fern = { x: fenster.bisX, y: fenster.bisY };
+  const ecke = stand.kamera.feldNachBild(fern.x, fern.y);
+  /* Das Blatt schreibt ein Rechteck als ["rechteck", x, y, b, h, farbe]
+     mit — die Farbe steht also im Aufruf selbst. Der **letzte**
+     Aufruf, der dieses Feld trifft, gibt seine Farbe. */
+  const fuellungen = nurArt(stand.ctx.aufrufe, "rechteck");
+  for (const [, x, y, b, h, farbe] of fuellungen) {
+    if (ecke.x >= x && ecke.x < x + b && ecke.y >= y && ecke.y < y + h) {
+      fern.farbe = farbe;
+    }
+  }
+  behaupte(fuellungen.length > 0, `${fuellungen.length} Füllungen im Bild`);
+  gleich(fern.farbe, FARBEN.leere,
+    `das nie gesehene Feld ${fern.x},${fern.y} bleibt am Ende die Leerfarbe`);
+}
+
 ende("Weltzeichner");

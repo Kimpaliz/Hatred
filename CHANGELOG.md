@@ -3,6 +3,73 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 06.09.2026 — Das Spiel läuft, und der Nebel deckt jetzt auch das Licht ab
+
+**Gemessen im echten Browser** (Chromium, Einzeldatei aus
+`werkzeuge/eine-datei.mjs`): Titelbild → Heldenwahl → Kerker, **keine
+Fehler in der Konsole**. Bildschirmfotos in der Sitzung.
+
+### Ein Fehler, den zwei Anläufe nicht gefangen haben
+
+Die Lichtkarte weiß nichts vom Nebel des Krieges: Sie legt ihre warmen
+Anteile **additiv** über das ganze Fenster — auch über Fels, in dem nie
+jemand stand. Im Bild wurde daraus ein brauner Schleier über der halben
+Karte, also genau das Gegenteil der Vorlage, auf die Jannik gezeigt hat
+(*„schwarze Tiefe ringsum"*).
+
+Behoben in `runtime/zeichnen.js → deckeUngesehenes`: Nie gesehene
+Felder bekommen ihr Schwarz **nach** dem Licht ein zweites Mal. Das ist
+billiger und ehrlicher, als der Lichtkarte die Sichtbarkeit
+beizubringen — sie rechnet, was leuchtet; was man davon sehen darf,
+entscheidet der Nebel.
+
+**Zwei Anläufe davor waren still falsch**, und beide Male sah das Bild
+plausibel aus, weil jeder Lauf eine andere Saat hat:
+
+1. Der erste benutzte `istDrin`, das für eine **fehlende** Menge
+   absichtlich `true` liefert („kein Nebel gesetzt, also alles
+   sichtbar"). Damit galt jedes Feld als erinnert, und die Abdeckung
+   traf kein einziges.
+2. Der zweite las die Feldgrenzen aus `kameraFenster()` — das liefert
+   Bildpunkte (`x`, `y`, `breite`, `hoehe`) und keine Feldgrenzen. Die
+   Schleife lief **kein einziges Mal**.
+
+*Deshalb prüft `pruefe-zeichnen.mjs` Abschnitt 13 jetzt nicht die
+Absicht, sondern die Wirkung:* Genau ein Feld ist sichtbar, und die
+Prüfung sucht den **letzten** Zeichenaufruf, der ein fernes Feld trifft.
+Er muss die Leerfarbe tragen. *Rot-Beweis:* ohne die Abdeckung steht
+dort `rgb(36,36,36)` statt `#04040a`.
+
+### Was die Abnahme gefunden hat
+
+- `werkzeuge/pruefe-app.mjs` — 92 Behauptungen, 21,7 s. Sie spielt das
+  **ganze** Spiel ohne Browser durch: 42 Module am Einstieg, 140
+  Einfuhrpfade, alle relativ und vorhanden · 200 Bilder → 5.932.238
+  Rechtecke aus 7.046.121 Aufrufen, keines auf einem Bruchteil eines
+  Bildpunktes · **30 Runden zu viert** über eine Leitung, die nur
+  Zeichenketten weiterreicht: 766 Aktionen, 23 Angriffe, und nach jeder
+  Runde tragen alle vier Spielstände dieselbe `zustandsSumme()` · drei
+  Kerkertiefen, 360 Aktionen, 360 Bilder.
+- **Ein echter Absturz** steckte darin: Sobald sich eine Figur
+  *bewegte*, fragte die Aktionsleiste mit der halb gelaufenen Position
+  nach — `sicht: Feldkoordinaten müssen ganze Zahlen sein
+  (45.06…,6 → 37,16)`. Ohne die Reparatur bricht der 30-Runden-Lauf
+  nach zwei Runden ab. Behoben in `runtime/oberflaeche.js` und
+  `runtime/start.js`.
+- `werkzeuge/eine-datei.mjs` wickelt jetzt **jedes Modul in seinen
+  eigenen Namensraum**. Der erste Anlauf hängte alles hintereinander —
+  das ging, bis das Projekt groß wurde: **27 Namen** standen in zwei
+  Dateien zugleich (`hash`, `fbm`, `ZEICHEN`, `P`, `TRENNER`, …), fast
+  alle davon privat. Sie umzubenennen wäre die falsche Antwort gewesen:
+  Der Ordner ist in Ordnung, das Werkzeug war es nicht. *Gemessen:* 42
+  Module → 734,7 kB in einer Datei, im Browser fehlerfrei.
+
+**Stand am 06.09.2026: 31 von 33 Prüfungen grün.** Rot ist nur
+`vorgaenge` — die fünf Phasen brauchen ihre Vorgänge auf GitHub, und
+das ist eine Handlung nach außen (Regel 3).
+
+---
+
 ## 06.09.2026 — Bild, Netz und die Kliffe
 
 Sprites, Licht, Pixelpartikel, Höhenkanten, Anzeige, Bedienung, die

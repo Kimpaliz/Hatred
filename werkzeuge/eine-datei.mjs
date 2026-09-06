@@ -17,17 +17,22 @@
 
    ── Wie es geht, und warum ausgerechnet so ─────────────────────────
 
-   Alle Module werden in Abhängigkeitsreihenfolge hintereinandergehängt
-   und die `import`-Zeilen entfernt. Das geht, weil in **einem**
-   Modulblock jede oberste Deklaration für alle sichtbar ist — ein
-   Import wäre also nur die Wiederholung von etwas, das ohnehin schon da
-   ist.
+   Jedes Modul bekommt **seinen eigenen Namensraum**: Es wird in eine
+   Funktion gewickelt, die ihre Ausfuhren zurückgibt, und in einer
+   Merkliste abgelegt. Aus jeder `import`-Zeile wird ein Griff in diese
+   Liste.
 
-   Die eine Bedingung dafür ist, dass kein Name zweimal ganz oben steht.
-   Das prüft dieses Werkzeug und **bricht ab**, wenn es passiert, statt
-   eine Datei auszuliefern, in der die spätere Deklaration die frühere
-   still überschreibt. Ein Bündler, der einen Namenszusammenstoß
-   verschweigt, ist schlimmer als gar keiner.
+   Der erste Anlauf hängte alle Module einfach hintereinander und strich
+   die Importe — das geht, weil in einem Modulblock jede oberste
+   Deklaration für alle sichtbar ist. Es ging genau so lange gut, bis
+   das Projekt groß wurde: **27 Namen** standen am 06.09.2026 in zwei
+   Dateien zugleich (`hash`, `fbm`, `ZEICHEN`, `P`, `TRENNER`, …), und
+   fast alle davon sind *private* Namen, die niemanden stören — außer
+   einen Bündler, der alles in einen Topf wirft.
+
+   Sie umzubenennen wäre die falsche Antwort gewesen: Der Ordner ist in
+   Ordnung, das Werkzeug war es nicht. Ein Modul, das `P` heißen will,
+   darf `P` heißen.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
@@ -46,9 +51,9 @@ const WURZEL = join(fileURLToPath(new URL(".", import.meta.url)), "..");
    `export function`, `import { … } from "…"`), und alles, was davon
    abweicht, soll hier **auffallen** statt geräuschlos durchzurutschen. */
 
+/* Nur zum Finden der Abhängigkeiten — das Umschreiben macht `wickle`
+   weiter unten mit eigenen, genaueren Mustern. */
 const EINFUHR = /^\s*import\s+(?:[^"']*?\s+from\s+)?["']([^"']+)["'];?\s*$/gm;
-const AUSFUHR_DECK = /^(\s*)export\s+(const|let|var|function\*?|async\s+function\*?|class)\s/gm;
-const AUSFUHR_LISTE = /^\s*export\s*\{[^}]*\}\s*;?\s*$/gm;
 
 function lies(pfad) {
   return readFileSync(pfad, "utf8");
@@ -95,23 +100,68 @@ function reihenfolge(start) {
   return fertig;
 }
 
-/* Alle Namen, die eine Datei ganz oben deklariert. Nur oberste Ebene:
-   Das Muster verlangt, dass die Zeile ohne Einrückung beginnt. */
-const OBERSTE = /^(?:export\s+)?(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/gm;
-const OBERSTE_ASYNC = /^(?:export\s+)?async\s+function\*?\s+([A-Za-z_$][\w$]*)/gm;
+/* ── Ein Modul in seinen eigenen Namensraum wickeln ────────────────
 
-function obersteNamen(quelle) {
-  const namen = new Set();
-  for (const t of quelle.matchAll(OBERSTE)) namen.add(t[1]);
-  for (const t of quelle.matchAll(OBERSTE_ASYNC)) namen.add(t[1]);
-  return namen;
-}
+   Aus `import { a, b } from "./x.mjs";` wird `const { a, b } =
+   __teile["x.mjs"];`, aus `export function f` wird `function f` plus
+   ein Eintrag in der Ausfuhrliste. Mehr braucht es nicht — die
+   Reihenfolge stellt schon die Tiefensuche sicher, also steht jedes
+   Modul bereit, bevor das erste es anfasst. */
 
-function entkleide(quelle) {
-  return quelle
-    .replace(EINFUHR, "")
-    .replace(AUSFUHR_LISTE, "")
-    .replace(AUSFUHR_DECK, "$1$2 ");
+const EINFUHR_MIT_NAMEN =
+  /^\s*import\s+(\{[^}]*\}|\*\s+as\s+\w+|\w+)\s+from\s+["']([^"']+)["'];?\s*$/gm;
+const EINFUHR_BLANK = /^\s*import\s+["'][^"']+["'];?\s*$/gm;
+const AUSFUHR_DECK = /^(\s*)export\s+(const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/gm;
+const AUSFUHR_ASYNC = /^(\s*)export\s+(async\s+function\*?)\s+([A-Za-z_$][\w$]*)/gm;
+const AUSFUHR_LISTE = /^\s*export\s*\{([^}]*)\}\s*;?\s*$/gm;
+
+function wickle(quelle, pfad) {
+  const ausfuhren = new Set();
+  let text = quelle;
+
+  text = text.replace(EINFUHR_BLANK, "");
+  text = text.replace(EINFUHR_MIT_NAMEN, (_, was, ziel) => {
+    const schluessel = relative(WURZEL, resolve(dirname(pfad), ziel)).split("\\").join("/");
+    if (was.startsWith("*")) {
+      return `const ${was.split(/\s+/).pop()} = __teile[${JSON.stringify(schluessel)}];`;
+    }
+    if (was.startsWith("{")) {
+      /* `import { a as b }` wird zu `const { a: b }` — beim Zerlegen
+         heißt die Umbenennung `:` und nicht `as`. Ohne diese Zeile
+         schreibt der Bündler ungültiges JavaScript, und der Browser
+         meldet nur „Unexpected identifier 'as'" ohne zu sagen, wo. */
+      return `const ${was.replace(/\s+as\s+/g, ": ")} = __teile[${JSON.stringify(schluessel)}];`;
+    }
+    /* Standardausfuhr — dieses Projekt benutzt sie nicht, aber ein
+       stiller Fehlgriff wäre schlimmer als eine Meldung. */
+    throw new Error(`${relative(WURZEL, pfad)}: Standardimport wird nicht unterstützt`);
+  });
+
+  text = text.replace(AUSFUHR_ASYNC, (_, ein, art, name) => {
+    ausfuhren.add(name); return `${ein}${art} ${name}`;
+  });
+  text = text.replace(AUSFUHR_DECK, (_, ein, art, name) => {
+    ausfuhren.add(name); return `${ein}${art} ${name}`;
+  });
+  /* `export { a, b as c };` — die Ausfuhr heißt `c`, der Wert steckt in
+     `a`. Deshalb wird sie als Paar gemerkt und unten als `c: a`
+     zurückgegeben. */
+  const umbenannt = [];
+  text = text.replace(AUSFUHR_LISTE, (_, liste) => {
+    for (const teil of liste.split(",")) {
+      const stueck = teil.trim();
+      if (!stueck) continue;
+      const [quelle, ziel] = stueck.split(/\s+as\s+/).map((x) => x.trim());
+      if (ziel) umbenannt.push([ziel, quelle]);
+      else ausfuhren.add(quelle);
+    }
+    return "";
+  });
+
+  const rueck = [...[...ausfuhren].map((n) => `    ${n}`),
+    ...umbenannt.map(([ziel, quelle]) => `    ${ziel}: ${quelle}`)].join(",\n");
+  return `__teile[${JSON.stringify(relative(WURZEL, pfad).split("\\").join("/"))}] = (() => {\n`
+    + text.trimEnd() + `\n  return {\n${rueck}\n  };\n})();`;
 }
 
 /* ── Der Lauf ───────────────────────────────────────────────────── */
@@ -136,33 +186,15 @@ try {
   process.exit(1);
 }
 
-/* Namenszusammenstöße finden, BEVOR etwas geschrieben wird. */
-const woher = new Map();
-const stoesse = [];
-for (const m of module_) {
-  for (const name of obersteNamen(m.quelle)) {
-    const alt = woher.get(name);
-    if (alt) stoesse.push(`${name}: ${relative(WURZEL, alt)} und ${relative(WURZEL, m.pfad)}`);
-    else woher.set(name, m.pfad);
-  }
-}
-if (stoesse.length) {
-  console.error("Abbruch — dieselben Namen ganz oben in zwei Dateien:");
-  for (const s of stoesse) console.error(`  · ${s}`);
-  console.error("\nIn einer einzigen Datei überschriebe die spätere die frühere.");
-  console.error("Benenne eine der beiden um; der Ordner läuft dann weiter wie bisher.");
-  process.exit(1);
-}
-
 const teile = module_.map((m) =>
-  `/* ── ${relative(WURZEL, m.pfad)} ${"─".repeat(Math.max(0, 60 - m.pfad.length))} */\n` +
-  entkleide(m.quelle));
+  `/* ── ${relative(WURZEL, m.pfad)} ${"─".repeat(Math.max(0, 56 - m.pfad.length))} */\n`
+  + wickle(m.quelle, m.pfad));
 
-const kopf = seite.split(/<script[^>]*type=["']module["'][^>]*>\s*<\/script>/)[0]
+const kopf = seite
   .replace(/<script[^>]*type=["']module["'][^>]*src=["'][^"']+["']\s*>[\s\S]*?<\/script>/g, "");
 
-const ausgabe = kopf.replace(/<\/body>/i,
-  `<script type="module">\n${teile.join("\n\n")}\n</script>\n</body>`);
+const rumpf = "const __teile = {};\n\n" + teile.join("\n\n");
+const ausgabe = kopf.replace(/<\/body>/i, `<script type="module">\n${rumpf}\n</script>\n</body>`);
 
 writeFileSync(ZIEL, ausgabe, "utf8");
 const kb = (Buffer.byteLength(ausgabe, "utf8") / 1024).toFixed(1);
