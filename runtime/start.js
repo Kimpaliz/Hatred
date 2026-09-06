@@ -59,13 +59,15 @@
    `spiel/lauf.mjs` (`macheLauf`, `naechsteTiefe`), `spiel/gegner-ki.mjs`
    (`planeZug`), `spiel/zug.mjs`, `spiel/sicht.mjs`, `spiel/wesen.mjs`,
    `netz/sitzung.mjs` (der einzige Ausgang jeder Aktion), `sw.js`
-   (wird von hier angemeldet), `werkzeuge/pruefe-einstieg.mjs`. */
+   (wird von hier angemeldet), `werkzeuge/pruefe-einstieg.mjs`,
+   `werkzeuge/pruefe-app.mjs` und `werkzeuge/pruefe-tippen.mjs` (die
+   messen die Verdrahtung vom Tipp bis in den Kern). */
 
 import { FARBEN } from "./palette.js";
 import * as schrift from "./schrift.js";
 import { KACHEL, macheLichtwerk } from "./licht.js";
 import { SCHLEIM_RAMPE, machePartikelwerk } from "./partikel.js";
-import { macheKamera } from "./kamera.js";
+import { macheKamera, vergroesserungFuer } from "./kamera.js";
 import { macheZeichner } from "./zeichnen.js";
 import { macheOberflaeche, satzVon } from "./oberflaeche.js";
 import { macheEingabe } from "./eingabe.js";
@@ -675,11 +677,23 @@ export function starte(blatt) {
   let pausiert = false;
   let letzteRunde = 0;
 
-  /* Die Maße. Das Blatt bekommt so viele Bildpunkte, wie das Fenster
-     in CSS-Punkten breit ist; die Vergrößerung auf echte Gerätepunkte
-     macht der Browser mit `image-rendering: pixelated`. Der eigene
-     Maßstab bleibt damit ganzzahlig — genau das verlangt der
-     Bildvertrag. */
+  /* Die Maße. Das Blatt bekommt genau so viele Bildpunkte, wie das
+     Fenster in CSS-Punkten breit ist — `devicePixelRatio` geht hier
+     **absichtlich nicht** ein, und daran hängt mehr, als es aussieht.
+
+     Auf Android ist er oft 2,625 oder 2,75, also krumm. Wer die Maße
+     damit multipliziert, bekommt ein Blatt von 1081,5 Punkten Breite —
+     Bruchzahlen in jedem Rechteck darauf (Fehlerbuch D1) — und
+     schrumpft nebenbei jeden Fingerknopf: `FINGER_MINDESTMASS` sind 48
+     **Blattpunkte**; bei 2,625 blieben davon 18 CSS-Punkte, keine vier
+     Millimeter Daumen. Gemessen bei 412 x 915 mit 2,625: Blatt
+     412 x 915, Vergrößerung 1 — ganzzahlig, und 48 Punkte bleiben 48
+     (`node werkzeuge/pruefe-tippen.mjs`).
+
+     Auf echte Gerätepunkte vergrößert der Browser selbst, mit
+     `image-rendering: pixelated` aus `index.html`: nächster Nachbar,
+     keine Glättung. Lieber anderthalb Gerätepunkte Rand als ein
+     weiches Bild. */
   function masse() {
     const breite = Math.max(1, Math.floor(blatt.clientWidth || globalThis.innerWidth || 960));
     const hoehe = Math.max(1, Math.floor(blatt.clientHeight || globalThis.innerHeight || 540));
@@ -704,13 +718,48 @@ export function starte(blatt) {
     if (lobby) lobby.setzeFenster(breite, hoehe);
   }
 
-  /* ── Vollbild ───────────────────────────────────────────────────*/
+  /* Die Vergrößerung, mit der dieses Blatt gerade arbeitet: ganzzahlig
+     und mindestens 1, weil `vergroesserungFuer` abrundet. Sie steht
+     hier heraus, damit die Prüfung sie bei jeder Fenstergröße und jedem
+     `devicePixelRatio` nachmessen kann, ohne erst ein Spiel zu bauen. */
+  function vergroesserung() {
+    const { breite, hoehe } = masse();
+    return vergroesserungFuer(breite, hoehe);
+  }
+
+  /* ── Vollbild und Querformat ────────────────────────────────────
+
+     Beides braucht eine Nutzergeste, wird also nur aus einem Tipp
+     heraus gerufen und nie aus einem Zeitgeber. Und beides darf
+     fehlschlagen — das ist der Normalfall: Kein Rechner kann den
+     Bildschirm drehen, viele Handys auch nicht, und `screen.orientation`
+     fehlt mancherorts ganz. Ein Spiel, das an einer abgelehnten Drehung
+     stehenbliebe, wäre auf genau den Geräten hin, für die sie gedacht
+     ist. Deshalb zweifach abgesichert: `try/catch` um den Aufruf und
+     ein Fangarm am Versprechen. */
+  function sperreQuerformat() {
+    try {
+      const dreh = globalThis.screen && globalThis.screen.orientation;
+      if (!dreh || typeof dreh.lock !== "function") return;
+      const versprechen = dreh.lock("landscape");
+      if (versprechen && typeof versprechen.catch === "function") {
+        versprechen.catch(() => {});
+      }
+    } catch { /* das Gerät kann es nicht - dann eben nicht */ }
+  }
 
   function vollbild() {
     const drin = globalThis.document && globalThis.document.fullscreenElement;
     try {
-      if (drin) globalThis.document.exitFullscreen();
-      else if (blatt.requestFullscreen) blatt.requestFullscreen();
+      if (drin) { globalThis.document.exitFullscreen(); return; }
+      if (!blatt.requestFullscreen) return;
+      /* Gedreht wird erst nach dem **gelungenen** Vollbild: Solange die
+         Seite noch im Fenster steht, lehnt Android die Sperre ab. Ältere
+         Browser geben kein Versprechen zurück - dann sofort. */
+      const versprechen = blatt.requestFullscreen();
+      if (versprechen && typeof versprechen.then === "function") {
+        versprechen.then(sperreQuerformat, () => {});
+      } else sperreQuerformat();
     } catch { /* manche Browser verweigern es ohne Klick - dann eben nicht */ }
   }
 
@@ -918,7 +967,7 @@ export function starte(blatt) {
      anmelden, aus dem Vorlauf ins Spiel wechseln - nur im Browser
      ansehen, und damit gar nicht. */
   return {
-    vollbild, passeAn, tiefer,
+    vollbild, passeAn, tiefer, vergroesserung,
     lobby: () => lobby,
     spiel: () => spiel,
     stand: () => (spiel ? spiel.stand() : null)
