@@ -1,0 +1,13 @@
+{
+  "name": "Hatred",
+  "short_name": "Hatred",
+  "description": "Rundenbasierter Koop-Dungeon-Crawler. Raster, Aktionspunkte, vier Höhenebenen.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#04040a",
+  "theme_color": "#07060c",
+  "icons": []
+}

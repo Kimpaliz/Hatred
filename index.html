@@ -1,0 +1,97 @@
+<!doctype html>
+<!-- [Aufgabe: Oberfläche] Der Einstieg: eine Seite, ein Zeichenblatt,
+     ein Modul-Skript — mehr steht zwischen Jannik und dem Kerker nicht.
+
+     ── Warum es das gibt / Warum so ─────────────────────────────────
+
+     Alle Pfade sind **relativ** (`./runtime/start.js`). Unter
+     https://kimpaliz.github.io/hatred/ liegt die Seite in einem
+     Unterordner; ein führender Schrägstrich zeigte dort ins Leere —
+     und zwar ohne Fehlermeldung: Die Seite bliebe schwarz, und niemand
+     wüsste, warum (docs/REGELN.md 14).
+
+     **Ein einziges Zeichenblatt, kein weiteres Bedienelement.** Alles,
+     was man anklickt, ist gezeichnet — Vorlauf wie Spiel. Zwei Welten
+     (HTML-Knöpfe hier, Pixelknöpfe dort) hätten zwei Schriftbilder,
+     zwei Farbsätze und zwei Stellen, an denen die Bedienung kaputtgeht.
+
+     **`image-rendering: pixelated`** ist die zweite Hälfte der harten
+     Kanten. Die erste ist `imageSmoothingEnabled = false` beim
+     Zeichnen; ohne sie beide weichzeichnet der Browser beim
+     Hochskalieren des Blattes, und die ganze Pixelgrafik ist dahin
+     (Fehlerbuch D1).
+
+     Der Hinweis im `noscript` ist kein Formglied: Ohne ihn sieht ein
+     abgeschaltetes JavaScript genauso aus wie ein kaputtes Spiel.
+
+     ── Arbeitet zusammen mit ─────────────────────────────────────────
+
+     `runtime/start.js` (das einzige Skript dieser Seite),
+     `runtime/lobby.js` (der Vorlauf darin), `sw.js` (der
+     Zwischenspeicher, den `start.js` anmeldet),
+     `manifest.webmanifest`, `werkzeuge/vorschau.mjs` (liefert diese
+     Datei daheim aus) und `.github/workflows/pages.yml` (im Netz). -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#07060c">
+<title>Hatred</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #04040a;
+    color: #cfc7e0;
+    font-family: monospace;
+  }
+  /* Ein Block, kein Zeilenelement: Sonst setzt der Browser unter das
+     Blatt die Grundlinie der Zeile, und die Seite bekommt einen
+     Rollbalken für vier Bildpunkte, die niemand sieht. */
+  #bild {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: #04040a;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    touch-action: none;
+  }
+  #ohne-skript {
+    box-sizing: border-box;
+    max-width: 34em;
+    margin: 12vh auto;
+    padding: 1.5em;
+    border: 2px solid #3a3350;
+    background: #0b0912;
+    line-height: 1.6;
+  }
+  #ohne-skript h1 { margin: 0 0 .6em; font-size: 1.4em; letter-spacing: .3em; }
+</style>
+</head>
+<body>
+<canvas id="bild" width="960" height="540"></canvas>
+<noscript>
+  <!-- Ohne diese Zeile läge der Hinweis unter einem bildschirmfüllenden
+       schwarzen Blatt: sichtbar erst, wenn man scrollt — und scrollen
+       kann man nicht, weil die Seite den Rollbalken abstellt. -->
+  <style>#bild { display: none; }</style>
+  <div id="ohne-skript">
+    <h1>HATRED</h1>
+    <p>
+      Dieses Spiel läuft nur, wenn JavaScript im Browser eingeschaltet
+      ist. Bei dir ist es gerade aus — deshalb bleibt das Bild schwarz.
+    </p>
+    <p>
+      Schalte es in den Einstellungen deines Browsers für diese Seite
+      ein und lade die Seite neu. Am Spiel liegt es nicht.
+    </p>
+  </div>
+</noscript>
+<script type="module" src="./runtime/start.js"></script>
+</body>
+</html>
