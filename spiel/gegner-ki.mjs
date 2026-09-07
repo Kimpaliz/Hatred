@@ -94,7 +94,7 @@
    `spiel/katalog/*.mjs` (Waffen, Fähigkeiten, Verhalten),
    `werkzeuge/pruefe-ki.mjs`. */
 
-import { abstand } from "./gitter.mjs";
+import { abstand, gespiegelt } from "./gitter.mjs";
 import {
   STURZ_AB_STUFEN, sturzTiefe, sturzSchaden, hoehenVorteil, hatDeckung,
   betretenSchaden, stossZiel
@@ -353,13 +353,12 @@ function kannAngreifenVon(lage, wesen, x, y, ziel) {
 
    `weg` unterscheidet Stoßen von Ziehen: Gezogen wird nach derselben
    Vorschrift, nur vom gespiegelten Punkt aus — genau wie in
-   `spiel/aktionen.mjs`. So fällt der Fall „Angreifer genau über Eck"
-   in beiden Richtungen gleich aus. */
+   `spiel/aktionen.mjs`, und seit dem 07.09.2026 mit derselben
+   Sechseckspiegelung (`gespiegelt`) statt mit `2 * ziel - x`. */
 function schubGewinn(lage, x, y, ziel, weg) {
   const karte = lage.karte;
-  const ausX = weg ? x : 2 * ziel.x - x;
-  const ausY = weg ? y : 2 * ziel.y - y;
-  const feld = stossZiel(karte, ausX, ausY, ziel.x, ziel.y);
+  const aus = weg ? { x, y } : gespiegelt(x, y, ziel.x, ziel.y);
+  const feld = stossZiel(karte, aus.x, aus.y, ziel.x, ziel.y);
   if (!feld) return 0;
   if (wesenAufAusser(lage.zustand, feld.x, feld.y, ziel)) return 0;
 
@@ -422,9 +421,18 @@ function wertGegenZiel(lage, wesen, x, y, ziel, g) {
 
   /* Das Feld, von dem aus man jemanden über die Kante schieben kann,
      ist mehr wert als jedes andere. Genau dieser Zug macht die Höhen
-     zum Spiel. */
+     zum Spiel.
+
+     Gestoßen wird nur von **daneben**, also `abstand(...) === 1`. Bis
+     zum 07.09.2026 stand hier die Zeile `schub > 0 &&(x, y, ziel.x,
+     ziel.y) === 1` — bei der Sechseck-Umstellung war der Funktionsname
+     `schussweite` entfallen, die Klammer aber stehengeblieben. Was
+     übrig blieb, war eine Kommaliste: Sie liefert `ziel.y` und
+     vergleicht die **Zeile des Ziels** mit 1. Gemessen an einer Karte
+     mit identischer Geometrie: derselbe Stoßplatz war in Zeile 1
+     970 wert, in Zeile 3, 5 und 7 nur 270. */
   const schub = schubGewinn(lage, x, y, ziel, true);
-  if (schub > 0 &&(x, y, ziel.x, ziel.y) === 1) {
+  if (schub > 0 && abstand(x, y, ziel.x, ziel.y) === 1) {
     wert += WERT_STOSS_ZUSATZ + WERT_JE_SCHADEN * schub;
   }
   return wert;
@@ -765,7 +773,7 @@ function nimmSchaden(wesen, wieviel) {
 
 function schiebeImSchatten(schatten, ausX, ausY, ziel, weg) {
   const karte = schatten.karte;
-  const von = weg ? { x: ausX, y: ausY } : { x: 2 * ziel.x - ausX, y: 2 * ziel.y - ausY };
+  const von = weg ? { x: ausX, y: ausY } : gespiegelt(ausX, ausY, ziel.x, ziel.y);
   const feld = stossZiel(karte, von.x, von.y, ziel.x, ziel.y);
   if (!feld) return;
   if (wesenAufAusser(schatten, feld.x, feld.y, ziel)) return;

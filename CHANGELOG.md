@@ -3,6 +3,924 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Abgründe in der Landschaft, und wer hineingestoßen wird, stürzt
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 4 von vier und damit der letzte. Schritt 2 hat den Abgrund als
+Feldart gebaut, Schritt 3 das Wasser auf alle Ebenen gebracht; jetzt
+kommen die Löcher **auf die Karte**, und man kann jemanden hineinstoßen.
+
+**Für Jannik:** Auf hoch gelegenem Boden brechen jetzt Löcher auf —
+gemessen **17,2 je Karte** auf einer 44 × 32-Karte, auf **29 von 30**
+Karten. Man kann nicht hineinlaufen; man wird hineingestoßen. Was dann
+passiert, hängt davon ab, ob unter dem Loch noch Boden liegt: **167 von
+516** Löchern haben einen Grund — da schlägt man auf, verliert
+Lebenspunkte und steht eine Ebene tiefer. Die anderen **349** sind
+bodenlos, und wer hineinfällt, ist tot. Sehen kann man weiterhin
+darüber hinweg: Ein Loch nimmt niemandem die Sicht.
+
+### Neu in `spiel/landschaft.mjs`: `grabeAbgruende(karte, saat)`
+
+Ein eigener Schritt, aufgerufen **nach** `setzeRampen` und **vor**
+`setzeWasser`. Das ist gemessen der einzige Platz, an dem kein anderer
+Schritt das Loch wieder zumauert: `raeumeAuf` macht die Insel im
+Abgrund zu Wand, `verfuelleNebenraeume` verfüllte in der Messung 81 von
+162 begehbaren Kacheln, `verbindeMitRampen` ebenso.
+
+Ein Loch entsteht auf einer offenen Kachel ab Ebene 2 — das ist
+`STURZ_AB_STUFEN` über dem Graben und damit die Höhe, ab der ein
+Abstieg überhaupt ein Sturz ist. Wie tief es geht, entscheidet der Fels
+ringsum, und daraus fallen zwei Sorten Abgrund:
+
+- **am Kliffrand** liegt nebenan offener Boden mindestens zwei Ebenen
+  tiefer; das Loch bricht dorthin durch, und dieser Boden ist das
+  Landefeld;
+- **mitten auf dem Plateau** gibt es keinen; dann geht der Schacht in
+  den Fels und der Sturz ist tödlich.
+
+Gewürfelt wird aus `hash(Feldnummer, Randebene, Saat)` mit eigener
+Saatverschiebung — kein `Math.random` (Fehlerbuch B1), kein
+verschobener Zufallsstrom (B4). Zwei Sätze: 0,09 auf freier Fläche,
+**0,45 am Kliffrand**, weil Fels dort weiterbricht, wo er schon
+abgebrochen ist — und weil nur ein Kliffloch einen Grund hat. Mit
+gleichem Satz überall wären gemessen 353 von 391 Löchern bodenlos
+(90 %), mit dem Kliffsatz 349 von 516 (68 %).
+
+**Verworfen: das Rauschfeld.** Der erste Anlauf setzte die Löcher in
+Flecken, wie `setzeBoden` den Knochenteppich. Gemessen war das
+schlechter, und zwar an Janniks Satz selbst: Ein Rauschfleck liegt auf
+**einem** Plateau, und ein Loch trägt die Ebene seiner Sohle — also
+lagen die Löcher einer Karte fast alle auf derselben Ebene. Bei
+vergleichbarer Lochzahl — gemessen am 07.09.2026 an der damaligen
+Fassung: 16 von 30 Karten mit Abgründen auf zwei verschiedenen Ebenen
+gegen **24 von 30** beim Wurf je Kachel. Dazu
+schnitten Flecken doppelt so oft einen Weg ab (113 zurückgenommene
+Löcher gegen 58).
+
+### Jedes Loch einzeln gesetzt und im Zweifel zurückgenommen
+
+Muster: `zierErlaubt`. Kachel probeweise sperren, fragen, im Zweifel
+ablehnen — gefragt wird hier aber **global** statt in einem Fenster von
+7 × 7. Das ist der Unterschied, der den Ausschlag gibt: Eine Kliffkante
+ist genau die Stelle, an der die örtliche Frage falsch antwortet (den
+Nachbarn zwei Ebenen tiefer erreicht man von oben, von unten nie), und
+mit `zierErlaubt` als Probe blieben 11 von 30 Karten ohne jeden Abgrund
+und 1,3 Löcher je Karte übrig.
+
+Drei Fragen je Kachel, und jede hat eine gemessene Zahl:
+
+| Frage | Ohne sie gemessen |
+| --- | --- |
+| Bleibt jede offene Kachel beidseitig erreichbar? | 3 von 30 Karten verlieren den Ausgang |
+| Hat das Loch einen Sims (Nachbar genau 1 Ebene über der Sohle)? | 184 von 704 Löchern |
+| Bleibt jede Geländefläche ≥ 3 Kacheln (`MIN_EBENEN_FLAECHE`)? | `pruefe-landschaft` (h) rot |
+
+Insgesamt werden so **293** von 809 Kandidaten wieder zurückgenommen.
+
+### Neu in `spiel/hoehen.mjs`: `abgrundHinter` und `abgrundSturz`
+
+`stossZiel` bleibt **Wort für Wort**, wie es war. Es fragt `begehbar`
+und damit `blocktBewegung`, und der Abgrund steht dort drin — das ist
+richtig so: Wegfindung, Gegner-KI und Bild dürfen ein Loch nie für ein
+Zielfeld halten. Wer den Sturz will, fragt ausdrücklich danach.
+
+`abgrundSturz` legt fest, **wohin** die Figur fällt: nicht auf die
+Abgrundkachel, sondern auf die offene Nachbarkachel auf Sohlenebene.
+Der Grund steht ausführlich in der Datei: Eine Figur **auf** dem
+Abgrundfeld stünde auf einer Kachel, die `wegSuche`,
+`erreichbareFelder` und `naechstesFreiesFeld` nie betreten — sie käme
+nie wieder heraus, und keine Prüfung schlüge an. Gibt es keine solche
+Kachel, ist der Sturz tödlich. Der Schaden kommt unverändert aus
+`sturzTiefe`/`sturzSchaden`; eine zweite Sturzregel gibt es nicht.
+
+### Drei Stellen stoßen hinein, nicht zwei
+
+`pruefeSchub` (darf ich?), `schiebe` (Stoß und Hakenkette) und
+`stossFolgen` (Kriegshammer). Die Falle steht im Auftrag wörtlich:
+*„Wird die Frage in pruefeSchub gestellt, aber nicht in schiebe,
+entsteht eine Aktion, die erlaubt ist und nichts tut."* Genau dieser
+Fall ist als Prüfung gebaut und wurde rot gemacht (siehe unten).
+
+Der Tod im bodenlosen Schacht läuft über den **gewöhnlichen**
+Schadensweg (`fuegeSchadenZu` beziehungsweise `schadenEintragen` mit den
+restlichen Lebenspunkten) und nicht über ein eigenes `lebt = false`.
+Sonst fehlte das Ereignis `gestorben`, das gelöschte Wacht-Recht oder
+der Lauf-Abschluss — je nachdem, was man vergisst.
+
+### Zwei fremde Prüfungen mitgeändert (R2-Ausnahme, ausdrücklich benannt)
+
+Beide liegen in `werkzeuge/` und gehören dem Zweig `pruef/`. Die Kette
+wird ohne sie nicht als Ganzes grün, deshalb die Ausnahme:
+
+**1. `spiel/landschaft.mjs`, `ebenenFlaechen` zählt Abgründe nicht mit.**
+Ein Abgrundfeld trägt die Ebene seiner Sohle. Zählte es als
+Geländefläche mit, wäre jedes Loch mitten auf einem Plateau eine
+Ebenenfläche von **einer** Kachel und damit genau der „Ausrutscher des
+Rauschens", den `MIN_EBENEN_FLAECHE` verbietet — gemessen **573**
+solcher Flächen über 60 Karten statt 0. Für alles vor `grabeAbgruende` ändert
+sich nichts: Bis dahin gibt es keine Abgrundkachel.
+
+**2. `werkzeuge/pruefe-app.mjs`: die Kampffrage steht jetzt auf zwei
+Kerkern.** Sie fragt „trifft die Brut überhaupt auf die Jäger?" und
+stand als `wieoft("angriff") > 3` auf **einer** Karte, der Saat 7.
+Vorgang #8 verändert diese Karte. Gemessen über sechs Saaten
+(7, 3, 11, 19, 23, 31), einmal ohne und einmal mit Abgründen:
+
+    ohne : 7 ·  0 · 0 · 0 · 0 ·  9 → 16 Angriffe
+    mit  : 0 · 25 · 0 · 0 · 0 · 29 → 54 Angriffe
+
+Die Einzelzahl schwankt zwischen 0 und 29 und sagt über den Kampf
+nichts; die Summe hat sich mehr als verdreifacht. Auf drei von sechs
+Saaten wäre die alte Schranke auch **ohne** jede Änderung rot gewesen —
+sie war ein Glücksfall der Saat 7, kein Fangnetz. Die Frage steht jetzt
+auf den Saaten 7 **und** 31 zusammen, Schranke **10**, gemessen **29**.
+Die Schranke ist damit **höher** als vorher, nicht niedriger. Aus
+demselben Grund zählt auch die Zahl der Ereignisformen jetzt über beide
+Kerker: Ohne einen einzigen Angriff fehlen `angriff`, `schaden`,
+`gestorben` und `lpGesetzt`, und sie fiel auf Saat 7 von 12 auf 9. Über
+beide Kerker sind es gemessen **15**, mit zerbrochener
+Reichweitenrechnung 12 — die Schranke steht jetzt auf 13 statt auf 10.
+Der zweite Lauf läuft ohne
+Bild (`malen: false`): 2,3 s statt 9,9 s, bei Zeichen für Zeichen
+denselben Ereigniszahlen.
+
+### Gemessen — die Abnahme von Vorgang #8
+
+`node werkzeuge/pruefe-abgrund.mjs`, 30 Saaten auf 44 × 32:
+
+| Abnahme | Gemessen |
+| --- | --- |
+| (a) Becken **und** Abgrund auf mindestens zwei gleichen Ebenen | **16 von 30** Karten (auf mindestens einer: 28) |
+| Karten mit Abgrund überhaupt | **29 von 30** (vorher: 0) |
+| Karten mit Abgründen auf zwei verschiedenen Ebenen | **22 von 30** |
+| (b) Sturzschaden und eine Ebene tiefer / Tod ohne Grund | beide Fälle geprüft, 167 mit Grund gegen 349 bodenlos |
+| (c) Sicht über den Abgrund, Wand blockt — dieselbe Karte | von Hand **und** an einer erzeugten Karte |
+| (d) Ausgang bleibt beidseitig erreichbar | **30 von 30** |
+
+Warum (a) nicht höher liegt: Ein Abgrund trägt die Ebene seiner Sohle,
+und eine Sohle liegt zwei Ebenen unter ihrem Rand — bei vier Ebenen
+sind das nur die Sohlen 0 und 1. Wasser steht auf 0, 1 und 2. Die
+Schnittmenge ist also von vornherein zwei Ebenen breit, und die Karte
+muss beide bedienen. 27 von 30 Karten haben überhaupt hohes Gelände auf
+Ebene 2 **und** 3; das ist die Obergrenze.
+
+### Jede neue Prüfung war rot (Regel 10)
+
+`werkzeuge/pruefe-abgrund.mjs` wuchs von 60 auf **124 Behauptungen**.
+
+| Absichtlicher Fehler | Was die Prüfung meldete |
+| --- | --- |
+| `abgrundHinter` umgedreht (`if (karte.istAbgrund(…)) return null`) | 23 von 124 gefallen, u. a. „der Abgrund hinter dem Ziel wird gefunden" |
+| `abgrundSturz` nimmt jede offene Nachbarkachel statt der auf Sohlenebene | 6 gefallen: „aber es gibt kein Landefeld: ist [object Object], soll null" |
+| `schiebe` ruft `stossInsLoch` nicht auf (**die Falle aus dem Auftrag**) | 12 gefallen: „gestoßen wird wirklich: apGesetzt" — die Aktion bleibt erlaubt und tut nichts |
+| `stossFolgen` ruft `stossInsLoch` nicht auf | 4 gefallen: „der Hammer stößt: apGesetzt, angriff, schaden" |
+| `pruefeSchub` fragt nicht, wer auf dem Landefeld steht | 1 gefallen: „der Stoß wird abgelehnt: „null"" |
+| `grabeAbgruende` gar nicht aufgerufen | 6 gefallen: „0 von 30 Karten tragen einen Abgrund (verlangt: 27)" |
+| `traegtRingsum` abgeschaltet | „kein einziger der 704 Abgründe hat einen Sims: ist 346, soll 0" |
+| Erreichbarkeitsprobe abgeschaltet | „(d) der Ausgang bleibt auf allen 30 Karten beidseitig erreichbar: ist 3, soll 0" |
+| `MIN_EBENEN_FLAECHE`-Probe abgeschaltet | `pruefe-landschaft`: „(h) keine Ebenenfläche unter 3 Kacheln: ist 1, soll 0" |
+| `inReichweite` gibt immer `false` | `pruefe-app`: „0 Angriffe auf den Saaten 7 und 31" und „12 verschiedene Ereignisformen" |
+
+### Was bewusst **nicht** geändert wurde
+
+- **`stossZiel`** — kein Zeichen. Wegfindung, Gegner-KI und Bild sehen
+  denselben Stoß wie vorher.
+- **Die Gegner-KI** sieht den Abgrund weiterhin als Wand: `schubGewinn`
+  fragt `stossZiel` und bewertet einen Stoß ins Loch mit 0. Die Brut
+  benutzt den Abgrund also nicht. Offener Punkt für den Auftraggeber.
+- **Das Bild.** Wie ein Abgrund aussieht, steht in `runtime/` und ist
+  seit Schritt 2 unverändert.
+- **`MIN_EBENEN_FLAECHE`, `STURZ_AB_STUFEN`, `wasserMindestSee`** und
+  jede andere Prüfmarke: keine gesenkt.
+
+## 07.09.2026 — Wasserbecken auf jeder Ebene, nicht nur im Graben
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 3 von vier. Dieser Schritt bringt das **Wasser** auf alle
+Ebenen. Abgründe setzt weiterhin niemand auf eine Karte, das ist
+Schritt 4. Für Jannik heißt das: Bisher lag jede Pfütze ganz unten im
+Graben — auf 60 nachgerechneten Karten kein einziges nasses Feld
+weiter oben. Jetzt liegen auf **52 von 60 Karten** Seen auf
+mindestens **zwei verschiedenen Höhen**.
+
+### Was neu ist: `beckenGebiete(karte)`
+
+Eine reine Abfrage in `spiel/kachelhilfe.mjs`. Sie liefert die
+**Becken** einer Karte, und ein Becken hat zwei Teile:
+
+- den **Boden** — ein zusammenhängendes offenes Gebiet gleicher Ebene,
+  dessen sämtliche offenen Nachbarn **höher** liegen. Dort kann Wasser
+  nicht ablaufen;
+- den **Rand** — die angrenzenden höheren offenen Kacheln, jede genau
+  einmal. Von dort schaut man hinein und dorthin klettert man heraus;
+  Schritt 4 braucht ihn für den Stoß.
+
+Sie ändert nichts an der Karte und fragt über `gebiete()`, den einen
+Flutfüller dieser Datei. Eine eigene Nachbarschleife wäre eine zweite
+Reihenfolge gewesen, und zwei Rechner nummerierten ihre Becken
+verschieden (Fehlerbuch B2).
+
+**Warum in `kachelhilfe.mjs` und nicht in `landschaft.mjs`:** Gefragt
+wird sie von `spiel/ausstattung.mjs`. Stünde sie in der Landschaft,
+holte die Ausstattung sie aus der Landschaft — die die Ausstattung
+ihrerseits aufruft. Das ist genau der **Ringschluss**, wegen dessen
+`kachelhilfe.mjs` überhaupt existiert; im Bündler
+(`werkzeuge/eine-datei.mjs`) bricht er ab. Die Begründung steht als
+eigener Abschnitt in der Kopfnotiz der Datei.
+
+### `setzeWasser` fragt nicht mehr nach der Ebene
+
+`spiel/ausstattung.mjs` band das Wasser bisher hart an
+`EBENE_GRABEN`, also an die Zahl 0. Das war falsch herum gedacht:
+Nicht die *Zahl* einer Ebene macht eine Mulde, sondern dass es von ihr
+aus nur hinauf geht. Ein Kessel auf Ebene 2 ist genauso ein Becken wie
+der Graben — er ist nur höher. Die Mindestgröße `wasserMindestSee`
+(6 Kacheln) gilt unverändert weiter, sonst stünden einzelne nasse
+Kacheln im Trockenen.
+
+Ein See liegt weiterhin ganz auf **einer** Ebene, und das ist kein
+Zufall: Zwei Becken sind nie benachbart, denn das tiefere wäre ein
+Nachbar des höheren — und der höhere damit kein Becken mehr.
+
+### Die Zusage (j) ist ersetzt, nicht gelöscht
+
+`werkzeuge/pruefe-landschaft.mjs` versprach bisher *„(j) jedes
+Wasserfeld liegt in Ebene 0"*. Dieser Satz wird durch diese Aufgabe
+falsch. Er ist **nicht** gestrichen, sondern durch die **stärkere**
+Zusage ersetzt: *„(j) jedes Wasserfeld liegt auf einem Beckenboden —
+alle offenen Nachbarn liegen höher."* Ebene 0 war eine Zahl; ein
+Beckenboden ist eine Aussage über die Nachbarn und schließt die alte
+Zusage für den Graben mit ein. Die Zeilenzahl der Datei steigt dabei
+von 990 auf **997** — die Grenze liegt bei 1000.
+
+### Neue Prüfung: `werkzeuge/pruefe-becken.mjs`
+
+**20 Behauptungen**, eine eigene Datei, weil `pruefe-landschaft.mjs`
+keine zehn Zeilen Luft mehr hat. Zwei Teile:
+
+1. **Ein Saal von Hand**, in dem beide Regeln verschieden antworten:
+   eine Mulde auf Ebene 1, vom Hochland (Ebene 2) umschlossen, und ein
+   Graben auf Ebene 0. Die Mulde ist ein Becken — die alte Regel hätte
+   sie übersehen. Die große Fläche auf Ebene 1 ist **keines**, obwohl
+   sie ans Hochland grenzt: Der Graben ist ihr tieferer Nachbar, das
+   Wasser liefe ab. Eine Regel *„irgendein Nachbar liegt höher"* wäre
+   hier grün und trotzdem falsch. Dazu die Randzahlen **10** und **9**,
+   von Hand über die beiden Richtungstabellen nachgezählt: Auf dem
+   Quadratraster hätte die Mulde acht Randkacheln, auf Versatzzeilen
+   sind es zehn.
+2. **Dreißig erzeugte Karten** 44 × 32. Gezählt wird, auf wie vielen
+   verschiedenen Ebenen Wasser steht. **Gemessen: 27 von 30** haben
+   Wasser auf mindestens zwei Ebenen (über 60 Saaten: 52). **Die
+   Schwelle steht bei 20 von 30**, also zwei Dritteln — sieben Karten
+   Abstand, weil kein einzelner Kerker bestellt ist, sondern der
+   Anteil; und nicht tiefer, weil die Hälfte keine „überwiegende
+   Mehrheit" mehr wäre. Die alte Regel liefert **0 von 30**, fällt hier
+   also um zwanzig Karten durch und nicht um eine.
+
+**Zweimal absichtlich rot gemacht (Regel 10), beide Male
+zurückgenommen:**
+
+1. `setzeWasser` wieder auf Ebene 0 festgenagelt (`|| b.ebene !== 0`)
+   — `pruefe-becken.mjs` meldet **3 von 20 gefallen**, wörtlich: *„auf
+   0 von 30 Karten steht Wasser auf mindestens zwei Ebenen (verlangt:
+   20)"*, *„auf jeder der 30 Karten steht überhaupt Wasser: ist 2, soll
+   0"* und *„über den ganzen Lauf tragen 1 verschiedene Ebenen Wasser"*.
+2. `setzeWasser` zusätzlich den **Rand** nass machen lassen — die neue
+   Zusage (j) in `pruefe-landschaft.mjs` meldet **ist 3781, soll 0**.
+   Ohne diesen zweiten Versuch wäre nicht bewiesen, dass (j) den
+   Beckenboden wirklich prüft und nicht bloß mitzählt. Nebenbei fiel
+   dort auch (k) — zu viel Wasser lässt zu wenige Wandfelder für
+   Fackeln übrig.
+
+### Die gemessenen Nebenwirkungen
+
+Mehr Wasser heißt: weniger trockene Kacheln für die Startfelder und
+längere Wege, weil Wasser mit `WASSER_ZUSCHLAG` zählt. Beides wurde
+vorher und nachher gemessen, keines wirft:
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Wasserkacheln je Karte (60 Saaten) | 71,0 | **122,3** |
+| Wasser je Ebene 0/1/2/3 (60 Saaten) | 4259/0/0/0 | **4259/2840/239/0** |
+| Karten mit Wasser auf ≥ 2 Ebenen | 0 von 60 | **52 von 60** |
+| Seen je Karte | 2,7 | **4,9** |
+| trockene offene Kacheln je Karte (20 Saaten) | 426,6 | **369,6** |
+| Laufkosten zum Ausgang (20 Saaten) | 48,5 | **54,5** |
+| kleinste erlaubte Karte 20 × 20, 4 Jäger, 40 Saaten | 40 gebaut, 0 Fehler | **40 gebaut, 0 Fehler** |
+| schlimmste Fackeldichte (erlaubt: 40) | 30,3 | 30,3 |
+
+Ebene 3 bleibt trocken, und das ist kein Fehler: Sie ist die höchste,
+ein Becken dort müsste ringsum noch höhere Nachbarn haben. Ein
+eingemauerter Hohlraum wäre einer — den gibt es auf einer erzeugten
+Karte nicht, weil dort jede offene Kachel erreichbar sein muss.
+
+### Eine Fremdänderung (Ausnahme zu Regel 2)
+
+`werkzeuge/pruefe-landschaft.mjs` und die neue
+`werkzeuge/pruefe-becken.mjs` gehören nach der Systemtabelle auf
+`pruef/`, nicht auf `kern/`. Sie mussten mit auf diesen Zweig, weil die
+Kette sonst als Ganzes rot bliebe: Zusage (j) behauptet wörtlich das
+Gegenteil dessen, was die Aufgabe verlangt. Die Änderung dort ist auf
+das Nötige beschränkt — die eine Zusage und der Import dazu.
+
+### Die Zahlen
+
+```bash
+node werkzeuge/pruefe-alles.mjs      # 41 → 42 Prüfungen, alle grün
+node werkzeuge/pruefe-becken.mjs     # 20 Behauptungen, 3,6 s
+node werkzeuge/pruefe-landschaft.mjs # 139 Behauptungen
+```
+
+Wasser je Ebene, Karten mit zwei nassen Ebenen und Wasser je Karte:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+import { FLUESSIG } from "./spiel/gitter.mjs";
+const je = [0, 0, 0, 0]; let zwei = 0, nass = 0;
+for (let s = 1; s <= 60; s++) {
+  const k = baueLandschaft({ saat: s, breite: 44, hoehe: 32 });
+  const e = new Set();
+  for (let i = 0; i < k.anzahl; i++) if (k.fluessig[i] === FLUESSIG.wasser) {
+    je[k.ebene[i]]++; nass++; e.add(k.ebene[i]); }
+  if (e.size >= 2) zwei++;
+}
+console.log(je.join(" / "), "|", zwei, "|", (nass / 60).toFixed(1));'
+```
+
+Trockene Kacheln, Ausgangsentfernung und die kleinste erlaubte Karte:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+import { laufKostenFeld } from "./spiel/erreichbarkeit.mjs";
+import { FLUESSIG, BLOCKT_BEWEGUNG } from "./spiel/gitter.mjs";
+let trocken = 0, kosten = 0;
+for (let s = 1; s <= 20; s++) {
+  const k = baueLandschaft({ saat: s, breite: 44, hoehe: 32, spielerZahl: 2 });
+  const f = laufKostenFeld(k, k.starts);
+  for (let i = 0; i < k.anzahl; i++) {
+    if (!BLOCKT_BEWEGUNG.has(k.hindernis[i]) && k.fluessig[i] === FLUESSIG.keine) trocken++;
+  }
+  kosten += f[k.index(k.ausgang.x, k.ausgang.y)];
+}
+let gebaut = 0;
+for (let s = 1; s <= 40; s++) {
+  try { baueLandschaft({ saat: s, breite: 20, hoehe: 20, spielerZahl: 4 }); gebaut++; }
+  catch { /* gezählt wird, was durchkommt */ }
+}
+console.log((trocken / 20).toFixed(1), (kosten / 20).toFixed(1), gebaut);'
+```
+
+**Was bewusst nicht geändert wurde:** `spiel/hoehen.mjs` (der
+Wasserzuschlag bleibt, wie er ist), `spiel/gitter.mjs` (kein neuer
+Feldwert), `runtime/` (Wasser wird gezeichnet wie bisher, nur öfter),
+und `waehleStarts` — es meidet nasse Kacheln nach derselben Regel wie
+zuvor, sie fällt bloß häufiger aus.
+
+## 07.09.2026 — Der Abgrund ist eine eigene Feldart
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 2 von vier. Dieser Schritt gibt dem Abgrund einen Platz im
+Raster. **Auf eine erzeugte Karte gesetzt wird noch keiner** — das ist
+Schritt 3 —, und was mit einer hineingestoßenen Figur geschieht,
+entscheidet Schritt 4. Für Jannik heißt das: Im Spiel ist heute noch
+nichts zu sehen; das Spielbrett kennt jetzt bloß das Wort „Loch".
+
+### Was neu ist
+
+`HINDERNIS.abgrund = 11` in `spiel/gitter.mjs`, **unten angehängt** —
+gespeicherte Läufe tragen die Zahlen und nicht die Namen, ein Wert
+dazwischen hätte jeden alten Sarg umbenannt. Dazu die Frage
+`karte.istAbgrund(x, y)` neben `blocktBewegung`, damit nicht vier
+Module denselben Zahlenvergleich selbst schreiben.
+
+**Gemessen an den vier Mengen** (Befehl im Abschnitt „Die Zahlen"):
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Hindernisarten | 11 | **12** |
+| höchster Wert | 10 | **11** |
+| `BLOCKT_BEWEGUNG` | 9 | **10** |
+| `BLOCKT_SICHT` | 2 | 2 |
+| `GIBT_DECKUNG` | 7 | 7 |
+| `ZERSTOERBAR` | 3 | 3 |
+| hält auf, ohne Sicht zu nehmen **oder** Deckung zu geben | 0 | **1** |
+
+Die letzte Zeile ist der eigentliche Inhalt dieses Schritts. Bewegung
+blocken und Sicht nicht, das konnten Fass, Kiste, Altar, Gitter,
+Fackelsockel, Sarg und Truhe längst — aber alle sieben geben zugleich
+Deckung. Was aufhielt, war bisher **immer** auch etwas, wohinter man
+sich duckt. Der Abgrund ist der erste Wert, der aufhält und weder das
+eine noch das andere tut. Warum er in keiner der drei anderen Mengen
+steht, ist mit je einem Satz **über** der Menge begründet, nicht im
+Changelog: Dort sucht es der Nächste, der sie „aufräumen" will.
+
+### Die Sturzregel steht als Begründung im Code
+
+**Ein Abgrundfeld trägt in der Reihe `ebene` die Ebene seiner SOHLE,
+nicht die des Randes.** Die Entscheidung steht in `spiel/hoehen.mjs`
+direkt über `sturzTiefe`, weil die beiden Funktionen darunter von ihr
+leben: Trüge das Loch die Ebene seines Randes, wäre die Differenz 0 und
+ein Sturz hinein täte **keinen** Schaden. So rechnen `sturzTiefe` und
+`sturzSchaden` unverändert richtig — Rand auf Ebene 3, Sohle auf Ebene
+1 sind zwei Stufen und damit 3 Schaden. Und weil `ebene` eine der fünf
+Reihen ist, die `karte.summe()` hasht, fällt die Sohle nicht aus der
+Desync-Erkennung heraus, wie es eine Nebenliste täte.
+
+### Der Abgrund sieht nicht aus wie Boden
+
+Im Bild (`runtime/zeichnen.js`) ist er kein Sprite, sondern eine eigene
+dunkle Fläche mit heller Nordkante — derselbe Bau wie die Wand, nur
+andersherum: Die Wand ist ein Klotz nach oben, das Loch eine Öffnung
+nach unten. Ohne das bliebe das Feld schlicht Boden, und ein Loch, das
+aussieht wie Boden, ist die gefährlichste Fassung, die es hier gibt.
+In der Textkarte (`werkzeuge/karte-zeigen.mjs`) steht er als `▓`, samt
+Legende. Das große Bild — Tiefenverlauf, ausgefranste Ränder — ist
+Vorgang #9 und ausdrücklich nicht hier.
+
+**Auf der Zeichenfläche nachgezählt:** Ein Fenster über einer leeren
+Karte erzeugt **282 Rechtecke**, dieselbe Karte mit einem Abgrund auf
+einem einzigen Feld **286** — und **5** davon kommen im Bodenbild gar
+nicht vor, darunter eine volle Kachel 16×16 in `#07060c` und die
+1 Bildpunkt hohe helle Kante in `#5a5270`. Wäre der Abgrund ohne eigene
+Fläche geblieben, stünde hier dreimal dieselbe Zahl.
+
+```bash
+node --input-type=module -e 'import { macheKarte, HINDERNIS } from "./spiel/gitter.mjs";
+import { macheZeichner } from "./runtime/zeichnen.js";
+import { macheKamera } from "./runtime/kamera.js";
+const male = (h) => { const k = macheKarte(20, 20); const a = []; let f = "";
+  if (h !== null) k.setze(10, 10, { hindernis: h, ebene: 0 });
+  const ctx = { canvas: { width: 320, height: 180 }, imageSmoothingEnabled: false,
+    globalCompositeOperation: "", set fillStyle(v) { f = v; }, get fillStyle() { return f; },
+    fillRect: (x, y, b, g) => a.push(`${x},${y},${b},${g},${f}`) };
+  macheZeichner({ ctx, kamera: macheKamera({ fensterBreite: 320, fensterHoehe: 180, karte: k }) })
+    .zeichneWelt(k, null, null, 0); return a; };
+const boden = male(null), loch = male(HINDERNIS.abgrund);
+console.log(boden.length, loch.length, loch.filter(z => !boden.includes(z)).length);'
+```
+
+### Neue Prüfung: `werkzeuge/pruefe-abgrund.mjs`
+
+Eine eigene Datei, weil `pruefe-landschaft.mjs` mit 990 Zeilen nur noch
+10 Zeilen Luft unter der 1000-Zeilen-Grenze hat. **60 Behauptungen** auf
+**einer** von Hand gebauten Karte mit Wänden und Höhen — eine Karte und
+nicht zwei, weil „über den Abgrund sieht man" und „durch die Wand
+nicht" sonst zwei Aussagen über zwei verschiedene Welten wären.
+Geprüft wird dasselbe Feld, dreimal verschieden belegt.
+
+Zwei Vorkehrungen, damit die Prüfung den Fall misst, der ohne diese
+Arbeit falsch wäre, und nicht den, der ohnehin gewinnt:
+
+- Die Sohle des Prüf-Abgrunds liegt bei den Begehbarkeitsfragen nur
+  **eine** Ebene tiefer. Zwei Ebenen wären ein Sturz, und Stürze sind
+  ohnehin kein Weg — die Prüfung bestünde dann auch ohne den Eintrag in
+  `BLOCKT_BEWEGUNG`.
+- Bei der Wegfindung läuft die Suche mit `stuerzeErlaubt`, und die
+  Sohle liegt dort sogar auf Höhe des Randes. Sonst hielte schon die
+  Rampenregel die Figur im Loch fest — aus einer Grube klettert man
+  ohne Rampe nicht heraus —, und gemessen wäre die Rampenregel.
+
+**Dreimal absichtlich rot gemacht (Regel 10), jedes Mal
+zurückgenommen:**
+
+1. `HINDERNIS.abgrund` in `BLOCKT_SICHT` geschrieben — **7 von 60
+   gefallen**, darunter wörtlich: *„3 · Sicht über den Abgrund → über
+   den Abgrund hinweg ist die Sicht frei"* und *„4 · Sicht vom Podest →
+   von Podest zu Podest über die Sohle hinweg ist die Sicht frei"*.
+2. `HINDERNIS.abgrund` aus `BLOCKT_BEWEGUNG` entfernt — **21 von 60
+   gefallen**, darunter alle zwölf Richtungen und wörtlich: *„6 ·
+   Wegfindung → durch die einzige Lücke, in der ein Abgrund liegt,
+   führt kein Weg: ist [object Object], soll null"* und *„6 ·
+   Wegfindung → kein Feld des Weges ist ein Abgrund: ist 1, soll 0"*.
+3. `HINDERNIS.abgrund` in `GIBT_DECKUNG` geschrieben — **3 von 60
+   gefallen**, wörtlich: *„1 · Der Wert → genau ein Hindernis hält auf,
+   ohne Sicht zu nehmen oder Deckung zu geben: ist 0, soll 1"*.
+
+Ein vierter Versuch — `istAbgrund` auf `HINDERNIS.gitter` verbogen —
+warf nur **1 von 60** um. Das ist notiert, nicht schöngeredet: Die
+Wegfindungsfragen filtern mit `istAbgrund`, und ein Filter, der nie
+etwas findet, findet auch nichts Falsches. Deshalb fragt der Abschnitt
+zusätzlich den Feldindex direkt ab.
+
+### Zwei Fremdänderungen (Ausnahme zu Regel 2)
+
+Beide liegen außerhalb von `kern/` und mussten mit auf diesen Zweig,
+weil die Kette sonst als Ganzes rot bliebe:
+
+- **`werkzeuge/karte-zeigen.mjs`** (`werk/`): das Zeichen `▓` und die
+  Legendenzeile. Ohne Eintrag druckte das Werkzeug ein `?`, und
+  `pruefe-karte-zeigen.mjs` verbietet unbekannte Zeichen im Bild.
+- **`werkzeuge/pruefe-kopfnotiz.mjs`** (`pruef/`): Die bekannte
+  Abweichung für `spiel/gitter.mjs` nannte Zeile **134**; der Abgrund
+  hat 24 Zeilen darüber eingefügt, die Zeile steht jetzt auf **158**.
+  Die Zeile selbst ist unverändert (101 Zeichen), nur ihre Nummer
+  wandert. Genau dafür ist die Liste da — der Nagel wird nachgezogen,
+  die Regel bleibt stehen.
+
+`runtime/zeichnen.js` (`bild/`) ist die dritte fremde Datei, aber keine
+Ausnahme im selben Sinn: `pruefe-zeichnen.mjs` verlangt zu jedem
+Hindernis einen Eintrag in `DING_NAMEN`, und ohne ihn wäre die Kette
+sofort rot.
+
+### Die Zahlen
+
+```bash
+node werkzeuge/pruefe-alles.mjs        # 40 → 41 Prüfungen, alle grün
+node werkzeuge/pruefe-abgrund.mjs      # 60 Behauptungen
+```
+
+Die vier Mengen zählt:
+
+```bash
+node --input-type=module -e 'import { HINDERNIS, BLOCKT_BEWEGUNG,
+  BLOCKT_SICHT, GIBT_DECKUNG, ZERSTOERBAR } from "./spiel/gitter.mjs";
+const nurBew = [...BLOCKT_BEWEGUNG].filter(w => !BLOCKT_SICHT.has(w));
+console.log(Object.keys(HINDERNIS).length, Math.max(...Object.values(HINDERNIS)),
+  BLOCKT_BEWEGUNG.size, BLOCKT_SICHT.size, GIBT_DECKUNG.size, ZERSTOERBAR.size,
+  nurBew.filter(w => !GIBT_DECKUNG.has(w)).length);'
+```
+
+**Umbau ohne sichtbare Änderung, byteweise bewiesen (Regel 12).** Es
+setzt noch niemand einen Abgrund, also darf sich an erzeugten Karten
+**nichts** ändern:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+const s = []; for (let i = 1; i <= 20; i++)
+  s.push(baueLandschaft({ saat: i, breite: 48, hoehe: 32 }).summe());
+console.log(s.join(","));'
+```
+
+Zwanzig Saaten, zwanzig Prüfsummen — vor und nach dieser Änderung
+Zeichen für Zeichen dieselben, Saat 1 zum Beispiel **2740303601**.
+Dazu über dieselben zwanzig Karten **11.558 begehbare Kacheln** vorher
+wie nachher, und auf Saat 1 **2.070 freie Sichtpaare** vorher wie
+nachher.
+
+### Was bewusst nicht geändert wurde
+
+`spiel/landschaft.mjs` und `spiel/ausstattung.mjs` — dort entstehen die
+Abgründe und die Wasserbecken auf mehreren Ebenen, und das ist Schritt
+3. `spiel/aktionen.mjs` und `spiel/kampf.mjs` — der Stoß in den Abgrund
+ist Schritt 4. `stossZiel` gibt heute für ein Abgrundfeld noch `null`,
+weil es `begehbar` fragt; das ist so gewollt und wird dort geändert,
+wo die Sturzregel für Figuren entsteht.
+
+## 07.09.2026 — Der Stoß rechnet endlich auch auf dem Sechseck
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 1 von vier. Reine Fehlerbehebung, kein Inhalt: Ohne einen
+Stoß, der auf dem Sechseck stimmt, kann die Abnahme *„eine Figur, die
+in einen Abgrund gestoßen wird, nimmt Sturzschaden"* gar nicht
+funktionieren.
+
+### Was falsch war
+
+`stossZiel` (`spiel/hoehen.mjs`) war beim Sechseck-Umbau am selben Tag
+**übersehen** worden und rechnete als einzige Funktion des Kerns noch
+mit `Math.abs`/`Math.sign` auf Versatzzeilen — also im Quadratraster.
+
+**Gemessen über alle sechs Richtungen auf beiden Zeilenparitäten —
+12 Fälle, vorher 4 richtig, jetzt 12.** Die vier Fehlschläge landeten
+auf einem um eine Richtung versetzten Feld, vier weitere gaben `null`,
+stießen also gar nicht. Richtig waren nur Ost und West: Sie bleiben in
+derselben Zeile, und nur dort kennt `Math.sign` den Versatz nicht
+falsch. Befehl: `node werkzeuge/pruefe-hoehen.mjs`.
+
+Dazu zwei Folgefehler derselben Herkunft:
+
+- **Der gespiegelte Punkt.** `spiel/aktionen.mjs` und
+  `spiel/gegner-ki.mjs` spiegelten für das *Ziehen* mit `2 * ziel - aus`.
+  Das stimmt auf dem Sechseck nur, wenn beide Zeilen dieselbe Parität
+  haben: Von (5,5) aus liegt der Südost-Nachbar bei (6,6), gespiegelt
+  ergäbe das (4,4) — und (4,4) ist von (5,5) aus gar kein Nachbar. Neu
+  ist `gespiegelt()` in `spiel/gitter.mjs`, das in Würfelkoordinaten
+  rechnet; alle drei Stellen benutzen jetzt dieselbe.
+- **Eine Klammer ohne Funktion.** In `spiel/gegner-ki.mjs` stand
+  `if (schub > 0 &&(x, y, ziel.x, ziel.y) === 1)`. Beim Umbau war der
+  Name `schussweite` entfallen, die Klammer blieb stehen — übrig war
+  eine Kommaliste, die `ziel.y` liefert. Die Gegner-KI verglich also
+  die **Zeile des Ziels** mit 1. Gemessen an einer Karte mit
+  identischer Geometrie: derselbe Stoßplatz war in Zeile 1 **970** wert,
+  in den Zeilen 3, 5 und 7 nur **270**. Jetzt `abstand(...) === 1`.
+
+### Was das im Spiel ändert
+
+Die Brut sieht die Kante wieder. Voller Lauf,
+`node werkzeuge/pruefe-lauf.mjs`:
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Stöße | 8 | **12** |
+| Angriffe | 82 | **88** |
+| Schaden | 198 | 183 |
+| Gefallene | 6 | 5 |
+
+Dreißig Runden zu viert auf Saat 7 (`node werkzeuge/pruefe-app.mjs`):
+**764 → 757 Aktionen, 14 → 7 Angriffe**. Die Brut läuft nicht mehr
+blind in den Nahkampf, sondern stellt sich an die Kante. Dreißig
+Runden im Netz auf Saat 5 (`node werkzeuge/pruefe-netz.mjs`):
+**3 → 4 Stöße, 36 → 38 Angriffe.**
+
+### Zwei Prüfungen in fremden Systemen (Ausnahme zu Regel 2)
+
+Beide liegen in `pruef/`, mussten aber mit auf diesen Zweig, weil die
+Kette sonst als Ganzes rot bliebe:
+
+- **`werkzeuge/pruefe-hoehen.mjs`** trägt zwei neue Prüfungen, jede über
+  alle sechs Richtungen auf beiden Zeilenparitäten.
+  - *Der Stoß.* **Rot gemacht ohne Kunstgriff** — sie war beim ersten
+    Lauf gegen den unveränderten Code rot, 8 von 12 Lagen fielen, und
+    meldete *„Stoß → Zeile 6: von suedost gestoßen fliegt man nach
+    nordwest: ist {"x":8,"y":5} soll {"x":7,"y":5}"*.
+  - *Der Zug.* Prüft die Verkettung `gespiegelt` + `stossZiel`, also
+    genau das, was `aktionen.mjs` baut. **Rot gemacht**, indem
+    `gespiegelt` wieder auf `2 * ziel - aus` gesetzt wurde: 8 von 12
+    Lagen fielen, gemeldet *„Zeile 7: nach suedwest gezogen landet man
+    beim Angreifer: ist {"x":9,"y":8} soll {"x":8,"y":8}"*.
+
+  Drei alte Behauptungen schrieben die Quadratantwort fest und wurden
+  auf die gemessene Sechseckwirklichkeit umgeschrieben (aus „von Süden
+  nach Norden" wurde „von Südwest nach Nordost"). **149 → 174
+  Behauptungen.**
+- **`werkzeuge/pruefe-app.mjs`** verlangte über dreißig Runden mehr als
+  10 Angriffe — eine Zahl, die an der Brut gemessen war, die nicht
+  stoßen konnte. Sie steht jetzt bei 3, mit der Begründung im Kommentar:
+  Sie soll den leeren Lauf fangen, nicht die Laune der Gegner-KI
+  einfrieren. Gemessen sind es 7.
+
+**Kette: `node werkzeuge/pruefe-alles.mjs` — 40 von 40 grün.**
+## 07.09.2026 — Körnung im Fels: keine zwei Wandfelder mehr gleich
+
+**Auftrag, wörtlich:** *„die welt soll grafisch und engine mäßig schon
+so aussehen und aufgebaut sein wie mein ‚granit höhle' ‚Scotophobia'"* —
+Merkmal 3 der Abnahme von Vorgang #9, wörtlich: *„Körnung im Fels. Zwei
+benachbarte Wandfelder derselben Art sind nie exakt derselbe Farbwert."*
+
+Eine Felswand war bis heute eine lackierte Fläche: **2.608 von 2.608**
+benachbarten Wandpaaren gleicher Ebene trugen exakt denselben Farbwert.
+Jetzt sind es **0 von 2.608**.
+
+### Die Messungen
+
+Alle an derselben Karte (Saat 4711, 56 × 40 Felder) und demselben
+Fenster (1920 × 1080), abgelesen an der **wirklich gezeichneten** Farbe
+über ein mitschreibendes Zeichenblatt:
+
+| Was | vorher | nachher |
+| --- | --- | --- |
+| farbgleiche Nachbarpaare gleicher Ebene | 2.608 von 2.608 = 100,00 % | 0 von 2.608 = 0,00 % |
+| gezeichnete Oberseitentöne im Bild | 4 | 24 |
+| Rechtecke je Weltbild | 4.431 | 4.431 |
+| Zeit je `zeichneWelt()` | 1,028 ms | 0,972 ms |
+| Prüfkette | 40 Prüfungen, 12.302 Behauptungen | 41 Prüfungen, 12.371 Behauptungen |
+
+Die Zeit ist das Kleinste aus zwanzig Runden zu je 500 Bildern — der
+Median wandert mit der Last der Maschine, das Minimum nicht. Dass sie
+**sinkt**, obwohl je Wandfeld eine Stufe dazukommt, liegt an einer
+flachen Merkreihe für die 48 Wandtöne (vier Ebenen × zwei Seiten ×
+sechs Stufen): Sie spart je Wandfeld zwei zusammengesetzte
+Zeichenketten-Schlüssel und zahlt damit die Körnung mehr als zurück.
+
+### Warum sechs Stufen und warum 7 von 255
+
+Die Stufe ist **Dreifärbung mal Zwischenstufen**: `(wx − wz)` modulo 3
+aus den Würfelkoordinaten des Sechseckgitters, dazu ein Zittern aus den
+oberen acht Hashbits. Zwei benachbarte Sechsecke liegen nie im selben
+Drittel — gemessen **0 von 238.402** Nachbarschaften auf 200 × 200
+Feldern. Damit ist „nie gleich wie der Nachbar" garantiert und nicht
+gewürfelt: Ersetzt man die Dreifärbung durch einen freien Wurf über
+sechs Stufen, sind es sofort wieder **292 von 1.847** Wandpaaren im
+Bild, also 15,8 %.
+
+Die Spanne von **7 von 255** steht zwischen zwei gemessenen Schranken.
+Nach oben: Der engste Ebenenabstand im Fels sitzt an der Wand-Flanke
+mit **11,65**; bei 7 bleiben davon 4,65 frei, und an der Oberseite
+(28,43) sogar 21,43 — die Ebenen berühren sich nicht. Nach unten: Die
+multiplizierende Lichtlage frisst Kleines auf, ab Lichtstufe 2/7
+überlebt erst ein Abstand von 2. Deshalb ist der Sprung **zwischen zwei
+Dreifärbungs-Bändern** genau 2,0 groß — und nur der zählt, weil nur er
+zwischen Nachbarn liegt.
+
+Die Zahl ist eine Rec.-709-Zahl. `koernungsTon` verschiebt r, g und b
+um denselben Betrag, und weil sich die drei Rec.-709-Gewichte zu 1
+summieren, ist der Rec.-709-Versatz genau dieser Betrag. Über einen
+einzelnen Kanal wäre man um bis zum Vierzehnfachen daneben: 7 Punkte
+auf Blau (Gewicht 0,0722) sind 0,5 Punkte Rec. 709.
+
+### Wie die neuen Prüfungen rot gemacht wurden
+
+`werkzeuge/pruefe-koernung.mjs` ist neu (58 Behauptungen) und war
+dreimal absichtlich rot:
+
+1. `KOERNUNG_SPANNE = 0` → 13 von 58 gefallen, darunter *„kein
+   Nachbarpaar trägt dieselbe Oberseite — zuerst 0,0 und 1,0 beide
+   #433d54: ist 1847, soll 0"*.
+2. Dreifärbung durch einen freien Wurf ersetzt → 4 gefallen, darunter
+   *„kein Nachbarpaar teilt ein Band — das ist die Garantie: ist 79158,
+   soll 0"*.
+3. `KOERNUNG_SPANNE = 14` → 3 gefallen, darunter *„Flanke: die Körnung
+   (14) bleibt unter dem Ebenenabstand (11.65 von 255)"*.
+
+Die vier farbgenauen Behauptungen in `werkzeuge/pruefe-zeichnen.mjs`
+(„genau ein Rechteck in exakt `wandTon(1, false)`") sind **nicht
+gelöscht**, sondern auf die Wandfamilie umgestellt: ein Rec.-709-Fenster
+von einer halben Spanne um den Grundton. Dass daraus kein Fenster
+geworden ist, das alles schluckt, steht als Gegenprobe daneben — ohne
+Wand findet es nichts. Beides wurde rot gemacht: `zeichneWand`
+abgeschaltet → *„die Wand hat eine Oberseite aus der Wandfamilie: ist 0,
+soll 1"*; Fenster auf 100 geweitet → *„ohne Wand findet das Fenster
+keine Oberseite: ist 1, soll 0"*.
+
+### Was dabei aufgefallen ist — und nicht geändert wurde
+
+Eine Wand auf **Ebene 0** trennt Oberseite und Flanke nur um **20,78**
+von 255; Fehlerbuch D3 verlangt für zwei Töne in einem Ding 24. Das war
+schon vorher so und hat mit der Körnung nichts zu tun — sie verschiebt
+den Abstand um 0,00 Punkte, weil Oberseite und Flanke dieselbe Stufe
+bekommen. `werkzeuge/pruefe-zeichnen.mjs` misst nur Ebene 1 (37,6) und
+war deshalb grün. Hier bleibt es eine Meldung, keine Änderung: Ebene 0
+ist der Graben, und ob dort eine Wand steht, entscheidet die Palette.
+
+Der **Boden bekommt keine Körnung**. Er trägt schon das Schachbrett aus
+Grund- und Zweitton, und daran sieht man beim Laufen die eigene
+Bewegung — von 1.407 benachbarten Bodenpaaren gleicher Art und Ebene
+sind auf derselben Karte nur 437 farbgleich, also 31,1 %. Ob dort
+zusätzlich gekörnt wird, ist eine eigene Entscheidung von Jannik.
+## 07.09.2026 — Drei der fünf Scotophobia-Merkmale sind bewiesen statt behauptet
+
+**Abnahme von #9, wörtlich:** *„Fünf benannte, prüfbare Merkmale sind
+grün — Licht in mindestens fünf Stufen, farbige Quellen mischen sich,
+Körnung im Fels, harte Kanten, Vorlauf im selben Ton."*
+
+Die Merkmale **1, 2 und 4** waren schon wahr — es fehlte der Beweis.
+Deshalb wurde **keine Zeile Zeichencode geändert**: `git diff --stat`
+gegen `kern/sechseck` zeigt **drei** Dateien, und keine davon liegt
+unter `runtime/` oder `spiel/`. Was sich ändert, sind die Prüfungen.
+
+Gemessen mit `node werkzeuge/pruefe-bild.mjs` und
+`node werkzeuge/pruefe-zeichnen.mjs`: **147 statt 138** Behauptungen im
+Licht, **145 statt 104** im Weltzeichner.
+
+### Merkmal 1 — „Licht in mindestens fünf Stufen"
+
+Die Untergrenze stand auf **4** und war damit lockerer als Janniks
+Wortlaut. Sie steht jetzt auf **5**. Gemessen in einer Szene mit fünf
+Quellen (Fackel, Arkan, Schleim, Gift, Gold): **7 von 8 Sprossen** je
+Kanal — 0,1429 0,2857 0,4286 0,5714 0,7143 0,8571 1,0000. Sprosse 0
+kommt nie vor, weil `GRUNDHELLE` 0,16 schon auf Sprosse 1 fällt.
+
+Daneben steht eine **zweite Zählung**, die die erste nicht leisten
+kann: verschiedene **RGB-Tripel** statt Kanalwerte — **82 von höchstens
+512** (`STUFEN³`, **nicht** 8; wer beide Zählungen in dasselbe Set
+schreibt, macht die Prüfung rot, ohne dass etwas kaputt wäre). Ein
+farbloser Grauverlauf hätte hier genauso viele Tripel wie Sprossen,
+nämlich 7. Beide Zahlen werden am Dateiende mitgedruckt.
+
+**Rotprobe:** `STUFEN` in `runtime/licht.js` kurz auf 2 gesetzt →
+**7 von 147** Behauptungen gefallen, darunter „Licht in mindestens fünf
+Stufen, nicht als Schalter (2 Sprossen)" und „die fünf Quellen
+überlagern einander wirklich (8 Tripel, gemessen 82)". Zurückgenommen.
+
+### Merkmal 2 — „farbige Quellen mischen sich"
+
+Diesen Abschnitt gab es **gar nicht**. Er heißt jetzt „4 ·
+Farbmischung" und misst auf der Warm-Kalt-Achse `r − b`, auf Feld (8,6)
+zwischen einer Fackel (#ff9438) bei (4,6) und einem Arkanlicht
+(#5c8cff) bei (12,6):
+
+| | r | g | b | r − b |
+| --- | --- | --- | --- | --- |
+| nur Fackel | 0,8571 | 0,5714 | 0,2857 | **+0,5714** |
+| nur Arkan | 0,2857 | 0,4286 | 0,5714 | **−0,2857** |
+| beide | 1,0000 | 0,7143 | 0,7143 | **+0,2857** |
+
+Die Mischung liegt **echt zwischen** beiden Einzelquellen — genau das
+täte sie nicht, wenn die zuletzt gerechnete Quelle die andere
+überschriebe.
+
+Die Geometrie ist empfindlich, und das steht als Begründung im Code:
+Bei Abstand **5** reicht das Arkanlicht nicht mehr bis zur Mitte
+(r − b = 0,0000), die „Mischung" ist die reine Fackel und die Prüfung
+wäre grün, ohne etwas zu zeigen; bei Abstand **3** stoßen alle drei
+Kanäle an 1,0000 und die Mischung ist reines Weiß. Ohne diese Notiz
+repariert der Nächste die Prüfung statt des Fehlers.
+
+**Rotprobe:** in `quelleAus` kurz `r = g = b = 255` erzwungen →
+**8 von 147** gefallen. Zwei Behauptungen blieben dabei grün („die
+Mischung ist nicht die reine Fackel"): Weißes Licht ergibt drei
+**verschiedene** Grauwerte. Genau dafür steht dort eine vierte
+Behauptung — „die Mischung hat noch einen Ton und ist kein farbloses
+Weiß" —, und sie fiel. Zurückgenommen.
+
+### Merkmal 4 — „harte Kanten"
+
+Bisher lief die Frage nebenbei mit, an zwei Fenstergrößen und ohne
+Zahl. Jetzt heißt der Abschnitt „2 · Harte Kanten" und druckt sie:
+
+- **0 von 607.095 Rechtecken** auf einem halben Bildpunkt, über
+  **8 Fenstergrößen × 5 Bilder**, Vergrößerungen 1 2 3 4 5 6 11.
+  Darunter krumme Fenster (1237×813, 4001×3697) und das Hochformat
+  eines Handys (412×915).
+- **`vergroesserungFuer` über 1.088 Fenstergrößen**: **0** nicht
+  ganzzahlig, Spanne **1 bis 11 ohne Lücke** (`MINDEST_KANTE` 336).
+
+Keine sechste Fassung von `ersterBruch`: Der vorhandene Abschnitt wurde
+erweitert. Was `pruefe-schrift.mjs` (passt die volle Sicht hinein?) und
+`pruefe-tippen.mjs` (Androids krumme 2,625 ergibt dasselbe ganze Blatt)
+schon fragen, steht als Verweis in der Kopfnotiz und wird nicht
+wiederholt.
+
+**Rotprobe:** `Math.floor` in `vergroesserungFuer` entfernt → **24 von
+145** gefallen, und die gedruckte Zahl kippte von „0 von 607.095" auf
+„7 von 599.615". Zurückgenommen; `git diff --stat runtime/` ist leer.
+
+### Was bewusst nicht geändert wurde
+
+`runtime/licht.js`, `runtime/kamera.js` und `runtime/zeichnen.js` —
+kein Byte. Die Merkmale **3 („Körnung im Fels")** und **5 („Vorlauf im
+selben Ton")** stehen noch aus; #9 ist damit noch nicht abgenommen.
+## 07.09.2026 — Regel 14 nannte die falsche Prüfdatei
+
+**Auftrag, wörtlich:** *„weil das github auch ohne den bindestrich
+geschrieben wird jetzt!"*
+
+Die Adresse zu berichtigen war der Anlass; beim Nachmessen fiel etwas
+anderes auf.
+
+### Die Adresse
+
+Der Ablageort heißt kanonisch **`Kimpaliz/Hatred`**. Gemessen:
+
+```
+curl -sSI https://github.com/Kimpaliz/hatred- | grep -i ^location:
+→ Location: https://github.com/Kimpaliz/Hatred
+```
+
+`hatred-` und `hatred` erreichen ihn weiter über eine Umleitung. In
+`docs/REGELN.md` 14 stand die Adresse klein geschrieben; sie steht jetzt
+so da, wie der Ablageort heißt.
+
+### Das Loch in der eigenen Prüfung
+
+Die Auslieferung wurde bis hierher **im Wurzelverzeichnis** nachgestellt.
+GitHub Pages liefert die Seite aber unter `/Hatred/` aus — und genau
+dort, und nur dort, fällt ein führender Schrägstrich auf. Ein Prüflauf an
+der Wurzel kann diesen Fehler nicht finden; er beweist das Gegenteil von
+dem, was er zu beweisen scheint.
+
+Nachgeholt, mit dem ausgelieferten Baum unter einem Unterordner:
+
+| Messung | Wert |
+| --- | --- |
+| Antworten insgesamt | 46 |
+| davon Module | 44 |
+| Anfragen **außerhalb** von `/Hatred/` | **0** |
+| Antworten ungleich 200 | **0** |
+| Fehler in der Ausgabe der Seite | **0** |
+| Bereich des Zwischenspeicher-Arbeiters | `/Hatred/` |
+| `manifest.webmanifest` | 200 unter `/Hatred/` |
+| Zeichenblatt | 915 × 412 bei Bildpunktverhältnis 2,625 |
+
+Dazu ein Textdurchgang über alle 63 ausgelieferten Dateien aus fünf
+Blickwinkeln — Seite und Anwendungsverzeichnis, Modulpfade, der
+Zwischenspeicher-Arbeiter, das Nachladen zur Laufzeit, und einer, der
+ausdrücklich das Gegenteil beweisen sollte. Aufgelöst wurden dabei 160
+Verweise, jeder Pfadabschnitt auch auf Groß- und Kleinschreibung.
+**Null Befunde.** Der Modulbaum vom Einstieg aus: 44 Module, 0 fehlend,
+0 absolut.
+
+### Und der eigentliche Fund
+
+`docs/REGELN.md` 14 („Alle Importpfade sind relativ") nannte als Beweis
+`werkzeuge/pruefe-verweise.mjs`. Diese Datei prüft etwas ganz anderes:
+Markdown-Verweise in der Doku gegen die Platte. Sie sieht **keinen
+einzigen Importpfad** — 54 Zeilen, kein Treffer auf `import`, `src=`
+oder `href=`.
+
+Gedeckt ist die Regel trotzdem, nur woanders:
+
+| Datei | was sie wirklich beweist |
+| --- | --- |
+| `werkzeuge/pruefe-einstieg.mjs` | die Verweise in `index.html` selbst |
+| `werkzeuge/pruefe-app.mjs` | den ganzen Modulbaum darunter, Kante für Kante |
+
+Der Verweis ist berichtigt, mitsamt der Begründung, warum ausgerechnet
+diese Regel nicht am Aufruf hängen darf.
+
+**Was dabei ungeprüft bleibt — bewusst gemeldet, nicht behoben:** Kein
+Werkzeug hält die `*Geprüft:*`-Verweise in `docs/REGELN.md` gegen das,
+was die genannte Datei tut. Gemessen über alle neun Verweise: **0 von 9**
+Prüfdateien nennen die Regelnummer, auf die sie sich beziehen. Eine
+Prüfung, die nur das Vorhandensein der Datei fordert, wäre hier grün
+geblieben — `pruefe-verweise.mjs` gibt es ja. Ein Rückverweis in beide
+Richtungen wäre der Beweis; er verlangt einen Zusatz in acht Dateien und
+wartet deshalb auf eine Entscheidung des Auftraggebers.
+
 ## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 
 **Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*

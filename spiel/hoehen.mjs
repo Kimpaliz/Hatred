@@ -57,7 +57,9 @@
    `begehbar` überhaupt hinauf lässt), `runtime/zeichnen.js` (zeigt
    dieselben Kanten, die hier blocken). */
 
-import { abstand, nachbarn, richtungen, RAMPE, FLUESSIG } from "./gitter.mjs";
+import {
+  abstand, nachbarn, richtungen, alsWuerfel, RAMPE, FLUESSIG
+} from "./gitter.mjs";
 
 /* Die Preise. Sie stehen als Zahlen hier und nicht in einer
    Einstellungsdatei, weil jede Änderung daran eine Regeländerung ist:
@@ -124,6 +126,35 @@ export function laufKosten(karte, vx, vy, nx, ny) {
   if (karte.fluessigBei(nx, ny) === FLUESSIG.wasser) kosten += WASSER_ZUSCHLAG;
   return kosten;
 }
+
+/* ── Die Sturzregel des Abgrunds ────────────────────────────────────
+
+   **Ein Abgrundfeld (`HINDERNIS.abgrund`) trägt in der Reihe `ebene`
+   die Ebene seiner SOHLE — nicht die des Randes, auf dem man davor
+   steht.** Diese Festlegung gehört hierher, weil die beiden Funktionen
+   direkt darunter von ihr leben.
+
+   Warum so: `sturzTiefe` rechnet die Differenz zweier Ebenen, und
+   `sturzSchaden` rechnet mit dieser Differenz weiter. Trüge das Loch
+   die Ebene seines Randes, wären beide Ebenen gleich, die Differenz
+   0 — und ein Sturz in den Abgrund täte **keinen** Schaden. Um das zu
+   heilen, müsste jede Aufrufstelle eine Sonderrechnung „wenn Abgrund,
+   dann so-und-so-viel tiefer als hier" bekommen. Genau solche über
+   vier Dateien verstreuten Sonderfälle sind es, an denen zwei Rechner
+   auseinanderlaufen. Steht die Sohle in der Reihe, rechnen beide
+   Funktionen hier **unverändert** richtig: Rand auf Ebene 3, Sohle auf
+   Ebene 1 ergibt zwei Stufen und damit 3 Schaden.
+
+   Die zweite Wirkung ist ebenso gewollt: Wer hineingestoßen wird,
+   landet auf der Sohle — „eine Ebene tiefer" ist keine gesonderte
+   Zahl, die irgendwo gepflegt werden müsste, sondern steht auf dem
+   Feld. Und `ebene` ist eine der fünf Reihen, die `karte.summe()`
+   hasht; die Sohle fällt also nicht aus der Desync-Erkennung heraus,
+   wie es eine Nebenliste „Sohlentiefen" täte.
+
+   Wohin ein Gestoßener am Ende kommt und was ein Sturz ohne tiefere
+   Ebene bedeutet, entscheidet nicht dieses Modul — hier steht nur, wie
+   tief es geht und was das kostet. */
 
 /* Wie viele Ebenen es bei diesem Wechsel hinabgeht, wenn es ein Sturz
    ist — sonst 0. Fragt bewusst **nicht**, ob der Schritt erlaubt wäre:
@@ -235,21 +266,132 @@ export function betretenSchaden(karte, x, y) {
   return { wieviel: LAVA_SCHADEN, art: "feuer" };
 }
 
+/* Welche der sechs Richtungen vom Ziel **weg** vom Angreifer zeigt —
+   `null`, wenn der Angreifer zwischen zwei Richtungen steht oder auf
+   dem Ziel selbst.
+
+   ── Warum in Würfelkoordinaten ─────────────────────────────────────
+
+   Bis zum 07.09.2026 stand hier `Math.abs`/`Math.sign` über die
+   Versatzzeilen — eine Quadratrechnung, die aus der Zeit vor dem
+   Sechseck übrig war. Gemessen über alle sechs Richtungen auf beiden
+   Zeilenparitäten traf sie **4 von 12**: Ost und West stimmen, weil
+   sie in derselben Zeile bleiben; die vier schrägen Richtungen landeten
+   auf dem falschen Feld oder gaben `null`. Wer in Zeile 6 nach Südwest
+   stieß, stieß ins Leere — auf einer geraden Zeile liegt der Südost-
+   Nachbar bei `(0, +1)`, auf einer ungeraden bei `(+1, +1)`, und davon
+   weiß `Math.sign` nichts.
+
+   In Würfelkoordinaten ist „liegt auf derselben Achse" dagegen eine
+   Multiplikation: Der Schritt in Richtung k, `weit` mal genommen, muss
+   genau den Angreifer treffen. Die Gegenrichtung ist `(k + 3) % 6` —
+   dieselbe Vorschrift wie in `kachelhilfe.gegen`.
+
+   Ein Angreifer **mehrere** Felder entfernt zählt mit, solange er auf
+   der Achse steht: Ein Schub über zwei Felder (`hakenkette`) schiebt
+   beim zweiten Schritt von einem Punkt aus, der längst kein Nachbar
+   mehr ist. */
+function stossRichtung(ax, ay, zx, zy) {
+  const weit = abstand(ax, ay, zx, zy);
+  if (weit < 1) return null;                   /* auch: Angreifer auf dem Ziel */
+  const a = alsWuerfel(ax, ay);
+  const z = alsWuerfel(zx, zy);
+  const hier = richtungen(zy);
+  for (let k = 0; k < 6; k++) {
+    const n = alsWuerfel(zx + hier[k].dx, zy + hier[k].dy);
+    if (a.wx - z.wx === (n.wx - z.wx) * weit && a.wz - z.wz === (n.wz - z.wz) * weit) {
+      return hier[(k + 3) % 6];
+    }
+  }
+  return null;
+}
+
 /* Das Feld, auf das ein Stoß das Ziel schiebt: ein Feld vom Angreifer
    weg. `null`, wenn dort nichts hingeht — Wand, Kartenrand oder eine
    Kante, die man nicht hinaufgeschoben werden kann. Hinab geht immer;
-   dass das ein Sturz wird, beantwortet `sturzTiefe`.
-   Steht der Angreifer exakt über Eck, gibt es keine eindeutige der vier
-   Richtungen — dann wird nicht gestoßen, statt eine zu erraten. */
+   dass das ein Sturz wird, beantwortet `sturzTiefe`. */
 export function stossZiel(karte, ax, ay, zx, zy) {
-  const dx = zx - ax;
-  const dy = zy - ay;
-  const waagerecht = Math.abs(dx);
-  const senkrecht = Math.abs(dy);
-  if (waagerecht === senkrecht) return null;   /* auch: Angreifer auf dem Ziel */
-
-  const nx = zx + (waagerecht > senkrecht ? Math.sign(dx) : 0);
-  const ny = zy + (waagerecht > senkrecht ? 0 : Math.sign(dy));
+  const weiter = stossRichtung(ax, ay, zx, zy);
+  if (!weiter) return null;
+  const nx = zx + weiter.dx, ny = zy + weiter.dy;
   if (!begehbar(karte, zx, zy, nx, ny)) return null;
   return { x: nx, y: ny };
+}
+
+/* ── Der Stoß in den Abgrund ────────────────────────────────────────
+
+   Liegt hinter dem Ziel ein Loch, dann sagt `stossZiel` `null` — es
+   fragt `begehbar`, und `begehbar` fragt `blocktBewegung`, und dort
+   steht der Abgrund seit dem 07.09.2026 drin. Genau so soll es sein:
+   Wegfindung, Gegner-KI und Bild fragen `stossZiel`, und keines von
+   ihnen darf einen Abgrund plötzlich für ein Zielfeld halten.
+
+   Deshalb steht die zweite Frage **neben** `stossZiel` und nicht
+   darin: Wer den Sturz will, fragt ausdrücklich danach. `stossZiel`
+   bleibt Wort für Wort, wie es war — sonst änderten sich Wegfindung
+   und KI stillschweigend mit. */
+
+/* Das Feld hinter dem Ziel, **wenn dort ein Abgrund liegt** — sonst
+   `null`. Dieselbe Sechseckrichtung wie `stossZiel`, dieselbe eine
+   Vorschrift (`stossRichtung`); eine zweite Richtungsrechnung wäre die
+   Naht, an der Stoß und Sturz eines Tages verschiedene Felder meinen. */
+export function abgrundHinter(karte, ax, ay, zx, zy) {
+  const weiter = stossRichtung(ax, ay, zx, zy);
+  if (!weiter) return null;
+  const nx = zx + weiter.dx, ny = zy + weiter.dy;
+  if (!karte.istAbgrund(nx, ny)) return null;
+  return { x: nx, y: ny };
+}
+
+/* ── Wohin ein Sturz in den Abgrund führt ───────────────────────────
+
+   **Die Figur landet nicht im Loch, sondern auf dem Boden, den das
+   Loch freilegt** — auf einer offenen Nachbarkachel des Abgrunds, die
+   auf seiner Sohlenebene liegt. Das ist eine Entscheidung, und sie
+   hat einen Grund:
+
+   Der Abgrund steht in `BLOCKT_BEWEGUNG`. Eine Figur, die **auf** dem
+   Abgrundfeld stünde, stünde auf einer Kachel, die `wegSuche`,
+   `erreichbareFelder` und `naechstesFreiesFeld` nie betreten — sie
+   käme dort nie wieder heraus, und keine Prüfung schlüge an, weil der
+   Zustand für sich genommen gültig ist. Das wäre eine Falle mit
+   Aussicht, und `erreichbarkeit.mjs` steht ausdrücklich dafür da, dass
+   es die nicht gibt.
+
+   Die Sohle als **Nachbarkachel** löst das ohne einen einzigen
+   Sonderfall im übrigen Kern: Die Figur steht danach auf einer ganz
+   gewöhnlichen offenen Kachel, eine Ebene oder mehr tiefer, und geht
+   von dort aus weiter wie jede andere. Der Schaden kommt aus
+   `sturzTiefe`/`sturzSchaden` — dieselben zwei Funktionen wie beim
+   Stoß über die Kante, nicht eine zweite Sturzregel.
+
+   **Gibt es keine solche Kachel, ist der Sturz tödlich.** Das ist die
+   zweite Hälfte von Janniks Abnahme („oder stirbt, wenn es keine
+   gibt"): ein Loch ohne Grund. `spiel/landschaft.mjs` gräbt nur
+   Abgründe mit Grund; bodenlose entstehen von Hand — und die Regel
+   dafür steht trotzdem hier, an **einer** Stelle.
+
+   `vonEbene` ist die Ebene, von der aus gefallen wird. Sie steht als
+   eigener Wert und nicht als Vorgabe im Kopf der Funktion, weil ein
+   vergessenes Argument sonst lautlos 0 Schaden ergäbe — und ein Sturz
+   ohne Schaden fiele niemandem auf.
+
+   Welche Nachbarkachel es wird, wenn mehrere in Frage kommen:
+   **die erste in der Reihenfolge aus `richtungen(y)`**. Nicht die
+   nächste, nicht die beste — eine feste Reihenfolge, sonst wählen
+   zwei Rechner verschieden (Fehlerbuch B2). */
+export function abgrundSturz(karte, x, y, vonEbene) {
+  if (!karte.istAbgrund(x, y)) return null;
+  const sohle = karte.ebeneBei(x, y);
+  let ziel = null;
+  for (const r of richtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (karte.blocktBewegung(nx, ny)) continue;
+    if (karte.ebeneBei(nx, ny) !== sohle) continue;
+    ziel = { x: nx, y: ny };
+    break;
+  }
+  const tiefe = Number.isFinite(vonEbene) && vonEbene > sohle ? vonEbene - sohle : 0;
+  const stufen = tiefe >= STURZ_AB_STUFEN ? tiefe : 0;
+  return { sohle, ziel, stufen, schaden: sturzSchaden(stufen), toedlich: ziel === null };
 }

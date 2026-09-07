@@ -110,7 +110,8 @@
 import { richtungen, abstand } from "./gitter.mjs";
 import {
   DECKUNG_MALUS, hoehenVorteil, trefferBonus, reichweitenBonus,
-  hatDeckung, sturzTiefe, sturzSchaden, stossZiel, betretenSchaden
+  hatDeckung, sturzTiefe, sturzSchaden, stossZiel, betretenSchaden,
+  abgrundHinter, abgrundSturz
 } from "./hoehen.mjs";
 import { sichtlinie } from "./sicht.mjs";
 import { lebendig, wesenBei, ruestungVon, wirkungAnhaengen } from "./wesen.mjs";
@@ -333,7 +334,11 @@ function trefferFolgen(zustand, angreifer, ziel, waffe, ereignisse) {
 function stossFolgen(zustand, angreifer, ziel, ereignisse) {
   const karte = zustand.karte;
   const hin = stossZiel(karte, angreifer.x, angreifer.y, ziel.x, ziel.y);
-  if (!hin) return;
+  /* Kein begehbares Feld dahinter — vielleicht ein Loch. Dieselbe
+     zweite Frage wie in `spiel/aktionen.mjs`: `stossZiel` lehnt den
+     Abgrund ab, weil er die Bewegung blockt, und das soll er auch.
+     Wer gestoßen wird, geht dort aber nicht hin, sondern fällt. */
+  if (!hin) { stossInsLoch(zustand, angreifer, ziel, ereignisse); return; }
   if (wesenBei(zustand.wesen, hin.x, hin.y)) return;
 
   const von = { x: ziel.x, y: ziel.y };
@@ -364,6 +369,50 @@ function stossFolgen(zustand, angreifer, ziel, ereignisse) {
   }
 
   const beimBetreten = betretenSchaden(karte, hin.x, hin.y);
+  if (beimBetreten && lebendig(ziel)) {
+    schadenEintragen(ziel, beimBetreten.wieviel, beimBetreten.art, "lava", ereignisse);
+  }
+}
+
+/* Derselbe Stoß, aber in ein Loch. Dieselbe Ereignisfolge wie oben —
+   `gestossen`, `ebeneGewechselt`, `gestuerzt`, Punkte weg, Schaden —,
+   damit für das Bild nur ein Fall entsteht.
+
+   Wo `spiel/aktionen.mjs` `fuegeSchadenZu` benutzt, steht hier
+   `schadenEintragen`: Es ist derselbe Weg in den Tod, nur der dieses
+   Moduls. Ein bodenloser Schacht nimmt die restlichen Lebenspunkte;
+   ein eigenes `ziel.lebt = false` gäbe es kein Ereignis `gestorben`. */
+function stossInsLoch(zustand, angreifer, ziel, ereignisse) {
+  const karte = zustand.karte;
+  const loch = abgrundHinter(karte, angreifer.x, angreifer.y, ziel.x, ziel.y);
+  if (!loch) return;
+  const vonEbene = karte.ebeneBei(ziel.x, ziel.y);
+  const sturz = abgrundSturz(karte, loch.x, loch.y, vonEbene);
+  if (sturz.ziel && wesenBei(zustand.wesen, sturz.ziel.x, sturz.ziel.y)) return;
+
+  const von = { x: ziel.x, y: ziel.y };
+  const nach = sturz.ziel || loch;
+  ziel.x = nach.x;
+  ziel.y = nach.y;
+  ereignisse.push({ art: "gestossen", wer: ziel.id, von, nach: { x: nach.x, y: nach.y } });
+
+  const nachEbene = karte.ebeneBei(nach.x, nach.y);
+  if (nachEbene !== vonEbene) {
+    ereignisse.push({ art: "ebeneGewechselt", wer: ziel.id, von: vonEbene, nach: nachEbene });
+  }
+
+  const schaden = sturz.toedlich ? ziel.lp : sturz.schaden;
+  ereignisse.push({
+    art: "gestuerzt", wer: ziel.id, von, nach: { x: nach.x, y: nach.y },
+    stufen: sturz.stufen, schaden, abgrund: true, toedlich: sturz.toedlich
+  });
+  schadenEintragen(ziel, schaden, "sturz", "sturz", ereignisse);
+  if (lebendig(ziel) && ziel.ap > 0) {
+    ziel.ap = 0;
+    ereignisse.push({ art: "apGesetzt", wer: ziel.id, ap: 0 });
+  }
+
+  const beimBetreten = betretenSchaden(karte, nach.x, nach.y);
   if (beimBetreten && lebendig(ziel)) {
     schadenEintragen(ziel, beimBetreten.wieviel, beimBetreten.art, "lava", ereignisse);
   }
