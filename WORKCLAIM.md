@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| runtime/lobby.js, runtime/lobby-bild.js, runtime/palette.js, CHANGELOG.md | Codex | Vorgang #9: Vorlauf im Scotophobia-Ton, eigener Zweig flaeche/scotophobia-vorlauf. | 07.09.2026 |
+| frei | frei | Vorlauf und zugehörige Prüfungen am 07.09.2026 integriert; Bereiche freigegeben. | 07.09.2026 |
 
 ## Format
 
