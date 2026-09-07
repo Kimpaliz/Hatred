@@ -3,6 +3,53 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
+
+**Auftrag, wörtlich:** *„nach main"* — und der erste Stand, der `main`
+je erreicht hat, machte den Ablauf sofort rot.
+
+### Was gemessen wurde
+
+`.github/workflows/pages.yml` wollte über die Umgebung `github-pages`
+selbst veröffentlichen. Er hat es nie getan und konnte es nicht:
+
+| Lauf | Zweig | Stand | Ergebnis | Dauer |
+| --- | --- | --- | --- | --- |
+| 34142713477 „Seite veröffentlichen" | `main` | 89ec19c | **failure** | **1 s** |
+| 34137617843 „pages build and deployment" | `gh-pages` | ebe3b27 | **success** | 26 s |
+
+Eine Sekunde, **kein einziger ausgeführter Schritt, kein Protokoll** —
+das ist keine fehlgeschlagene Prüfung, das ist eine abgewiesene
+Umgebung. Der Ablageort liefert die Seite aus dem Zweig `gh-pages` aus
+(„Deploy from a branch"). Dann gehört `github-pages` allein dem
+eingebauten Ablauf, und jeder fremde Anforderer wird abgewiesen, bevor
+er beginnt. Die zweite Zeile der Tabelle ist der Gegenbeweis: derselbe
+Weg, auf dem gerade veröffentlicht wurde, lief zur selben Stunde grün.
+
+### Was jetzt dort steht
+
+Der Ablauf heißt `kette.yml` und fährt genau eine Sache:
+`node werkzeuge/pruefe-alles.mjs` auf einem fremden Rechner. Das ist der
+Teil, der etwas beweist — die Kette läuft ohne die Werkstatt, in der der
+Stand entstanden ist. Veröffentlicht wird weiterhin über `gh-pages`, und
+zwar bewusst nicht mit dem ganzen Ordner, sondern mit den **63 Dateien**,
+die ein Browser wirklich anfragt (von 121 im Ablageort).
+
+Zwei Wege ins Netz wären zwei Wahrheiten gewesen.
+
+### Ein zweiter falscher Verweis, derselbe wie in Regel 14
+
+Der Kopf der Datei nannte `werkzeuge/pruefe-verweise.mjs` als den
+Schritt, der Regel 14 („Alle Importpfade sind relativ") absichert — und
+rief sie als eigenen Schritt noch einmal auf. Dieselbe Fehlannahme wie
+in `docs/REGELN.md` 14, heute schon einmal berichtigt: Jene Datei hält
+Markdown-Verweise gegen die Platte und sieht **keinen einzigen**
+Importpfad. Bewiesen wird die Regel von `pruefe-einstieg.mjs` und
+`pruefe-app.mjs`, und beide laufen in der Kette ohnehin mit. Der zweite
+Aufruf prüfte nichts doppelt, er behauptete es nur.
+
+**Kette auf diesem Stand: 43 von 43 grün.**
+
 ## 07.09.2026 — Abgründe in der Landschaft, und wer hineingestoßen wird, stürzt
 
 **Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
