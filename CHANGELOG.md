@@ -3,6 +3,42 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Felswände, breite Treppen und gebrochene Ebenenränder
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!“*
+
+Wände tragen jetzt große Felsfacetten, dunkle Brüche und helle Adern.
+Acht orts- und saatenfeste Muster verhindern eine einheitliche glatte
+Fläche. Helle Säume entstehen nur zur offenen Nachbarfläche. Die
+vorhandene Körnung und die beiden Wandgrundflächen bleiben erhalten.
+
+Treppen haben drei breite Trittflächen, dunkle Setzstufen und hellere
+Vorderkanten in Aufstiegsrichtung. Ihr Pixelraster folgt auch bei
+diagonalen Übergängen dem wirklichen Richtungsvektor der jeweiligen
+Zeile. Höhere Flächen bekommen an allen vier sichtbaren Seiten
+gebrochene Felslippen; direkte Rampenanschlüsse bleiben offen. Abgründe
+haben ein dunkles Inneres und Ränder nur zu angrenzendem festen Boden,
+ohne helle Trennlinien zwischen zusammenhängenden Abgrundfeldern.
+
+**Aufbau:** `runtime/gelaende-bild.js` kapselt die zusätzlichen
+Geländeformen; `runtime/zeichnen.js` bestimmt weiter die Zeichenfolge.
+Drei neue Farben stehen in `runtime/palette.js`. Regeln, Wegsuche,
+Kamera, Oberfläche und Kartenerzeugung ändern sich nicht.
+
+**Gemessen im echten Chrome am 07.09.2026:** Die feste Szene mit 672
+Feldern benötigt 3675 statt 1076 Rechtecke je Bild. Über 100 Zeichenläufe
+beträgt die mittlere Aufrufzeit rund 0,77 statt 0,26 ms auf diesem Rechner;
+das misst ausschließlich den Weltzeichner, keine vollständige Bildrate.
+Felsmuster, Richtungsraster und Farbsätze werden wiederverwendet. Die
+Treppenraster fassen gleichfarbige Pixel zu Zeilen zusammen. Ein späterer
+Leistungsbedarf lässt sich durch zwischengespeicherte Geländebilder
+reduzieren, ohne die Spielregeln anzufassen.
+
+Im Browser wurden die Vergleichsszene, der Spielstart und das Spielfeld
+bei 1920 × 1080 und 915 × 412 geprüft: keine Skriptfehler und keine
+fehlenden Dateien. Die Körnungsprüfung bleibt mit 58 Behauptungen grün.
+
 ## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
 
 **Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den

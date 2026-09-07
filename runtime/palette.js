@@ -61,6 +61,9 @@ export const FARBEN = {
   steinRiss: "#121019",
   steinKante: "#5a5270",   /* die Oberkante einer Stufe, zum Licht hin */
   steinFuge: "#0d0b14",
+  felsSpalt: "#211b2c",
+  felsAder: "#95839f",
+  stufenStein: "#a59eae",
 
   /* ── Platten, Kacheln, Holz, Knochenboden ─────────────────────── */
   platte0: "#2a2735",

@@ -5,10 +5,9 @@
 
    Das Spielfeld hat vier Höhenebenen, und daran hängt jede Regel:
    Wer hinauf will, braucht eine Rampe; wer hinabspringt, stürzt; wer
-   oben steht, trifft besser. Nichts davon ist im Bild zu sehen —
+   oben steht, trifft besser. Das muss auch im Bild zu sehen sein —
    „exakt von oben" heißt: keine Perspektive, kein Versatz, keine
-   Schräge. Höhe entsteht hier allein aus drei Mitteln, und alle drei
-   sind Pflicht (Bildvertrag):
+   Schräge. Drei Grundmittel bleiben Pflicht (Bildvertrag):
 
    1. **Grundhelligkeit je Ebene** — `EBENEN_TON` aus der Palette.
    2. **Harte schwarze Schattenkante nach Süden**, `STUFEN_SCHATTEN`
@@ -22,9 +21,10 @@
    `werkzeuge/pruefe-zeichnen.mjs` genau diese Balken nach, statt sie
    zu glauben.
 
-   Rampen bekommen darum auch drei Querstriche, die zur Aufstiegsseite
-   hin heller werden: Eine Rampe, der man nicht ansieht, wohin sie
-   führt, ist die eine Auskunft, ohne die man nicht planen kann.
+   Dazu kommen gebrochene Felslippen an allen vier sichtbaren Seiten
+   eines höheren Feldes. Rampen tragen drei breite Tritte mit dunklen
+   Setzstufen und aufwärts heller werdenden Kanten. Auch schräge
+   Aufstiege folgen dem echten, zeilenabhängigen Richtungsvektor.
 
    ── Warum der Fels körnt ───────────────────────────────────────────
 
@@ -67,6 +67,7 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
+   `runtime/gelaende-bild.js` (Felsfacetten, Treppen und Seitenlippen),
    `runtime/palette.js` (jede Farbe, `bodenTon`, `koernungsTon`,
    `STUFEN_SCHATTEN`, `ERINNERT_HELLE`), `runtime/licht.js` (`KACHEL`,
    `LICHTPUNKT`, und das Lichtwerk, das über die fertige Welt gelegt
@@ -92,7 +93,7 @@ import { RICHTUNG_NORD, bildAnzahl, macheSpriteBild } from "./sprites.js";
 import {
   BLOCKT_SICHT, FLUESSIG, HINDERNIS, RAMPE, alsWuerfel, richtungen
 } from "../spiel/gitter.mjs";
-import { rampeZeigtNach } from "../spiel/hoehen.mjs";
+import { macheGelaendeBild } from "./gelaende-bild.js";
 import { ganzHash } from "../spiel/rauschen.mjs";
 
 /* ── Die Maße dieses Zeichners ──────────────────────────────────────
@@ -529,26 +530,11 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     }
   }
 
-  /* ── Rampen ──────────────────────────────────────────────────────*/
-
-  /* Drei Querstriche quer zur Aufstiegsrichtung, zur Aufstiegsseite
-     hin heller. Das ist keine Zierde: Die Rampe ist die einzige
-     Stelle, an der man hinaufkommt, und ohne die Richtung im Bild
-     läuft man sie von der falschen Seite an. */
-  function zeichneRampe(karte, x, y, i, ecke, gedaempft) {
-    const hinauf = rampeZeigtNach(karte, x, y);
-    if (!hinauf) return;
-    const grund = bodenFarbe(karte.boden[i], karte.ebene[i], false);
-    const senkrecht = hinauf.dx === 0;
-    const zurAchse = hinauf.dx + hinauf.dy < 0;
-    for (let n = 0; n < RAMPEN_STRICHE; n++) {
-      const lage = STRICH_LAGEN[n];
-      const nahe = zurAchse ? n : RAMPEN_STRICHE - 1 - n;
-      const wert = ton(mischTon(grund, FARBEN.steinKante, STRICH_HELLE[nahe]), gedaempft);
-      if (senkrecht) kasten(ecke.x, ecke.y, STRICH_RAND, lage, STRICH_LAENGE, 1, wert);
-      else kasten(ecke.x, ecke.y, lage, STRICH_RAND, 1, STRICH_LAENGE, wert);
-    }
-  }
+  const gelaende = macheGelaendeBild({
+    kasten, ton, ebenenTon, mischTon, bodenFarbe, wandTon, koernungsStufe,
+    hoeheBei, lagen: STRICH_LAGEN, laenge: STRICH_LAENGE,
+    rand: STRICH_RAND, helle: STRICH_HELLE
+  });
 
   /* ── Wände und Höhenkanten ───────────────────────────────────────*/
 
@@ -572,12 +558,14 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
      Warum überhaupt eigens gezeichnet: Ohne diese Fläche bliebe das
      Feld einfach Boden. Ein Loch, das aussieht wie Boden, ist die
      gefährlichste Fassung, die es hier gibt — man liefe darauf zu und
-     verstünde erst am Sturzschaden, was passiert ist. Das grobe Bild
-     mit Tiefenverlauf und ausgefransten Rändern kommt später; hier
-     steht das Wenigste, das ehrlich ist. */
-  function zeichneAbgrund(ecke, gedaempft) {
+     verstünde erst am Sturzschaden, was passiert ist. Der Geländezeichner
+     ergänzt die dunkle Tiefe und gebrochene Lippen an den Außenseiten.
+     Verbundene Löcher haben keine helle Trennlinie im Inneren. */
+  function zeichneAbgrund(karte, x, y, ecke, gedaempft) {
     kasten(ecke.x, ecke.y, 0, 0, KACHEL, KACHEL, ton(FARBEN.kontur, gedaempft));
-    kasten(ecke.x, ecke.y, 0, 0, KACHEL, 1, ton(FARBEN.steinKante, gedaempft));
+    if (karte.drin(x, y - 1) && karte.hindernisBei(x, y - 1) !== HINDERNIS.abgrund) {
+      kasten(ecke.x, ecke.y, 0, 0, KACHEL, 1, ton(FARBEN.steinKante, gedaempft));
+    }
   }
 
   /* Die beiden Mittel, die die Höhe tragen — und der Grund, warum
@@ -645,17 +633,24 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     zeichneRisse(karte, x, y, i, ecke, gedaempft);
     const nass = karte.fluessig[i];
     if (nass !== FLUESSIG.keine) zeichneFluessig(karte, x, y, nass, ecke, zeit, gedaempft);
-    if (karte.rampe[i] !== RAMPE.keine) zeichneRampe(karte, x, y, i, ecke, gedaempft);
     const hindernis = karte.hindernis[i];
     if (hindernis === HINDERNIS.wand) zeichneWand(karte, x, y, karte.ebene[i], ecke, gedaempft);
     /* Der Schatten kommt **nach** der Wand: Eine Wand, die unter einem
        Plateau steht, liegt selbst im Schatten. */
+    if (hindernis === HINDERNIS.wand) gelaende.zeichneFels(karte, x, y, ecke, gedaempft);
+    gelaende.zeichneRaender(karte, x, y, ecke, gedaempft);
     zeichneHoehe(karte, x, y, ecke, gedaempft);
     /* Der Abgrund kommt **nach** dem Schatten und deckt ihn: Sein Feld
        trägt die Ebene der Sohle, also zöge `zeichneHoehe` ihm einen
        Schattenbalken über die halbe Fläche, und die helle Kante ginge
        darin unter — gerade an der Kante erkennt man aber das Loch. */
-    if (hindernis === HINDERNIS.abgrund) zeichneAbgrund(ecke, gedaempft);
+    if (hindernis === HINDERNIS.abgrund) {
+      zeichneAbgrund(karte, x, y, ecke, gedaempft);
+      gelaende.zeichneTiefe(karte, x, y, ecke, gedaempft);
+    }
+    if (karte.rampe[i] !== RAMPE.keine) {
+      gelaende.zeichneTreppe(karte, x, y, i, ecke, gedaempft);
+    }
     if (hindernis !== HINDERNIS.keins && hindernis !== HINDERNIS.wand) {
       zeichneDing(karte, x, y, hindernis, ecke, zeit, gedaempft);
     }

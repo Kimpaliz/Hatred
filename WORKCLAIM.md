@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorlauf und zugehörige Prüfungen am 07.09.2026 integriert; Bereiche freigegeben. | 07.09.2026 |
+| runtime/zeichnen.js, runtime/gelaende-bild.js, runtime/palette.js, CHANGELOG.md | Codex | Felswände, Treppen und sichtbare Ebenenränder auf bild/fels-stufen-raender. | 07.09.2026 |
 
 ## Format
 
