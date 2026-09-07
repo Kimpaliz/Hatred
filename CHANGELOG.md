@@ -3,6 +3,39 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Sichtbarer Zoom und Vollbild im Spiel
+
+**Auftrag, wörtlich:** *„Aber zoombar bitte und vollbild.“*
+
+Die kleine Ansichtsleiste bietet Herauszoomen, Standardzoom,
+Hineinzoomen und Vollbild. Mausrad, Plus/Minus und Zwei-Finger-Gesten
+ändern denselben ganzzahligen Kamerazoom; 0 oder die angezeigte
+Zoomzahl stellt den Standard wieder her. F schaltet weiterhin Vollbild,
+auch bei einem fokussierten Ansichtsbutton. Im Vollbild wird die ganze
+Seite einschließlich der Knöpfe angezeigt. Die Aktionsleiste behält
+ihre automatische Fenstergröße, während die Welt näher heranrückt.
+
+`runtime/ansicht.js` trennt die Ansichtseingabe vom Spielkommando.
+Ein einzelner Touch wird erst beim Loslassen zum Tipp. Sobald mehrere
+Finger beteiligt waren, kann die gesamte Geste keine Aktion auslösen.
+Auch überlappende Kontakte aus dem Vorlauf oder auf der Ansichtsleiste,
+abgebrochene Gesten und Sitzungswechsel werden berücksichtigt. Ein
+bestätigter Tipp behält die Wege für Pause und den Abstieg nach Sieg.
+
+**Gemessen am 07.09.2026:** Im echten Chrome wurden die Knöpfe,
+Mausrad, Tastatur, Vollbild mit sichtbarer Leiste und Zwei-Finger-Zoom
+geprüft. Bei den Zoomgesten bleibt die Spiel-Prüfzahl unverändert.
+Vier Ansichtsbuttons haben mindestens **48 × 48 CSS-Pixel**; bei
+1280 × 800, 915 × 412 und 412 × 915 bleiben sie im Fenster.
+Die manuelle Stufe bleibt beim Wechsel der Fenstergröße erhalten.
+Es entstehen **0 Skriptfehler**. Die vorhandene Spielprüfung besteht
+mit **95 Behauptungen**, die Einzeldateiprüfung mit **22**.
+
+Die Leiste aktualisiert sich bei Bedienung und Fensterwechsel; es
+entsteht keine zusätzliche Zeichenschleife. Die Kamera begrenzt den
+Weltzeichner weiterhin auf den sichtbaren Ausschnitt. Herauszoomen
+zeigt mehr Felder und kann entsprechend mehr Zeichenarbeit benötigen.
+
 ## 07.09.2026 — Abgrund-Innenkanten und verdeckte Rampenflags prüfen
 
 Die Geländeprüfung vergleicht jetzt das fertige Pixelbild bei verbliebenen

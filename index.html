@@ -40,6 +40,7 @@
      ── Arbeitet zusammen mit ─────────────────────────────────────────
 
      `runtime/start.js` (das einzige Skript dieser Seite),
+     `runtime/ansicht.js` (Zoomknöpfe und Vollbild),
      `runtime/lobby.js` (der Vorlauf darin, holt sich `#eingabefeld`),
      `sw.js` (der Zwischenspeicher, den `start.js` anmeldet),
      `manifest.webmanifest`, `werkzeuge/vorschau.mjs` (liefert diese
@@ -97,7 +98,47 @@
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior: none;
   }
-  /* Das einzige weitere Bedienelement der Seite, und man sieht es nie:
+  #ansicht {
+    --werkzeug-grund: #0b0912;
+    --werkzeug-rand: #3a3350;
+    --werkzeug-schrift: #e9deca;
+    position: fixed;
+    z-index: 2;
+    top: calc(env(safe-area-inset-top, 0px) + 48px);
+    left: calc(env(safe-area-inset-left, 0px) + 8px);
+    display: flex;
+    gap: 3px;
+    color: var(--werkzeug-schrift);
+    touch-action: none;
+  }
+  #ansicht[hidden] { display: none; }
+  #ansicht button {
+    min-width: 48px;
+    height: 48px;
+    padding: 0 10px;
+    border: 1px solid var(--werkzeug-rand);
+    border-radius: 0;
+    background: var(--werkzeug-grund);
+    color: inherit;
+    font: bold 16px monospace;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  #ansicht button:hover, #ansicht button:focus-visible {
+    border-color: #ffc24b;
+    outline: 1px solid #ffc24b;
+  }
+  #ansicht button:disabled { opacity: .45; cursor: default; }
+  #ansicht-meldung {
+    position: absolute;
+    top: 52px;
+    left: 0;
+    width: min(290px, calc(100vw - 24px));
+    background: var(--werkzeug-grund);
+    font-size: 13px;
+  }
+  #ansicht-meldung:empty { display: none; }
+  /* Ein weiteres Bedienelement der Seite, und man sieht es nie:
      außerhalb des Bilds, ein Bildpunkt groß, unsichtbar. Sein einziger
      Zweck ist der echte Fokus, den nur ein `<input>` bekommt — Näheres
      in der Kopfnotiz oben und in `runtime/lobby.js`. `font-size: 16px`
@@ -133,6 +174,13 @@
 </head>
 <body>
 <canvas id="bild" width="960" height="540"></canvas>
+<div id="ansicht" role="group" aria-label="Ansicht" hidden>
+  <button id="zoom-kleiner" type="button" aria-label="Herauszoomen" title="Herauszoomen (−)">−</button>
+  <button id="zoom-standard" type="button" title="Standardzoom (0)">1×</button>
+  <button id="zoom-groesser" type="button" aria-label="Hineinzoomen" title="Hineinzoomen (+)">+</button>
+  <button id="vollbild" type="button" aria-pressed="false" title="Vollbild (F)">Vollbild</button>
+  <span id="ansicht-meldung" role="status"></span>
+</div>
 <!-- Unsichtbar, außerhalb des Bilds - trägt nur den Fokus für die Tastatur
      des Handys und das native Einfügen. `runtime/lobby.js` holt es sich
      über diese Kennung und zeichnet seinen Wert selbst auf das Blatt;

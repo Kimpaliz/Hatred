@@ -56,6 +56,7 @@
    bekommt `wuerfleSaat` und gibt `beiStart` zurück), `runtime/kamera.js`,
    `runtime/zeichnen.js`, `runtime/licht.js`, `runtime/partikel.js`,
    `runtime/oberflaeche.js`, `runtime/eingabe.js`, `runtime/schrift.js`,
+   `runtime/ansicht.js` (Zoomleiste und eindeutige Touch-Gesten),
    `spiel/lauf.mjs` (`macheLauf`, `naechsteTiefe`), `spiel/gegner-ki.mjs`
    (`planeZug`), `spiel/zug.mjs`, `spiel/sicht.mjs`, `spiel/wesen.mjs`,
    `netz/sitzung.mjs` (der einzige Ausgang jeder Aktion), `sw.js`
@@ -67,6 +68,7 @@ import * as schrift from "./schrift.js";
 import { KACHEL, macheLichtwerk } from "./licht.js";
 import { machePartikelwerk } from "./partikel.js";
 import { macheKamera, vergroesserungFuer } from "./kamera.js";
+import { macheAnsicht } from "./ansicht.js";
 import { macheZeichner } from "./zeichnen.js";
 import { macheOberflaeche } from "./oberflaeche.js";
 import { ZEIGER_FINGER, macheEingabe } from "./eingabe.js";
@@ -434,6 +436,7 @@ export function starte(blatt) {
   let angaben = null;
   let pausiert = false;
   let letzteRunde = 0;
+  let ansicht = null;
 
   /* Womit zuletzt ein Zeiger auf dem Blatt lag. Ohne diesen Merker
      beginnt der Kerker in der **Mausleiste**: `runtime/eingabe.js`
@@ -477,6 +480,7 @@ export function starte(blatt) {
     const { breite, hoehe } = setzeBlatt();
     if (spiel) spiel.setzeFenster(breite, hoehe);
     if (lobby) lobby.setzeFenster(breite, hoehe);
+    ansicht?.aktualisiere();
   }
 
   /* Die Vergrößerung, mit der dieses Blatt gerade arbeitet: ganzzahlig
@@ -509,19 +513,26 @@ export function starte(blatt) {
     } catch { /* das Gerät kann es nicht - dann eben nicht */ }
   }
 
-  function vollbild() {
+  async function vollbild() {
     const drin = globalThis.document && globalThis.document.fullscreenElement;
     try {
-      if (drin) { globalThis.document.exitFullscreen(); return; }
-      if (!blatt.requestFullscreen) return;
+      if (drin) { await globalThis.document.exitFullscreen(); return; }
+      /* Die ganze Seite nimmt die Zoomleiste mit. Ein Vollbild allein
+         auf dem Canvas würde die sichtbaren Bedienelemente verstecken. */
+      const ziel = globalThis.document.documentElement || blatt;
+      if (!ziel.requestFullscreen) {
+        ansicht?.melde("Dieser Browser bietet für die Seite kein Vollbild an.");
+        return;
+      }
       /* Gedreht wird erst nach dem **gelungenen** Vollbild: Solange die
          Seite noch im Fenster steht, lehnt Android die Sperre ab. Ältere
          Browser geben kein Versprechen zurück - dann sofort. */
-      const versprechen = blatt.requestFullscreen();
-      if (versprechen && typeof versprechen.then === "function") {
-        versprechen.then(sperreQuerformat, () => {});
-      } else sperreQuerformat();
-    } catch { /* manche Browser verweigern es ohne Klick - dann eben nicht */ }
+      await ziel.requestFullscreen();
+      sperreQuerformat();
+    } catch {
+      ansicht?.melde("Vollbild wurde nicht erlaubt. "
+        + "Öffne die Spielseite in einem eigenen Browser-Tab.");
+    } finally { passeAn(); }
   }
 
   /* ── Der Vorlauf ────────────────────────────────────────────────*/
@@ -531,6 +542,15 @@ export function starte(blatt) {
     ctx, wuerfleSaat, fensterBreite: breite, fensterHoehe: hoehe,
     ablage: macheAblage(globalThis.document),
     beiStart: (was) => beginneSpiel(was)
+  });
+  ansicht = macheAnsicht({
+    blatt, spielLesen: () => spiel, vollbild,
+    beiEinzeltipp: () => {
+      zuletztFinger = true;
+      if (pausiert) { pausiert = false; return true; }
+      if (tieferMoeglich()) { tiefer(); return true; }
+      return false;
+    }
   });
 
   function beginneSpiel(was) {
@@ -564,6 +584,7 @@ export function starte(blatt) {
       fingerVoraus: () => zuletztFinger
     });
     spiel.setzeFenster(b, h);
+    ansicht?.aktualisiere();
     letzteRunde = zustand.runde;
 
     if (was.istGastgeber) sitzung.setzeName(was.name);
@@ -715,6 +736,7 @@ export function starte(blatt) {
   });
 
   globalThis.addEventListener("resize", passeAn);
+  globalThis.document.addEventListener("fullscreenchange", passeAn);
   globalThis.addEventListener("blur", () => { pausiert = true; });
   globalThis.addEventListener("focus", () => { pausiert = false; });
   globalThis.document.addEventListener("visibilitychange", () => {
