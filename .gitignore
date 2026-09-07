@@ -1,6 +1,7 @@
 node_modules/
-dashboard-game-result.json
-.env
-.env.*
-!.env.example
-npm-debug.log*
+dist/
+build/
+*.log
+lauf.txt
+.DS_Store
+Thumbs.db

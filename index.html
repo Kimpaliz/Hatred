@@ -1,0 +1,161 @@
+<!doctype html>
+<!-- [Aufgabe: Oberfläche] Der Einstieg: eine Seite, ein Zeichenblatt,
+     ein Modul-Skript — mehr steht zwischen Jannik und dem Kerker nicht.
+
+     ── Warum es das gibt / Warum so ─────────────────────────────────
+
+     Alle Pfade sind **relativ** (`./runtime/start.js`). Unter
+     https://kimpaliz.github.io/hatred/ liegt die Seite in einem
+     Unterordner; ein führender Schrägstrich zeigte dort ins Leere —
+     und zwar ohne Fehlermeldung: Die Seite bliebe schwarz, und niemand
+     wüsste, warum (docs/REGELN.md 14).
+
+     **Ein einziges Zeichenblatt, keine sichtbare zweite Bedienung.**
+     Alles, was man sieht und anklickt, ist gezeichnet — Vorlauf wie
+     Spiel. Zwei Welten (HTML-Knöpfe hier, Pixelknöpfe dort) hätten zwei
+     Schriftbilder, zwei Farbsätze und zwei Stellen, an denen die
+     Bedienung kaputtgeht. Eine einzige Ausnahme steht weiter unten
+     (`#eingabefeld`) — sie zeichnet nichts und man sieht sie nie.
+
+     **`image-rendering: pixelated`** ist die zweite Hälfte der harten
+     Kanten. Die erste ist `imageSmoothingEnabled = false` beim
+     Zeichnen; ohne sie beide weichzeichnet der Browser beim
+     Hochskalieren des Blattes, und die ganze Pixelgrafik ist dahin
+     (Fehlerbuch D1).
+
+     Der Hinweis im `noscript` ist kein Formglied: Ohne ihn sieht ein
+     abgeschaltetes JavaScript genauso aus wie ein kaputtes Spiel.
+
+     ── Warum trotzdem ein `<input>` in der Seite steht ────────────────
+
+     Immer noch **ein** Zeichenblatt, **eine** Bedienung: Das unsichtbare
+     Feld `#eingabefeld` zeichnet nichts und steht außerhalb des Bilds.
+     Es ist der einzige Weg, mit dem Android überhaupt seine Tastatur
+     zeigt — die zeigt sich nur einem Feld, das wirklich den Fokus
+     bekommt, nie einem Zeichenblatt. `runtime/lobby.js` holt es sich
+     selbst über seine feste Kennung und legt seinen Wert auf das Blatt;
+     Schriftbild und Farben bleiben die der Pixelschrift. Näheres in der
+     Kopfnotiz von `runtime/lobby.js`.
+
+     ── Arbeitet zusammen mit ─────────────────────────────────────────
+
+     `runtime/start.js` (das einzige Skript dieser Seite),
+     `runtime/lobby.js` (der Vorlauf darin, holt sich `#eingabefeld`),
+     `sw.js` (der Zwischenspeicher, den `start.js` anmeldet),
+     `manifest.webmanifest`, `werkzeuge/vorschau.mjs` (liefert diese
+     Datei daheim aus) und `.github/workflows/pages.yml` (im Netz). -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1,
+  user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#04040a">
+<title>Hatred</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #04040a;
+    color: #cfc7e0;
+    font-family: monospace;
+  }
+  /* Ein Block, kein Zeilenelement: Sonst setzt der Browser unter das
+     Blatt die Grundlinie der Zeile, und die Seite bekommt einen
+     Rollbalken für vier Bildpunkte, die niemand sieht.
+
+     Die Maße lassen an jeder Kante die Aussparung frei
+     (`env(safe-area-inset-*)`, nur mit `viewport-fit=cover` von Belang):
+     Ein Knopf unter der Notch wäre da, ließe sich aber nicht treffen. Der
+     Rand bekommt keine eigene Farbe, weil `body` schon dasselbe Schwarz
+     trägt — die Aussparung fällt so nicht als Kasten auf, sondern nur als
+     das, was sie ist: ein Rand, den kein Finger erreicht. */
+  #bild {
+    display: block;
+    width: calc(100vw - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+    height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    margin-left: env(safe-area-inset-left, 0px);
+    margin-top: env(safe-area-inset-top, 0px);
+    background: #04040a;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    /* Die vier Zeilen, ohne die ein Tipp auf Android gegen den Browser
+       arbeitet statt gegen das Spiel: `touch-action` hält das Wischen
+       und den Zwei-Finger-Zoom davon ab, das Blatt zu verschieben;
+       `user-select` verhindert die Markierungsblasen eines langen
+       Tipps; `-webkit-tap-highlight-color` nimmt den grauen Kasten, der
+       sonst bei jedem Tipp aufblitzt; `overscroll-behavior` hält das
+       Nachfedern am Rand davon ab, die Adressleiste einzublenden. */
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  /* Das einzige weitere Bedienelement der Seite, und man sieht es nie:
+     außerhalb des Bilds, ein Bildpunkt groß, unsichtbar. Sein einziger
+     Zweck ist der echte Fokus, den nur ein `<input>` bekommt — Näheres
+     in der Kopfnotiz oben und in `runtime/lobby.js`. `font-size: 16px`
+     ist kein Zufall: Darunter zoomt mancher Browser beim Fokussieren
+     hinein, und genau das soll `user-scalable=no` ja gerade verhindern. */
+  #eingabefeld {
+    position: fixed;
+    top: -60px;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    outline: none;
+    opacity: 0;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    font-size: 16px;
+  }
+  #ohne-skript {
+    box-sizing: border-box;
+    max-width: 34em;
+    margin: 12vh auto;
+    padding: 1.5em;
+    border: 2px solid #3a3350;
+    background: #0b0912;
+    line-height: 1.6;
+  }
+  #ohne-skript h1 { margin: 0 0 .6em; font-size: 1.4em; letter-spacing: .3em; }
+</style>
+</head>
+<body>
+<canvas id="bild" width="960" height="540"></canvas>
+<!-- Unsichtbar, außerhalb des Bilds - trägt nur den Fokus für die Tastatur
+     des Handys und das native Einfügen. `runtime/lobby.js` holt es sich
+     über diese Kennung und zeichnet seinen Wert selbst auf das Blatt;
+     nichts davon erscheint hier als eigenes Schriftbild. -->
+<input id="eingabefeld" type="text" tabindex="-1" autocomplete="off" autocapitalize="off"
+  autocorrect="off" spellcheck="false" aria-label="Eingabe für Hatred">
+<noscript>
+  <!-- Ohne diese Zeile läge der Hinweis unter einem bildschirmfüllenden
+       schwarzen Blatt: sichtbar erst, wenn man scrollt — und scrollen
+       kann man nicht, weil die Seite den Rollbalken abstellt. -->
+  <style>#bild { display: none; }</style>
+  <div id="ohne-skript">
+    <h1>HATRED</h1>
+    <p>
+      Dieses Spiel läuft nur, wenn JavaScript im Browser eingeschaltet
+      ist. Bei dir ist es gerade aus — deshalb bleibt das Bild schwarz.
+    </p>
+    <p>
+      Schalte es in den Einstellungen deines Browsers für diese Seite
+      ein und lade die Seite neu. Am Spiel liegt es nicht.
+    </p>
+  </div>
+</noscript>
+<script type="module" src="./runtime/start.js"></script>
+</body>
+</html>
