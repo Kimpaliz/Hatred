@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Die Fingerbedienung ist zusammengeführt, niemand schreibt. | 06.09.2026 |
+| frei | frei | Welle 2 ist geplant (#6–#23), niemand schreibt. | 07.09.2026 |
 
 ## Format
 

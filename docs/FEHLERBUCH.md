@@ -84,6 +84,16 @@ ungeprüft, egal wie grün die Kette ist — sie war es hier, 36 Prüfungen
 lang. Gegenmittel steht in `werkzeuge/pruefe-einzeldatei.mjs`:
 bauen, dann `node --check` auf das Ergebnis.
 
+**C7 — Ein verschachteltes Antwortformat für Agenten schlägt fehl,
+nachdem die Arbeit schon getan ist.** Am 07.09.2026 haben sechs Agenten
+je 12–15 Messungen durchgeführt und **keiner** konnte abliefern: Das
+vorgegebene Format verlangte eine Liste von Objekten mit Auswahlfeldern,
+und die Prüfung wies fünf Versuche je Agent zurück. 375.742 Token für
+nichts. **Woran man es erkennt, bevor man hineinläuft:** Könnte man das
+Format selbst aus dem Kopf fehlerfrei ausfüllen? Wenn nein, ist es zu
+eng. Reiner Text mit festen Überschriften kommt immer durch — und lässt
+sich hinterher genauso lesen.
+
 **C6 — Ein Bündler aus Mustern kennt nur die Formen, die er kennt.**
 Dieselbe Sache von der anderen Seite: Als `runtime/oberflaeche.js` eine
 Weiterausfuhr bekam (`export { … } from "./x.js"`), passte kein Muster,

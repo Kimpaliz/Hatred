@@ -3,6 +3,103 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Welle 2 ist geplant: achtzehn Vorgänge
+
+**Auftrag, wörtlich:** *„erstelle die passenden issues erst mal dazu und
+dann arbeiten wir das alles ab."*
+
+Jannik hat in zwei Nachrichten beschrieben, wohin Hatred geht. Sein
+Wortlaut steht in `docs/ROADMAP.md` und oben in jedem Vorgang — zitiert,
+nicht umformuliert.
+
+**Angelegt: #6 bis #23** in `Kimpaliz/Hatred`, gruppiert in sechs Blöcke.
+`docs/ROADMAP.md` trägt die Reihenfolge und je Vorgang das
+Abnahmekriterium.
+
+**Sechs Flächen vorher vermessen** — zwölf Agenten, je einer der misst
+und einer der widerlegt. Was dabei herauskam, hat die Planung an drei
+Stellen umgeworfen:
+
+### Das gemeinsame Sichtfeld gibt es schon — und es hat zwei Löcher
+
+Janniks *„alle spieler teilen sich eine gemeinsames sichtfeld"* ist seit
+Phase 2 gebaut: `runtime/start.js` bildet die Vereinigung über alle
+lebenden Jäger. Der Auftrag ist also nicht bauen, sondern **absichern**.
+Denn dabei fielen zwei echte Fehler auf, beide nachgeprüft:
+
+| Fehler | gemessen |
+| --- | --- |
+| **Weitblick wirkt nicht auf das Bild.** Die Regeln rechnen mit `sichtVon()`, das Bild liest den rohen Wert. | sieht **181** Felder statt der **208**, die ihm zustehen |
+| **Blendung ebenso** — nur andersherum: Man sieht mehr, als man darf. | sieht **127** Felder statt **25** |
+
+Dazu ein dritter, stiller: Die Erinnerung an schon Gesehenes wächst je
+**Bild**, nicht je Aktion, und steht nicht in der Zustandssumme. Zwei
+Rechner mit verschiedener Bildrate können sich an verschiedene Felder
+erinnern. `grep -rn "frischeSicht" werkzeuge/` findet **0 Treffer** —
+es gibt keine Prüfung dafür. Steht als #10.
+
+### Flüssigkeiten tun im Kampf nichts
+
+Sechs Flüssigkeiten werden erzeugt und gezeichnet — Wasser, Blut,
+Schleim, Lava, Öl. Gemessen:
+`grep -rn "fluessig" spiel/kampf.mjs spiel/zug.mjs spiel/wesen.mjs`
+findet **null Treffer**. Kein Schaden, kein Abzug, keine
+Bewegungskosten. Janniks *„flüssigkeiten spielen eine sehr grosse rolle
+im kampf"* ist damit die größte Lücke zwischen dem, was dasteht, und
+dem, was das Spiel könnte. Steht als #15.
+
+### Scotophobia hat gar kein Spielraster
+
+Der überraschendste Fund, selbst nachgesehen: In keiner der 26
+Doku-Dateien von `granithoehle` kommt „Hexagon" oder „Sechseck" vor. Das
+Raster dort ist ein **Abtastraster** von 10 Bildpunkten, die Bewegung
+ist frei. `WELTGENERIERUNG.md` Zeile 340 sagt es selbst: *„Ein Raster,
+das man nicht als Raster sieht."*
+
+Janniks zwei Wünsche — *„aussehen wie Scotophobia"* und *„am liebsten
+hexagon"* — sind also **verschiedene Wünsche**, keine zwei Hälften
+desselben. Beide gehen; das Raster bestimmt, wie man läuft, das Zeichnen
+bestimmt, ob man es sieht. Das gehört in die Entscheidung, und es steht
+jetzt drin (#6).
+
+**Und: zwei Drittel des Satzes sind schon erfüllt.** „pixelslop engine
+als Kern" — 655 Zeilen portiert. „in rasterform generiert" — die
+Weltformel wird mit 3×3-Überabtastung in ein Raster gegossen. Neu ist
+allein das Wort *hexagon*, und das steht als „am liebsten" da, nicht als
+Bedingung.
+
+### Was ein Sechseck kostet — und was es spart
+
+Der teure Posten ist `runtime/zeichnen.js`: Die Datei kennt genau **eine**
+Grundform, das Rechteck. Ein Sechseck wird ein Stapel Zeilenläufe, 14 bis
+16 statt einem je Kachel.
+
+Aber es **spart** auch, und das wurde bisher nirgends gesagt:
+`oeffneDiagonalen` (19 Zeilen) entfällt ersatzlos — Sechsecke berühren
+sich nie nur über Eck. `diagonalFund` und `nurDiagonalen` (~35 Zeilen)
+ebenso. Und `schussweite` verschwindet: Im Sechseck sind Lauf- und
+Schussentfernung dasselbe Maß, wo das Quadrat zwei braucht.
+
+Deshalb die Empfehlung in #6: **Sechseck-Regeln, Ziegelmauer-Bild.**
+Jede zweite Reihe um ein halbes Feld versetzt — ein Ziegel in einer
+Mauer berührt genau sechs andere. Dieselbe Nachbarschaft, kein einziger
+zusätzlicher Zeichenschritt, und später ohne Regeländerung auf echte
+Sechsecke umstellbar.
+
+### Nebenbei
+
+`alpha-code.json` zeigte noch auf `Kimpaliz/Hatred-`; Jannik hat das
+Repository umbenannt. Korrigiert.
+
+*Eine Anmerkung zum ersten Anlauf:* Die Vermessung lief zweimal. Beim
+ersten Mal haben alle sechs Agenten die Arbeit getan und konnten sie
+nicht abliefern — das Antwortformat, das ich ihnen vorgegeben hatte, war
+zu verschachtelt. 375.742 Token für nichts. Beim zweiten Mal reiner
+Text, und alle zwölf kamen durch. Die Lehre gehört ins Fehlerbuch: Ein
+Format, das der Absender nicht selbst erfüllen könnte, ist kein Format.
+
+---
+
 ## 06.09.2026 — Dieselbe Frage an alle Werkzeuge gestellt
 
 Nachdem die Einzeldatei tot war, während die Kette grün meldete, lag die
