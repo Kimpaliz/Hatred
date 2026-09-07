@@ -3,6 +3,97 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Abgrund-Innenkanten und verdeckte Rampenflags prüfen
+
+Die Geländeprüfung vergleicht jetzt das fertige Pixelbild bei verbliebenen
+Rampenflags auf Löchern oder Wänden: Das Bild und die Randlippen daneben
+müssen gleich bleiben. Auch eine offene Bodenrampe darf keine Wandlippe
+öffnen. Zusammenhängende Löcher erhalten auf allen vier Seiten eine
+dunkle Innennaht, während ihre Außenlippen sichtbar bleiben. Jeder Fall
+wird sichtbar und im Erinnerungsnebel geprüft.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **480 von 480
+Behauptungen** bestehen auf **131 Feldbildern**. Ohne die Restflag-Sperren
+fallen **8 entsprechende Behauptungen**. Mit dem Helferstand `d28b64c`
+fallen **2 von 480** an der offenen Bodenrampe gegen eine Wand. Wird die
+Abgrund-Nordkante wieder bedingungslos gezeichnet, fallen **2 von 480**
+an der inneren Trennlinie. Jede Gegenprobe endet mit Rückgabewert 1;
+nach Wiederherstellen von `cf44d58` endet die Prüfung mit 0.
+
+
+**Integration:** Die vollständige Kette besteht mit **45 von 45 Prüfungen**
+auf dem zusammengeführten Stand in **33,3 Sekunden**. Der echte Browser
+lädt das neue Geländemodul auch unter aktivem Service Worker und speichert
+es erfolgreich; dabei entstehen **0 Skriptfehler**.
+
+## 07.09.2026 — Fels, Stufen und Ebenenränder werden am Bild geprüft
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!"*
+
+`werkzeuge/pruefe-gelaende-bild.mjs` zeichnet jeweils genau ein Feld mit
+dem echten Weltzeichner. Es prüft Felsfacetten, die vier Seitenlippen bei
+drei Höhenunterschieden, offene Rampeneintritte und den Kartenrand. Für
+Treppen werden sechs Richtungen auf beiden Zeilenparitäten bei einfacher
+und dreifacher Vergrößerung gemalt. Die hellen Kanten müssen im echten
+Aufstiegsvektor liegen; breite Tritte werden an ihren fertigen Pixeln
+gemessen. Alle Details müssen im eigenen Feld bleiben und im Nebel
+gemeinsam gedämpft werden. Die Kartensumme bleibt unverändert.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **97 Feldbilder**,
+höchstens **91 Rechtecke je Feld**, **39 je Felsfeld**, **3 Felsmuster**
+über drei Saaten. Die Obergrenzen von 64 Rechtecken für Fels und 140 für
+Treppen verhindern eine Auflösung ganzer Felder in einzelne Pixelaufrufe.
+**Rotprobe:** Der alte Zeichner fällt mit **127 von 446 Behauptungen**,
+Rückgabewert 1; der neue besteht mit **446 von 446**, Rückgabewert 0.
+
+In `werkzeuge/pruefe-zeichnen.mjs` werden Wandgrundflächen zusätzlich über
+ihre Form erkannt: Facetten derselben Farbfamilie dürfen nicht als zehn
+Flanken gezählt werden. Der alte Rampentest verlangt jetzt drei echte
+Stufenkanten statt drei einteiliger Querstriche. Damit besteht diese
+Prüfung mit **154 Behauptungen**; vorher fielen genau **7 Behauptungen**
+an den geänderten Darstellungsformen. Die Kopfnotizenprüfung besteht
+mit **852 Behauptungen**, die Sprachprüfung mit **0 Fehlern**.
+
+## 07.09.2026 — Felswände, breite Treppen und gebrochene Ebenenränder
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!“*
+
+Wände tragen jetzt große Felsfacetten, dunkle Brüche und helle Adern.
+Acht orts- und saatenfeste Muster verhindern eine einheitliche glatte
+Fläche. Helle Säume entstehen nur zur offenen Nachbarfläche. Die
+vorhandene Körnung und die beiden Wandgrundflächen bleiben erhalten.
+
+Treppen haben drei breite Trittflächen, dunkle Setzstufen und hellere
+Vorderkanten in Aufstiegsrichtung. Ihr Pixelraster folgt auch bei
+diagonalen Übergängen dem wirklichen Richtungsvektor der jeweiligen
+Zeile. Höhere Flächen bekommen an allen vier sichtbaren Seiten
+gebrochene Felslippen; direkte Rampenanschlüsse bleiben offen. Abgründe
+haben ein dunkles Inneres und Ränder nur zu angrenzendem festen Boden,
+ohne helle Trennlinien zwischen zusammenhängenden Abgrundfeldern.
+Alte Rampenmerkmale unter Wänden oder Abgründen malen weder Treppen
+noch offene Randanschlüsse: Die Kartenerzeugung kann solche Merkmale
+beim späteren Graben belassen. Entscheidend ist die aktuelle Oberfläche.
+
+**Aufbau:** `runtime/gelaende-bild.js` kapselt die zusätzlichen
+Geländeformen; `runtime/zeichnen.js` bestimmt weiter die Zeichenfolge.
+Drei neue Farben stehen in `runtime/palette.js`. Regeln, Wegsuche,
+Kamera, Oberfläche und Kartenerzeugung ändern sich nicht.
+
+**Gemessen im echten Chrome am 07.09.2026:** Die feste Szene mit 672
+Feldern benötigt 3675 statt 1076 Rechtecke je Bild. Über 100 Zeichenläufe
+beträgt die mittlere Aufrufzeit rund 0,77 statt 0,26 ms auf diesem Rechner;
+das misst ausschließlich den Weltzeichner, keine vollständige Bildrate.
+Felsmuster, Richtungsraster und Farbsätze werden wiederverwendet. Die
+Treppenraster fassen gleichfarbige Pixel zu Zeilen zusammen. Ein späterer
+Leistungsbedarf lässt sich durch zwischengespeicherte Geländebilder
+reduzieren, ohne die Spielregeln anzufassen.
+
+Im Browser wurden die Vergleichsszene, der Spielstart und das Spielfeld
+bei 1920 × 1080 und 915 × 412 geprüft: keine Skriptfehler und keine
+fehlenden Dateien. Die Körnungsprüfung bleibt mit 58 Behauptungen grün.
+
 ## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
 
 **Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
