@@ -3,6 +3,197 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Abgründe in der Landschaft, und wer hineingestoßen wird, stürzt
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 4 von vier und damit der letzte. Schritt 2 hat den Abgrund als
+Feldart gebaut, Schritt 3 das Wasser auf alle Ebenen gebracht; jetzt
+kommen die Löcher **auf die Karte**, und man kann jemanden hineinstoßen.
+
+**Für Jannik:** Auf hoch gelegenem Boden brechen jetzt Löcher auf —
+gemessen **17,2 je Karte** auf einer 44 × 32-Karte, auf **29 von 30**
+Karten. Man kann nicht hineinlaufen; man wird hineingestoßen. Was dann
+passiert, hängt davon ab, ob unter dem Loch noch Boden liegt: **167 von
+516** Löchern haben einen Grund — da schlägt man auf, verliert
+Lebenspunkte und steht eine Ebene tiefer. Die anderen **349** sind
+bodenlos, und wer hineinfällt, ist tot. Sehen kann man weiterhin
+darüber hinweg: Ein Loch nimmt niemandem die Sicht.
+
+### Neu in `spiel/landschaft.mjs`: `grabeAbgruende(karte, saat)`
+
+Ein eigener Schritt, aufgerufen **nach** `setzeRampen` und **vor**
+`setzeWasser`. Das ist gemessen der einzige Platz, an dem kein anderer
+Schritt das Loch wieder zumauert: `raeumeAuf` macht die Insel im
+Abgrund zu Wand, `verfuelleNebenraeume` verfüllte in der Messung 81 von
+162 begehbaren Kacheln, `verbindeMitRampen` ebenso.
+
+Ein Loch entsteht auf einer offenen Kachel ab Ebene 2 — das ist
+`STURZ_AB_STUFEN` über dem Graben und damit die Höhe, ab der ein
+Abstieg überhaupt ein Sturz ist. Wie tief es geht, entscheidet der Fels
+ringsum, und daraus fallen zwei Sorten Abgrund:
+
+- **am Kliffrand** liegt nebenan offener Boden mindestens zwei Ebenen
+  tiefer; das Loch bricht dorthin durch, und dieser Boden ist das
+  Landefeld;
+- **mitten auf dem Plateau** gibt es keinen; dann geht der Schacht in
+  den Fels und der Sturz ist tödlich.
+
+Gewürfelt wird aus `hash(Feldnummer, Randebene, Saat)` mit eigener
+Saatverschiebung — kein `Math.random` (Fehlerbuch B1), kein
+verschobener Zufallsstrom (B4). Zwei Sätze: 0,09 auf freier Fläche,
+**0,45 am Kliffrand**, weil Fels dort weiterbricht, wo er schon
+abgebrochen ist — und weil nur ein Kliffloch einen Grund hat. Mit
+gleichem Satz überall wären gemessen 353 von 391 Löchern bodenlos
+(90 %), mit dem Kliffsatz 349 von 516 (68 %).
+
+**Verworfen: das Rauschfeld.** Der erste Anlauf setzte die Löcher in
+Flecken, wie `setzeBoden` den Knochenteppich. Gemessen war das
+schlechter, und zwar an Janniks Satz selbst: Ein Rauschfleck liegt auf
+**einem** Plateau, und ein Loch trägt die Ebene seiner Sohle — also
+lagen die Löcher einer Karte fast alle auf derselben Ebene. Bei
+vergleichbarer Lochzahl — gemessen am 07.09.2026 an der damaligen
+Fassung: 16 von 30 Karten mit Abgründen auf zwei verschiedenen Ebenen
+gegen **24 von 30** beim Wurf je Kachel. Dazu
+schnitten Flecken doppelt so oft einen Weg ab (113 zurückgenommene
+Löcher gegen 58).
+
+### Jedes Loch einzeln gesetzt und im Zweifel zurückgenommen
+
+Muster: `zierErlaubt`. Kachel probeweise sperren, fragen, im Zweifel
+ablehnen — gefragt wird hier aber **global** statt in einem Fenster von
+7 × 7. Das ist der Unterschied, der den Ausschlag gibt: Eine Kliffkante
+ist genau die Stelle, an der die örtliche Frage falsch antwortet (den
+Nachbarn zwei Ebenen tiefer erreicht man von oben, von unten nie), und
+mit `zierErlaubt` als Probe blieben 11 von 30 Karten ohne jeden Abgrund
+und 1,3 Löcher je Karte übrig.
+
+Drei Fragen je Kachel, und jede hat eine gemessene Zahl:
+
+| Frage | Ohne sie gemessen |
+| --- | --- |
+| Bleibt jede offene Kachel beidseitig erreichbar? | 3 von 30 Karten verlieren den Ausgang |
+| Hat das Loch einen Sims (Nachbar genau 1 Ebene über der Sohle)? | 184 von 704 Löchern |
+| Bleibt jede Geländefläche ≥ 3 Kacheln (`MIN_EBENEN_FLAECHE`)? | `pruefe-landschaft` (h) rot |
+
+Insgesamt werden so **293** von 809 Kandidaten wieder zurückgenommen.
+
+### Neu in `spiel/hoehen.mjs`: `abgrundHinter` und `abgrundSturz`
+
+`stossZiel` bleibt **Wort für Wort**, wie es war. Es fragt `begehbar`
+und damit `blocktBewegung`, und der Abgrund steht dort drin — das ist
+richtig so: Wegfindung, Gegner-KI und Bild dürfen ein Loch nie für ein
+Zielfeld halten. Wer den Sturz will, fragt ausdrücklich danach.
+
+`abgrundSturz` legt fest, **wohin** die Figur fällt: nicht auf die
+Abgrundkachel, sondern auf die offene Nachbarkachel auf Sohlenebene.
+Der Grund steht ausführlich in der Datei: Eine Figur **auf** dem
+Abgrundfeld stünde auf einer Kachel, die `wegSuche`,
+`erreichbareFelder` und `naechstesFreiesFeld` nie betreten — sie käme
+nie wieder heraus, und keine Prüfung schlüge an. Gibt es keine solche
+Kachel, ist der Sturz tödlich. Der Schaden kommt unverändert aus
+`sturzTiefe`/`sturzSchaden`; eine zweite Sturzregel gibt es nicht.
+
+### Drei Stellen stoßen hinein, nicht zwei
+
+`pruefeSchub` (darf ich?), `schiebe` (Stoß und Hakenkette) und
+`stossFolgen` (Kriegshammer). Die Falle steht im Auftrag wörtlich:
+*„Wird die Frage in pruefeSchub gestellt, aber nicht in schiebe,
+entsteht eine Aktion, die erlaubt ist und nichts tut."* Genau dieser
+Fall ist als Prüfung gebaut und wurde rot gemacht (siehe unten).
+
+Der Tod im bodenlosen Schacht läuft über den **gewöhnlichen**
+Schadensweg (`fuegeSchadenZu` beziehungsweise `schadenEintragen` mit den
+restlichen Lebenspunkten) und nicht über ein eigenes `lebt = false`.
+Sonst fehlte das Ereignis `gestorben`, das gelöschte Wacht-Recht oder
+der Lauf-Abschluss — je nachdem, was man vergisst.
+
+### Zwei fremde Prüfungen mitgeändert (R2-Ausnahme, ausdrücklich benannt)
+
+Beide liegen in `werkzeuge/` und gehören dem Zweig `pruef/`. Die Kette
+wird ohne sie nicht als Ganzes grün, deshalb die Ausnahme:
+
+**1. `spiel/landschaft.mjs`, `ebenenFlaechen` zählt Abgründe nicht mit.**
+Ein Abgrundfeld trägt die Ebene seiner Sohle. Zählte es als
+Geländefläche mit, wäre jedes Loch mitten auf einem Plateau eine
+Ebenenfläche von **einer** Kachel und damit genau der „Ausrutscher des
+Rauschens", den `MIN_EBENEN_FLAECHE` verbietet — gemessen **573**
+solcher Flächen über 60 Karten statt 0. Für alles vor `grabeAbgruende` ändert
+sich nichts: Bis dahin gibt es keine Abgrundkachel.
+
+**2. `werkzeuge/pruefe-app.mjs`: die Kampffrage steht jetzt auf zwei
+Kerkern.** Sie fragt „trifft die Brut überhaupt auf die Jäger?" und
+stand als `wieoft("angriff") > 3` auf **einer** Karte, der Saat 7.
+Vorgang #8 verändert diese Karte. Gemessen über sechs Saaten
+(7, 3, 11, 19, 23, 31), einmal ohne und einmal mit Abgründen:
+
+    ohne : 7 ·  0 · 0 · 0 · 0 ·  9 → 16 Angriffe
+    mit  : 0 · 25 · 0 · 0 · 0 · 29 → 54 Angriffe
+
+Die Einzelzahl schwankt zwischen 0 und 29 und sagt über den Kampf
+nichts; die Summe hat sich mehr als verdreifacht. Auf drei von sechs
+Saaten wäre die alte Schranke auch **ohne** jede Änderung rot gewesen —
+sie war ein Glücksfall der Saat 7, kein Fangnetz. Die Frage steht jetzt
+auf den Saaten 7 **und** 31 zusammen, Schranke **10**, gemessen **29**.
+Die Schranke ist damit **höher** als vorher, nicht niedriger. Aus
+demselben Grund zählt auch die Zahl der Ereignisformen jetzt über beide
+Kerker: Ohne einen einzigen Angriff fehlen `angriff`, `schaden`,
+`gestorben` und `lpGesetzt`, und sie fiel auf Saat 7 von 12 auf 9. Über
+beide Kerker sind es gemessen **15**, mit zerbrochener
+Reichweitenrechnung 12 — die Schranke steht jetzt auf 13 statt auf 10.
+Der zweite Lauf läuft ohne
+Bild (`malen: false`): 2,3 s statt 9,9 s, bei Zeichen für Zeichen
+denselben Ereigniszahlen.
+
+### Gemessen — die Abnahme von Vorgang #8
+
+`node werkzeuge/pruefe-abgrund.mjs`, 30 Saaten auf 44 × 32:
+
+| Abnahme | Gemessen |
+| --- | --- |
+| (a) Becken **und** Abgrund auf mindestens zwei gleichen Ebenen | **16 von 30** Karten (auf mindestens einer: 28) |
+| Karten mit Abgrund überhaupt | **29 von 30** (vorher: 0) |
+| Karten mit Abgründen auf zwei verschiedenen Ebenen | **22 von 30** |
+| (b) Sturzschaden und eine Ebene tiefer / Tod ohne Grund | beide Fälle geprüft, 167 mit Grund gegen 349 bodenlos |
+| (c) Sicht über den Abgrund, Wand blockt — dieselbe Karte | von Hand **und** an einer erzeugten Karte |
+| (d) Ausgang bleibt beidseitig erreichbar | **30 von 30** |
+
+Warum (a) nicht höher liegt: Ein Abgrund trägt die Ebene seiner Sohle,
+und eine Sohle liegt zwei Ebenen unter ihrem Rand — bei vier Ebenen
+sind das nur die Sohlen 0 und 1. Wasser steht auf 0, 1 und 2. Die
+Schnittmenge ist also von vornherein zwei Ebenen breit, und die Karte
+muss beide bedienen. 27 von 30 Karten haben überhaupt hohes Gelände auf
+Ebene 2 **und** 3; das ist die Obergrenze.
+
+### Jede neue Prüfung war rot (Regel 10)
+
+`werkzeuge/pruefe-abgrund.mjs` wuchs von 60 auf **124 Behauptungen**.
+
+| Absichtlicher Fehler | Was die Prüfung meldete |
+| --- | --- |
+| `abgrundHinter` umgedreht (`if (karte.istAbgrund(…)) return null`) | 23 von 124 gefallen, u. a. „der Abgrund hinter dem Ziel wird gefunden" |
+| `abgrundSturz` nimmt jede offene Nachbarkachel statt der auf Sohlenebene | 6 gefallen: „aber es gibt kein Landefeld: ist [object Object], soll null" |
+| `schiebe` ruft `stossInsLoch` nicht auf (**die Falle aus dem Auftrag**) | 12 gefallen: „gestoßen wird wirklich: apGesetzt" — die Aktion bleibt erlaubt und tut nichts |
+| `stossFolgen` ruft `stossInsLoch` nicht auf | 4 gefallen: „der Hammer stößt: apGesetzt, angriff, schaden" |
+| `pruefeSchub` fragt nicht, wer auf dem Landefeld steht | 1 gefallen: „der Stoß wird abgelehnt: „null"" |
+| `grabeAbgruende` gar nicht aufgerufen | 6 gefallen: „0 von 30 Karten tragen einen Abgrund (verlangt: 27)" |
+| `traegtRingsum` abgeschaltet | „kein einziger der 704 Abgründe hat einen Sims: ist 346, soll 0" |
+| Erreichbarkeitsprobe abgeschaltet | „(d) der Ausgang bleibt auf allen 30 Karten beidseitig erreichbar: ist 3, soll 0" |
+| `MIN_EBENEN_FLAECHE`-Probe abgeschaltet | `pruefe-landschaft`: „(h) keine Ebenenfläche unter 3 Kacheln: ist 1, soll 0" |
+| `inReichweite` gibt immer `false` | `pruefe-app`: „0 Angriffe auf den Saaten 7 und 31" und „12 verschiedene Ereignisformen" |
+
+### Was bewusst **nicht** geändert wurde
+
+- **`stossZiel`** — kein Zeichen. Wegfindung, Gegner-KI und Bild sehen
+  denselben Stoß wie vorher.
+- **Die Gegner-KI** sieht den Abgrund weiterhin als Wand: `schubGewinn`
+  fragt `stossZiel` und bewertet einen Stoß ins Loch mit 0. Die Brut
+  benutzt den Abgrund also nicht. Offener Punkt für den Auftraggeber.
+- **Das Bild.** Wie ein Abgrund aussieht, steht in `runtime/` und ist
+  seit Schritt 2 unverändert.
+- **`MIN_EBENEN_FLAECHE`, `STURZ_AB_STUFEN`, `wasserMindestSee`** und
+  jede andere Prüfmarke: keine gesenkt.
+
 ## 07.09.2026 — Wasserbecken auf jeder Ebene, nicht nur im Graben
 
 **Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene

@@ -317,3 +317,81 @@ export function stossZiel(karte, ax, ay, zx, zy) {
   if (!begehbar(karte, zx, zy, nx, ny)) return null;
   return { x: nx, y: ny };
 }
+
+/* ── Der Stoß in den Abgrund ────────────────────────────────────────
+
+   Liegt hinter dem Ziel ein Loch, dann sagt `stossZiel` `null` — es
+   fragt `begehbar`, und `begehbar` fragt `blocktBewegung`, und dort
+   steht der Abgrund seit dem 07.09.2026 drin. Genau so soll es sein:
+   Wegfindung, Gegner-KI und Bild fragen `stossZiel`, und keines von
+   ihnen darf einen Abgrund plötzlich für ein Zielfeld halten.
+
+   Deshalb steht die zweite Frage **neben** `stossZiel` und nicht
+   darin: Wer den Sturz will, fragt ausdrücklich danach. `stossZiel`
+   bleibt Wort für Wort, wie es war — sonst änderten sich Wegfindung
+   und KI stillschweigend mit. */
+
+/* Das Feld hinter dem Ziel, **wenn dort ein Abgrund liegt** — sonst
+   `null`. Dieselbe Sechseckrichtung wie `stossZiel`, dieselbe eine
+   Vorschrift (`stossRichtung`); eine zweite Richtungsrechnung wäre die
+   Naht, an der Stoß und Sturz eines Tages verschiedene Felder meinen. */
+export function abgrundHinter(karte, ax, ay, zx, zy) {
+  const weiter = stossRichtung(ax, ay, zx, zy);
+  if (!weiter) return null;
+  const nx = zx + weiter.dx, ny = zy + weiter.dy;
+  if (!karte.istAbgrund(nx, ny)) return null;
+  return { x: nx, y: ny };
+}
+
+/* ── Wohin ein Sturz in den Abgrund führt ───────────────────────────
+
+   **Die Figur landet nicht im Loch, sondern auf dem Boden, den das
+   Loch freilegt** — auf einer offenen Nachbarkachel des Abgrunds, die
+   auf seiner Sohlenebene liegt. Das ist eine Entscheidung, und sie
+   hat einen Grund:
+
+   Der Abgrund steht in `BLOCKT_BEWEGUNG`. Eine Figur, die **auf** dem
+   Abgrundfeld stünde, stünde auf einer Kachel, die `wegSuche`,
+   `erreichbareFelder` und `naechstesFreiesFeld` nie betreten — sie
+   käme dort nie wieder heraus, und keine Prüfung schlüge an, weil der
+   Zustand für sich genommen gültig ist. Das wäre eine Falle mit
+   Aussicht, und `erreichbarkeit.mjs` steht ausdrücklich dafür da, dass
+   es die nicht gibt.
+
+   Die Sohle als **Nachbarkachel** löst das ohne einen einzigen
+   Sonderfall im übrigen Kern: Die Figur steht danach auf einer ganz
+   gewöhnlichen offenen Kachel, eine Ebene oder mehr tiefer, und geht
+   von dort aus weiter wie jede andere. Der Schaden kommt aus
+   `sturzTiefe`/`sturzSchaden` — dieselben zwei Funktionen wie beim
+   Stoß über die Kante, nicht eine zweite Sturzregel.
+
+   **Gibt es keine solche Kachel, ist der Sturz tödlich.** Das ist die
+   zweite Hälfte von Janniks Abnahme („oder stirbt, wenn es keine
+   gibt"): ein Loch ohne Grund. `spiel/landschaft.mjs` gräbt nur
+   Abgründe mit Grund; bodenlose entstehen von Hand — und die Regel
+   dafür steht trotzdem hier, an **einer** Stelle.
+
+   `vonEbene` ist die Ebene, von der aus gefallen wird. Sie steht als
+   eigener Wert und nicht als Vorgabe im Kopf der Funktion, weil ein
+   vergessenes Argument sonst lautlos 0 Schaden ergäbe — und ein Sturz
+   ohne Schaden fiele niemandem auf.
+
+   Welche Nachbarkachel es wird, wenn mehrere in Frage kommen:
+   **die erste in der Reihenfolge aus `richtungen(y)`**. Nicht die
+   nächste, nicht die beste — eine feste Reihenfolge, sonst wählen
+   zwei Rechner verschieden (Fehlerbuch B2). */
+export function abgrundSturz(karte, x, y, vonEbene) {
+  if (!karte.istAbgrund(x, y)) return null;
+  const sohle = karte.ebeneBei(x, y);
+  let ziel = null;
+  for (const r of richtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (karte.blocktBewegung(nx, ny)) continue;
+    if (karte.ebeneBei(nx, ny) !== sohle) continue;
+    ziel = { x: nx, y: ny };
+    break;
+  }
+  const tiefe = Number.isFinite(vonEbene) && vonEbene > sohle ? vonEbene - sohle : 0;
+  const stufen = tiefe >= STURZ_AB_STUFEN ? tiefe : 0;
+  return { sohle, ziel, stufen, schaden: sturzSchaden(stufen), toedlich: ziel === null };
+}

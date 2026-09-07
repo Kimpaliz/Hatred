@@ -78,6 +78,9 @@ const messungen = [];
    eine andere Messung. */
 const SAAT_BILD = 3;        /* der Kerker, in dem zweihundert Bilder fallen */
 const SAAT_RUNDEN = 7;      /* der Kerker der dreißig Runden */
+/* Ein **zweiter** Kerker, allein für die Frage „läuft der Kampf?".
+   Warum er seit dem 07.09.2026 dazugehört, steht bei der Behauptung. */
+const SAAT_RUNDEN_ZWEI = 31;
 const SAAT_NIEDERLAGE = 11; /* dort fällt der einzelne Jäger — gemessen */
 const SAAT_TIEFEN = 23;     /* der Lauf über drei Kerkertiefen */
 const BILDER = 200;
@@ -487,8 +490,15 @@ function spieleRunden(saat, welt, { runden = RUNDEN, spielerZahl = 1 } = {}) {
 /* Dreißig Runden zu viert, über vier Sitzungen. Nach **jeder** Runde
    wird die Prüfzahl aller vier Spielstände abgenommen — und die des
    Gastgebers zusätzlich aufgeschrieben, damit ein zweiter Lauf sie
-   Zahl für Zahl wiederholen muss. */
-function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
+   Zahl für Zahl wiederholen muss.
+
+   `malen: false` lässt das Bild aus. Nur für einen Lauf gedacht, der
+   allein nach dem **Spielverlauf** fragt: Gemessen am 07.09.2026
+   kostet ein Lauf mit Bild 9,9 s und ohne 2,3 s, bei Zeichen für
+   Zeichen denselben Ereigniszahlen. Für den Gleichlauf und für die
+   Abspielung bleibt das Bild an — dort ist es der Gegenstand. */
+function spieleZuViert(saat, welt,
+  { runden = RUNDEN, spielerZahl = 4, malen = true } = {}) {
   const tisch = baueTisch(saat, spielerZahl);
   const zustand = tisch.zustaende[0];
   const { spiel } = macheApp(zustand, welt, tisch.wirt);
@@ -531,7 +541,7 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
          am Schluss auf einem Haufen — geprüft wäre dann eine
          Abspielung, die es im Spiel nicht gibt. */
       zeit += 1 / 60;
-      spiel.bild(zeit);
+      if (malen) spiel.bild(zeit);
       if (zustand.runde !== letzteRunde) {
         letzteRunde = zustand.runde;
         gezaehlt++;
@@ -557,9 +567,15 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
   try {
     const erster = spieleZuViert(SAAT_RUNDEN, welt);
     const zweiter = spieleZuViert(SAAT_RUNDEN, welt);
+    /* Der zweite Kerker — ohne Bild, weil hier allein der Verlauf
+       zählt. Begründung bei den beiden Kampfbehauptungen weiter unten. */
+    const anderer = spieleZuViert(SAAT_RUNDEN_ZWEI, welt, { malen: false });
 
     gleich(erster.wurf, null, "der erste Lauf über dreißig Runden wirft nicht");
     gleich(zweiter.wurf, null, "der zweite ebenso");
+    gleich(anderer.wurf, null, `und der Lauf auf Saat ${SAAT_RUNDEN_ZWEI} auch nicht`);
+    gleich(anderer.festgefahren, false, "auch der zweite Kerker fährt sich nicht fest");
+    gleich(anderer.runden, RUNDEN, `${RUNDEN} volle Runden auch auf Saat ${SAAT_RUNDEN_ZWEI}`);
     gleich(erster.festgefahren, false, "der Lauf fährt sich nicht fest");
     gleich(erster.runden, RUNDEN, `${RUNDEN} volle Runden über vier Sitzungen gespielt`);
     gleich(erster.zustand.vorbei, null, "und der Lauf ist danach noch offen");
@@ -588,45 +604,60 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
        herauskommen. */
     const wieoft = (art) => erster.arten.get(art) || 0;
     behaupte(wieoft("bewegt") > 20, `${wieoft("bewegt")} Bewegungen`);
-    /* Die Schranke stand bis zum 07.09.2026 bei 10 — gemessen an einer
-       Brut, die gar nicht stoßen konnte: `stossZiel` rechnete noch im
-       Quadratraster und gab auf vier der sechs Sechseckrichtungen das
-       falsche Feld und auf zwei weiteren `null`. Damit war
-       `schubGewinn` fast überall 0, die Brut sah keinen Stoßplatz und
-       lief stattdessen in den Nahkampf. Seit `stossZiel` auf dem
-       Sechseck rechnet, ist ein Feld an der Kante wieder mehr wert als
-       ein Schlag — und aus 14 Angriffen auf Saat 7 wurden 7.
+    /* ── Warum diese Frage seit dem 07.09.2026 zwei Kerker braucht ──
 
+       Sie fragt: Trifft die Brut überhaupt auf die Jäger, oder stehen
+       dreißig Runden lang alle nebeneinander herum? Bis zum
+       07.09.2026 stand dafür `wieoft("angriff") > 3` auf **einer**
+       Karte, der Saat 7. Das war eine Zahl, die an genau diesen einen
+       Kerker gebunden war — und Vorgang #8 (Abgründe) hat ihn
+       verändert.
+
+       Gemessen wurde daraufhin dieselbe Frage über sechs Saaten
+       (7, 3, 11, 19, 23, 31), einmal ohne und einmal mit Abgründen:
+
+         ohne : 7 ·  0 · 0 · 0 · 0 ·  9 → 16 Angriffe
+         mit  : 0 · 25 · 0 · 0 · 0 · 29 → 54 Angriffe
+
+       Die Einzelzahl schwankt also zwischen 0 und 29 und sagt über
+       den Kampf nichts; die Summe hat sich mehr als verdreifacht. Auf
+       **einer** Karte gemessen war die alte Schranke deshalb kein
+       Fangnetz für den leeren Lauf, sondern ein Glücksfall der Saat 7
+       — auf drei von sechs Saaten wäre sie auch ohne jede Änderung rot
+       gewesen.
+
+       Deshalb jetzt zwei Kerker und die **Summe**: 29 Angriffe
+       gemessen, Schranke 10. Sie liegt damit höher als die alte (die
+       auf 3 hinauslief) und hängt an mehr als einer Karte.
        Nachzurechnen mit `node werkzeuge/pruefe-app.mjs`, Messzeile
-       „30 Runden zu viert auf Saat 7". Im vollen Lauf
-       (`node werkzeuge/pruefe-lauf.mjs`) hob dieselbe Umstellung die
-       Stöße von 8 auf 12 und die Angriffe von 82 auf 88.
-
-       Auch diese Zahl ist kein Balancewert. Sie fragt: Trifft die Brut
-       überhaupt auf die Jäger, oder stehen dreißig Runden lang alle
-       nebeneinander herum? Deshalb liegt sie deutlich unter dem
-       Gemessenen — sie soll den leeren Lauf fangen, nicht die Laune
-       der Gegner-KI einfrieren. */
-    behaupte(wieoft("angriff") > 3, `${wieoft("angriff")} Angriffe`);
-    /* Nicht mehr „mehr als zehn Treffer", sondern „ein ordentlicher
-       Teil der Angriffe trifft". Die feste Zahl war an das
-       Quadratraster gebunden: Auf dem Sechseck nimmt die Brut öfter
-       Deckung (die Deckungsregel fragt seit dem 07.09.2026 alle sechs
-       Nachbarn), es wird häufiger gefehlt, und aus 14 Angriffen wurden
-       8 Treffer statt der früheren elf.
+       „30 Runden zu viert". */
+    const wieoftAuch = (art) => wieoft(art) + (anderer.arten.get(art) || 0);
+    const angriffe = wieoftAuch("angriff");
+    behaupte(angriffe > 10,
+      `${angriffe} Angriffe auf den Saaten ${SAAT_RUNDEN} und ${SAAT_RUNDEN_ZWEI}`);
+    /* Nicht „mehr als zehn Treffer", sondern „ein ordentlicher Teil
+       der Angriffe trifft". Eine feste Trefferzahl wäre an denselben
+       einen Kerker gebunden wie die Schranke darüber.
 
        Was diese Stelle wirklich fragt, ist: Läuft der Kampf, oder
        geht ins Leere, was gewürfelt wird? Ein Drittel Treffer ist die
        Grenze, unter der etwas grundsätzlich kaputt wäre — eine
        zerbrochene Trefferrechnung landet bei null. */
-    const treffer = wieoft("schaden");
-    const angriffe = wieoft("angriff");
+    const treffer = wieoftAuch("schaden");
     behaupte(treffer * 3 > angriffe,
       `${treffer} Treffer aus ${angriffe} Angriffen — mehr als ein Drittel`);
     behaupte(wieoft("zugEnde") > 30, `${wieoft("zugEnde")} beendete Züge`);
-    behaupte(erster.arten.size >= 10,
-      `${erster.arten.size} verschiedene Ereignisformen: `
-      + `${[...erster.arten.keys()].sort().join(", ")}`);
+    /* Auch diese Frage steht über beiden Kerkern, und aus demselben
+       Grund: Ob auf **einer** Karte je ein Angriff fällt, entscheidet
+       die Karte. Fällt keiner, fehlen `angriff`, `schaden`,
+       `gestorben` und `lpGesetzt`, und die Zahl fiel auf Saat 7 von 12
+       auf 9. Über beide Kerker sind es gemessen **15**; mit einer
+       vorsätzlich zerbrochenen Reichweitenrechnung 12. Die Schranke
+       liegt deshalb bei 13 — über dem kaputten Fall und unter dem
+       gemessenen, und höher als die alte 10. */
+    const formen = new Set([...erster.arten.keys(), ...anderer.arten.keys()]);
+    behaupte(formen.size >= 13,
+      `${formen.size} verschiedene Ereignisformen: ${[...formen].sort().join(", ")}`);
 
     /* Verglichen wird jede Runde und nicht nur das Ende — sonst
        könnten sich zwei Läufe in Runde 7 trennen und in Runde 30
@@ -654,6 +685,8 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
     messungen.push(`${RUNDEN} Runden zu viert auf Saat ${SAAT_RUNDEN}: `
       + `${erster.zustand.protokoll.length} Aktionen, ${wieoft("angriff")} Angriffe, `
       + `${verschieden} verschiedene Prüfzahlen`);
+    messungen.push(`${RUNDEN} Runden zu viert, Saat ${SAAT_RUNDEN} und `
+      + `${SAAT_RUNDEN_ZWEI} zusammen: ${angriffe} Angriffe, ${treffer} Treffer`);
   } finally {
     welt.raeumeAuf();
   }

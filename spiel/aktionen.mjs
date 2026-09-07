@@ -73,7 +73,9 @@
    die Ereignisse ab), `werkzeuge/pruefe-zug.mjs`. */
 
 import { HINDERNIS, richtungen, abstand, gespiegelt } from "./gitter.mjs";
-import { sturzTiefe, sturzSchaden, stossZiel, betretenSchaden } from "./hoehen.mjs";
+import {
+  sturzTiefe, sturzSchaden, stossZiel, betretenSchaden, abgrundHinter, abgrundSturz
+} from "./hoehen.mjs";
 import { sichtlinie } from "./sicht.mjs";
 import { helligkeitsfeld, istVerborgen, SICHT_IM_DUNKELN } from "./licht.mjs";
 import { wegSuche, erreichbareFelder } from "./wegfindung.mjs";
@@ -343,11 +345,30 @@ function pruefeStoss(lage, aktion, wesen) {
 
 /* Wohin ein Schub führt — und ob dort überhaupt Platz ist.
    `stossZiel` kennt Wände und Kanten, aber keine Figuren; wer dahinter
-   steht, weiß nur der Zustand. */
+   steht, weiß nur der Zustand.
+
+   Sagt `stossZiel` nein, ist die Sache noch nicht zu Ende: Hinter dem
+   Ziel kann ein **Abgrund** liegen. Der blockt die Bewegung, also
+   lehnt `stossZiel` ihn ab — genau richtig, denn niemand geht dort
+   freiwillig hin. Gestoßen wird man aber sehr wohl hinein, und dann
+   ist der Schub erlaubt.
+
+   Diese zweite Frage steht hier und in `schiebe`, und das ist keine
+   Doppelung, sondern die Bedingung dafür, dass beides dasselbe sagt:
+   Würde nur hier gefragt und dort nicht, gäbe es eine Aktion, die die
+   Oberfläche anbietet, die bezahlt wird und die nichts tut. */
 function pruefeSchub(lage, ausX, ausY, ziel, weg) {
   const feld = schubFeld(lage.karte, ausX, ausY, ziel, weg);
-  if (!feld) return "In diese Richtung geht es nicht weiter.";
-  if (wesenAuf(lage.zustand, feld.x, feld.y)) return "Dahinter steht schon jemand.";
+  if (feld) {
+    if (wesenAuf(lage.zustand, feld.x, feld.y)) return "Dahinter steht schon jemand.";
+    return null;
+  }
+  const sturz = schubSturz(lage.karte, ausX, ausY, ziel, weg);
+  if (!sturz) return "In diese Richtung geht es nicht weiter.";
+  /* Ein bodenloser Schacht hat kein Landefeld — dort steht nie jemand,
+     und der Stoß ist immer erlaubt. */
+  const auf = sturz.ziel;
+  if (auf && wesenAuf(lage.zustand, auf.x, auf.y)) return "Dahinter steht schon jemand.";
   return null;
 }
 
@@ -361,10 +382,25 @@ function pruefeSchub(lage, ausX, ausY, ziel, weg) {
    `2 * ziel - aus`: Auf dem Sechseckraster liegt der gespiegelte Punkt
    sonst neben der Achse, sobald die beiden Zeilen verschiedene Parität
    haben — und dann zog die Hakenkette niemanden mehr. */
+function schubPunkt(ausX, ausY, ziel, weg) {
+  return weg ? { x: ausX, y: ausY } : gespiegelt(ausX, ausY, ziel.x, ziel.y);
+}
+
 function schubFeld(karte, ausX, ausY, ziel, weg) {
-  if (weg) return stossZiel(karte, ausX, ausY, ziel.x, ziel.y);
-  const hinter = gespiegelt(ausX, ausY, ziel.x, ziel.y);
-  return stossZiel(karte, hinter.x, hinter.y, ziel.x, ziel.y);
+  const aus = schubPunkt(ausX, ausY, ziel, weg);
+  return stossZiel(karte, aus.x, aus.y, ziel.x, ziel.y);
+}
+
+/* Dasselbe für den Abgrund: Liegt hinter dem Ziel ein Loch, dann sagt
+   das Ergebnis, wohin die Figur stürzt (`ziel`), wie viel das kostet
+   (`schaden`) und ob es sie umbringt (`toedlich`). `null`, wenn dort
+   kein Loch liegt. */
+function schubSturz(karte, ausX, ausY, ziel, weg) {
+  const aus = schubPunkt(ausX, ausY, ziel, weg);
+  const loch = abgrundHinter(karte, aus.x, aus.y, ziel.x, ziel.y);
+  if (!loch) return null;
+  const sturz = abgrundSturz(karte, loch.x, loch.y, karte.ebeneBei(ziel.x, ziel.y));
+  return { loch, ...sturz };
 }
 
 function pruefeFaehigkeit(lage, aktion, wesen) {
@@ -489,7 +525,9 @@ function schiebe(lage, ziel, ausX, ausY, felder, weg, ereignisse) {
   for (let schritt = 0; schritt < felder; schritt++) {
     if (!ziel.lebt) return;
     const feld = schubFeld(karte, ausX, ausY, ziel, weg);
-    if (!feld) return;
+    /* Kein begehbares Feld dahinter — vielleicht ein Loch. Auch der
+       Sturz beendet das Schieben: Wer fällt, fliegt nicht weiter. */
+    if (!feld) { stossInsLoch(lage, ziel, ausX, ausY, weg, ereignisse); return; }
     if (wesenAuf(lage.zustand, feld.x, feld.y)) return;
 
     const von = { x: ziel.x, y: ziel.y };
@@ -516,6 +554,53 @@ function schiebe(lage, ziel, ausX, ausY, felder, weg, ereignisse) {
     }
     lavaPruefen(lage, ziel, ereignisse);
   }
+}
+
+/* Der Stoß in den Abgrund. Getrennt von `schiebe`, weil sich der
+   Ablauf an einer Stelle wirklich unterscheidet: Beim gewöhnlichen
+   Schub steht am Ende immer eine Figur auf einem Feld, hier steht
+   vielleicht keine mehr.
+
+   Die Reihenfolge der Ereignisse ist dieselbe wie beim Sturz über eine
+   Kante — `gestossen`, `ebeneGewechselt`, `gestuerzt`, Punkte weg,
+   Schaden —, damit das Bild nur einen Fall kennt.
+
+   **Der bodenlose Schacht tötet über den gewöhnlichen Schadensweg**
+   (`fuegeSchadenZu` mit den restlichen Lebenspunkten) und nicht über
+   ein eigenes `wesen.lebt = false`. So läuft alles daran Hängende
+   mit: das Ereignis `gestorben`, das gelöschte Wacht-Recht, der
+   Lauf-Abschluss. Ein zweiter Todesweg wäre die Naht, an der eines
+   davon eines Tages fehlt. */
+function stossInsLoch(lage, ziel, ausX, ausY, weg, ereignisse) {
+  const karte = lage.karte;
+  const sturz = schubSturz(karte, ausX, ausY, ziel, weg);
+  if (!sturz) return;
+  if (sturz.ziel && wesenAuf(lage.zustand, sturz.ziel.x, sturz.ziel.y)) return;
+
+  const von = { x: ziel.x, y: ziel.y };
+  const vonEbene = karte.ebeneBei(von.x, von.y);
+  /* Wohin die Leiche fällt, wenn es keinen Grund gibt: in das Loch
+     selbst. Sie liegt dann auf einer gesperrten Kachel — das ist
+     unbedenklich, weil `wesenBei` nur Lebende zählt, und es ist die
+     einzige Stelle, an der der Sturz sichtbar wird. */
+  const nach = sturz.ziel || sturz.loch;
+  ziel.x = nach.x;
+  ziel.y = nach.y;
+  const nachEbene = karte.ebeneBei(nach.x, nach.y);
+  ereignisse.push({ art: "gestossen", wer: ziel.id, von, nach: { x: nach.x, y: nach.y } });
+  if (nachEbene !== vonEbene) {
+    ereignisse.push({ art: "ebeneGewechselt", wer: ziel.id, von: vonEbene, nach: nachEbene });
+  }
+
+  const schaden = sturz.toedlich ? ziel.lp : sturz.schaden;
+  ereignisse.push({
+    art: "gestuerzt", wer: ziel.id, von, nach: { x: nach.x, y: nach.y },
+    stufen: sturz.stufen, schaden, abgrund: true, toedlich: sturz.toedlich
+  });
+  ziel.ap = 0;
+  ereignisse.push({ art: "apGesetzt", wer: ziel.id, ap: 0 });
+  fuegeSchadenZu(ziel, schaden, "sturz", "sturz", ereignisse);
+  lavaPruefen(lage, ziel, ereignisse);
 }
 
 function lavaPruefen(lage, wesen, ereignisse) {

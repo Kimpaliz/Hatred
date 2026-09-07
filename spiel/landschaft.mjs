@@ -55,7 +55,7 @@ import {
   macheKarte, richtungen, RAMPE, BODEN, FLUESSIG, HINDERNIS,
   BLOCKT_BEWEGUNG, EBENEN, EBENE_GRABEN
 } from "./gitter.mjs";
-import { laufKosten } from "./hoehen.mjs";
+import { laufKosten, STURZ_AB_STUFEN } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
 import { PIXEL_JE_FELD } from "./bauart.mjs";
 import { hash, fbm } from "./welt-rauschen.mjs";
@@ -247,11 +247,23 @@ export function mehrheitsFilter(karte) {
 
 
 
-/* Flächen gleicher Ebene über **alle** Kacheln, auch über Fels: Die
-   Ebene einer Wand ist im Bild sichtbar (sie trägt die Schattenkante),
-   also gilt die Mindestgröße auch dort. */
+/* Flächen gleicher Ebene über alle Kacheln, auch über Fels: Die Ebene
+   einer Wand ist im Bild sichtbar (sie trägt die Schattenkante), also
+   gilt die Mindestgröße auch dort.
+
+   **Nur der Abgrund zählt nicht mit.** Seine Ebene ist die seiner
+   Sohle (Vorgang #8, Schritt 2) und beschreibt kein Stück Gelände,
+   sondern wie tief das Loch ist. Zählte er mit, wäre jedes einzelne
+   Loch mitten auf einem Plateau eine Ebenenfläche von einer Kachel und
+   damit genau der „Ausrutscher des Rauschens", den `MIN_EBENEN_FLAECHE`
+   verbietet — gemessen über 60 Karten 573 solcher Flächen statt 0.
+
+   Für alles, was vor `grabeAbgruende` läuft, ändert das nichts: Bis
+   dahin gibt es keine Abgrundkachel, und `legeKleineEbenenZusammen`
+   bekommt Kachel für Kachel dieselbe Antwort wie vorher. */
 export function ebenenFlaechen(karte) {
-  return gebiete(karte, alleDabei, gleicheEbene(karte));
+  return gebiete(karte, (i) => karte.hindernis[i] !== HINDERNIS.abgrund,
+    gleicheEbene(karte));
 }
 
 /* Zu kleine Flächen bekommen die Ebene ihrer häufigsten Nachbarfläche.
@@ -570,6 +582,255 @@ export function setzeRampen(karte, saat) {
   return { zusatz, ...pflicht };
 }
 
+/* ═══ Schritt 5b — Abgründe ═════════════════════════════════════════════════
+
+   Janniks Satz zu Vorgang #8 wörtlich: *„unterschiedliche ebenen und
+   auf jeder ebene kann es wasserbecken oder sbruende [Abgründe] geben"*.
+
+   ── Was ein Abgrund hier ist ───────────────────────────────────────
+
+   Ein Loch im Boden einer **hoch gelegenen** Kachel. Hoch heißt: ab
+   `STURZ_AB_STUFEN` über dem Graben, also ab Ebene 2. Das ist kein
+   gewähltes Maß, sondern dasselbe, ab dem `spiel/hoehen.mjs` einen
+   Abstieg einen Sturz nennt: Ein Loch, in das man eine Ebene tief
+   fällt, tut keinen Schaden und ist ein Treppenabsatz.
+
+   Wie tief es geht, entscheidet der Fels ringsum, und daraus fallen
+   von selbst zwei Sorten Abgrund:
+
+   · **Am Kliffrand** liegt neben der Kachel offener Boden, der
+     mindestens zwei Ebenen tiefer liegt. Das Loch bricht dorthin
+     durch; wer hineinfällt, schlägt auf diesem Boden auf und lebt.
+     Die Sohle bekommt dessen Ebene.
+   · **Mitten auf dem Plateau** liegt kein solcher Boden daneben. Dann
+     geht der Schacht in den Fels, und niemand kommt unten an — die
+     Sohle bekommt `STURZ_AB_STUFEN` unter dem Rand, und der Sturz ist
+     tödlich.
+
+   Beides ist dieselbe Regel, nur an verschiedenem Gestein. Wohin man
+   fällt und ob man es überlebt, rechnet `abgrundSturz`
+   (`spiel/hoehen.mjs`) allein aus der fertigen Karte — hier wird nichts
+   davon zusätzlich vermerkt. Das ist Absicht: `karte.summe()` hasht die
+   fünf Reihen, eine Nebenliste „welches Loch ist bodenlos" fiele aus
+   der Desync-Erkennung heraus.
+
+   Dass ein Abgrundfeld in der Reihe `ebene` die Ebene seiner **Sohle**
+   trägt und nicht die seines Randes, ist die Festlegung aus Schritt 2;
+   sie steht mit ihrer Begründung in `spiel/hoehen.mjs`.
+
+   ── Warum je Kachel gewürfelt und nicht in Flecken ─────────────────
+
+   Der erste Anlauf nahm ein grobes Rauschfeld, wie es `setzeBoden` für
+   den Knochenteppich benutzt: zusammenhängende Schluchten statt
+   einzelner Löcher. Er wurde am 07.09.2026 an der damaligen Fassung
+   gemessen und verworfen, und zwar an der Sache selbst. Ein
+   Rauschfleck liegt auf **einem** Plateau, und ein Loch trägt die
+   Ebene seiner Sohle — also lagen die Löcher einer Karte überwiegend
+   auf derselben Ebene: Bei vergleichbarer Lochzahl trugen mit dem
+   Rauschfeld 16 von 30 Karten Abgründe auf zwei verschiedenen Ebenen,
+   mit dem Wurf je Kachel 24 von 30. Dazu sperrte das Rauschfeld
+   doppelt so oft einen Weg (113 zurückgenommene Löcher gegen 58) —
+   eine Schlucht trennt, ein einzelnes Loch nur eine Kachel.
+
+   Janniks Satz verlangt ausdrücklich *„unterschiedliche ebenen"* —
+   und genau das kann ein einzelnes Rauschfeld über eine Karte nicht.
+
+   ── Warum genau hier im Ablauf ─────────────────────────────────────
+
+   Gemessen am 07.09.2026 an einem naiv gesetzten Abgrund: `raeumeAuf`
+   macht die Insel im Loch zu Wand, `verfuelleNebenraeume` verfüllte
+   81 von 162 begehbaren Kacheln, `verbindeMitRampen` ebenso. Der
+   einzige Platz, an dem keiner dieser drei Schritte das Loch wieder
+   zumauert, ist **nach** `setzeRampen` und **vor** `setzeWasser`.
+
+   Vor dem Wasser und nicht danach, weil das Loch die Form der Karte
+   ändert: Eine weggenommene Kachel kann aus einem Plateau eine Mulde
+   machen, und `setzeWasser` fragt die Form (`beckenGebiete`).
+   Umgekehrt gäbe es Wasser, das ins Loch liefe.
+
+   ── Jedes Loch einzeln setzen und im Zweifel zurücknehmen ──────────
+
+   Das Muster ist das von `zierErlaubt` (`spiel/ausstattung.mjs`):
+   Kachel probeweise sperren, die Erreichbarkeit fragen, im Zweifel
+   ablehnen. Gemessen: 12 beliebig gesetzte Abgründe schneiden auf
+   Saat 1 bereits zwei offene Kacheln ab.
+
+   Gefragt wird hier aber **global** und nicht wie dort in einem
+   Fenster von 7 × 7 — und das ist der Unterschied, der gemessen den
+   Ausschlag gibt: Eine Kliffkante ist genau die Stelle, an der die
+   örtliche Frage falsch antwortet. Der Nachbar zwei Ebenen tiefer ist
+   von oben erreichbar, von unten nie (hinauf geht es nur über eine
+   Rampe), also findet `zierErlaubt` im Fenster keine beidseitige
+   Verbindung und lehnt ab — obwohl die Karte über eine Rampe drei
+   Kacheln weiter längst ganz zusammenhängt.
+
+   Weil jede Kachel einzeln geprüft wird, ist die Karte nach jedem
+   Schritt wieder ganz — und die eine globale Gegenprobe am Ende ist
+   die Behauptung dieser Vollständigkeit, kein erwarteter Fall. Sie
+   wirft, wenn sie doch etwas findet.
+
+   Gewürfelt wird aus `hash(Feldnummer, Randebene, Saat)` — nie aus
+   `Math.random` (Fehlerbuch B1), und mit eigener Saatverschiebung,
+   damit dieser Wurf keinen späteren verschiebt (Fehlerbuch B4). */
+
+/* Wie oft ein hoch genug gelegenes Feld ein Loch wird. Zwei Sätze,
+   weil zwei verschiedene Dinge gewürfelt werden:
+
+   · `ABGRUND_ANTEIL` gilt auf freier Fläche. Gemessen über 30 Saaten
+     auf 44 × 32 (`werkzeuge/pruefe-abgrund.mjs`): 235,1 Kacheln je
+     Karte liegen hoch genug, und zusammen mit dem Kliffsatz werden
+     daraus 17,2 Löcher je Karte. Bei 0,12/0,55 wären es 22,2 und das
+     Plateau wäre mehr Loch als Boden; bei 0,03/0,20 nur 6,9, und dann
+     tragen nur 17 statt 22 von 30 Karten Abgründe auf zwei
+     verschiedenen Ebenen.
+   · `ABGRUND_KLIFF_ANTEIL` gilt am Kliffrand — dort, wo nebenan schon
+     Boden zwei Ebenen tiefer liegt. Er ist höher, weil Fels dort
+     weiterbricht, wo er schon abgebrochen ist. Er entscheidet zugleich
+     über das **Spiel**: Nur ein Loch am Kliffrand hat einen Grund, auf
+     dem man aufschlägt und weiterlebt. Mit gleichem Satz überall
+     (0,09/0,09) sind gemessen 353 von 391 Löchern bodenlos (90 %), mit
+     dem Kliffsatz 349 von 516 (68 %) — die 167 übrigen sind die, in
+     die man einen Gegner stoßen kann, ohne ihn gleich zu töten. */
+export const ABGRUND_ANTEIL = 0.09;
+export const ABGRUND_KLIFF_ANTEIL = 0.45;
+
+/* Die Sohle eines möglichen Lochs auf (x,y): die **höchste** offene
+   Nachbarkachel, die noch mindestens `STURZ_AB_STUFEN` tiefer liegt —
+   und `null`, wenn es keine gibt; dann ist der Schacht bodenlos und
+   seine Sohle liegt `STURZ_AB_STUFEN` unter dem Rand.
+
+   Höchste und nicht tiefste: Man schlägt auf dem ersten Boden auf, der
+   trägt, nicht auf dem untersten der Karte. Ein Höchstwert und keine
+   Reihenfolgenwahl — damit hängt nichts an der Reihenfolge, in der die
+   sechs Nachbarn abgefragt werden (Fehlerbuch B2). */
+function sohleUnter(karte, x, y) {
+  const oben = karte.ebene[y * karte.breite + x];
+  let sohle = null;
+  for (const r of richtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (!karte.drin(nx, ny)) continue;
+    const j = ny * karte.breite + nx;
+    if (!offen(karte, j)) continue;
+    const tief = karte.ebene[j];
+    if (oben - tief >= STURZ_AB_STUFEN && (sohle === null || tief > sohle)) sohle = tief;
+  }
+  return sohle;
+}
+
+/* Wie viele offene Kacheln von `start` aus **nicht** beidseitig
+   erreichbar sind. Null heißt: die Karte ist ganz. */
+function abgeschnitten(karte, start) {
+  const gut = beidseitigErreichbar(karte, [start]);
+  let zahl = 0;
+  for (let i = 0; i < karte.anzahl; i++) if (offen(karte, i) && !gut[i]) zahl++;
+  return zahl;
+}
+
+/* Trägt dieses Loch seine eigene Regel? Zwei Bedingungen, und beide
+   sind die Bedingung dafür, dass ein Stoß hinein überhaupt ein Sturz
+   ist:
+
+   · **Kein Sims.** Jede offene Nachbarkachel liegt entweder genau auf
+     der Sohle — das ist der Boden, den das Loch freilegt — oder
+     mindestens `STURZ_AB_STUFEN` darüber. Eine Kachel genau eine Ebene
+     über der Sohle wäre ein Sims: Wer von dort hineingestoßen wird,
+     fällt eine Ebene und nimmt keinen Schaden, und in einem bodenlosen
+     Schacht stürbe er sogar an einem einzigen Schritt. Ohne diese
+     Frage hatten gemessen über 30 Saaten 184 von 704 Löchern einen
+     solchen Sims.
+   · **Ein Rand, von dem aus es hineingeht.** Mindestens eine offene
+     Nachbarkachel liegt `STURZ_AB_STUFEN` oder mehr über der Sohle.
+     Sonst ist das Loch von keiner Kachel aus ein Sturz — es ist
+     überhaupt kein Abgrund mehr, nur eine gesperrte Kachel. Das
+     entsteht nicht beim Graben, sondern **danach**: Wird der letzte
+     hohe Nachbar selbst zum Loch, verliert das erste seinen Rand.
+     Ohne diese Frage traf das gemessen 15 von 704 Löchern. */
+function lochTraegt(karte, x, y) {
+  const sohle = karte.ebene[y * karte.breite + x];
+  let rand = false;
+  for (const r of richtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (karte.blocktBewegung(nx, ny)) continue;
+    const hoch = karte.ebeneBei(nx, ny) - sohle;
+    if (hoch === 0) continue;
+    if (hoch < STURZ_AB_STUFEN) return false;
+    rand = true;
+  }
+  return rand;
+}
+
+/* Tragen das neue Loch **und** jedes Loch daneben noch ihre Regel?
+   Beide Fragen zusammen, weil ein neues Loch dem alten den Rand
+   nehmen kann: Es war eine hohe offene Kachel und ist jetzt keine
+   mehr. Weiter als bis zu den Nachbarn reicht diese Wirkung nicht —
+   was ein Loch von seinem Rand hat, steht in seinen sechs Nachbarn. */
+function traegtRingsum(karte, x, y) {
+  if (!lochTraegt(karte, x, y)) return false;
+  for (const r of richtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (!karte.istAbgrund(nx, ny)) continue;
+    if (!lochTraegt(karte, nx, ny)) return false;
+  }
+  return true;
+}
+
+/* Wie viele Geländeflächen unter `MIN_EBENEN_FLAECHE` liegen. Die
+   zweite Frage, die ein Loch verderben kann: Es nimmt eine Kachel aus
+   ihrer Ebenenfläche heraus, und was übrig bleibt, kann eine einzelne
+   Kachel sein — ein Sims von einem Feld, das die Karte nur unruhig
+   macht. Gemessen über 60 Karten trat das viermal auf; ohne diese
+   Frage bliebe `pruefe-landschaft.mjs` (h) genau viermal rot. */
+function zuKleineFlaechen(karte) {
+  let zahl = 0;
+  for (const gross of ebenenFlaechen(karte).groessen) {
+    if (gross < MIN_EBENEN_FLAECHE) zahl++;
+  }
+  return zahl;
+}
+
+export function grabeAbgruende(karte, saat, anteil = ABGRUND_ANTEIL,
+  kliffAnteil = ABGRUND_KLIFF_ANTEIL) {
+  const quelle = groesstesPlateauFeld(karte);
+  if (quelle < 0) throw new Error("grabeAbgruende: die Karte hat keine offene Kachel");
+  const start = { x: spalte(karte, quelle), y: zeile(karte, quelle) };
+  const marke = (saat | 0) + 907;
+  let hoch = 0, geloecht = 0, bodenlos = 0, zurueck = 0;
+
+  for (let y = 0; y < karte.hoehe; y++) {
+    for (let x = 0; x < karte.breite; x++) {
+      const i = y * karte.breite + x;
+      /* Die Flutquelle bleibt heil: Wäre sie das Loch, stünde die
+         ganze Erreichbarkeitsfrage auf einer gesperrten Kachel. */
+      if (i === quelle || !offen(karte, i)) continue;
+      const rand = karte.ebene[i];
+      if (rand - EBENE_GRABEN < STURZ_AB_STUFEN) continue;
+      hoch++;
+      const gefunden = sohleUnter(karte, x, y);
+      if (hash(i, rand, marke) >= (gefunden === null ? anteil : kliffAnteil)) continue;
+
+      const sohle = gefunden === null ? rand - STURZ_AB_STUFEN : gefunden;
+      karte.hindernis[i] = HINDERNIS.abgrund;
+      karte.ebene[i] = sohle;
+      if (!traegtRingsum(karte, x, y) || abgeschnitten(karte, start) > 0
+        || zuKleineFlaechen(karte) > 0) {
+        karte.hindernis[i] = HINDERNIS.keins;
+        karte.ebene[i] = rand;
+        zurueck++;
+      } else {
+        geloecht++;
+        if (gefunden === null) bodenlos++;
+      }
+    }
+  }
+
+  const rest = abgeschnitten(karte, start) + zuKleineFlaechen(karte);
+  if (rest > 0) {
+    throw new Error(`grabeAbgruende: ${rest} Kachel(n) abgeschnitten oder zu klein,` +
+      " obwohl jede einzeln geprüft wurde");
+  }
+  return { hoch, geloecht, bodenlos, zurueck };
+}
+
 function pruefeAngaben(saat, breite, hoehe, tiefe, spielerZahl) {
   const ganz = Number.isInteger;
   if (!ganz(saat)) throw new Error("baueLandschaft: saat muss eine ganze Zahl sein");
@@ -600,6 +861,7 @@ export function baueLandschaft({
   raeumeAuf(karte);
   verfuelleNebenraeume(karte);
   setzeRampen(karte, saat);
+  grabeAbgruende(karte, saat);
   setzeWasser(karte, welt);
   setzeBoden(karte, welt, wandNaehe);
   setzeFackeln(karte);
