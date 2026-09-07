@@ -3,6 +3,35 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Fels, Stufen und Ebenenränder werden am Bild geprüft
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!"*
+
+`werkzeuge/pruefe-gelaende-bild.mjs` zeichnet jeweils genau ein Feld mit
+dem echten Weltzeichner. Es prüft Felsfacetten, die vier Seitenlippen bei
+drei Höhenunterschieden, offene Rampeneintritte und den Kartenrand. Für
+Treppen werden sechs Richtungen auf beiden Zeilenparitäten bei einfacher
+und dreifacher Vergrößerung gemalt. Die hellen Kanten müssen im echten
+Aufstiegsvektor liegen; breite Tritte werden an ihren fertigen Pixeln
+gemessen. Alle Details müssen im eigenen Feld bleiben und im Nebel
+gemeinsam gedämpft werden. Die Kartensumme bleibt unverändert.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **97 Feldbilder**,
+höchstens **91 Rechtecke je Feld**, **39 je Felsfeld**, **3 Felsmuster**
+über drei Saaten. Die Obergrenzen von 64 Rechtecken für Fels und 140 für
+Treppen verhindern eine Auflösung ganzer Felder in einzelne Pixelaufrufe.
+**Rotprobe:** Der alte Zeichner fällt mit **127 von 446 Behauptungen**,
+Rückgabewert 1; der neue besteht mit **446 von 446**, Rückgabewert 0.
+
+In `werkzeuge/pruefe-zeichnen.mjs` werden Wandgrundflächen zusätzlich über
+ihre Form erkannt: Facetten derselben Farbfamilie dürfen nicht als zehn
+Flanken gezählt werden. Der alte Rampentest verlangt jetzt drei echte
+Stufenkanten statt drei einteiliger Querstriche. Damit besteht diese
+Prüfung mit **154 Behauptungen**; vorher fielen genau **7 Behauptungen**
+an den geänderten Darstellungsformen. Die Kopfnotizenprüfung besteht
+mit **852 Behauptungen**, die Sprachprüfung mit **0 Fehlern**.
+
 ## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
 
 **Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den

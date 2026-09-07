@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorlauf und zugehörige Prüfungen am 07.09.2026 integriert; Bereiche freigegeben. | 07.09.2026 |
+| frei | frei | Geländeprüfung am 07.09.2026 zur Integration vorbereitet; Bereiche freigegeben. | 07.09.2026 |
 
 ## Format
 
