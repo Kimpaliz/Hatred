@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| runtime/zeichnen.js, runtime/gelaende-bild.js, runtime/palette.js, werkzeuge/pruefe-gelaende-bild.mjs, werkzeuge/pruefe-zeichnen.mjs, CHANGELOG.md | Codex | Felswände, Treppen und sichtbare Ebenenränder auf bild/fels-stufen-raender. | 07.09.2026 |
+| frei | frei | Felswände, Treppen, Ebenenränder und zugehörige Prüfungen am 07.09.2026 integriert. | 07.09.2026 |
 
 ## Format
 
