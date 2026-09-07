@@ -112,9 +112,10 @@ const BEKANNTE_ABWEICHUNGEN = [
    Kodierungspunkte, und genau die meint der Vertrag. */
 const zeichenzahl = (zeile) => [...zeile].length;
 
-/* Zeilen wie `wc -l`: der Umbruch am Dateiende beginnt keine Zeile. */
+/* Zeilen wie `wc -l`: der Umbruch am Dateiende beginnt keine Zeile.
+   CRLF ist ein Umbruch; sein CR gehört weder zum Kopf noch zur Breite. */
 function zeilenVon(text) {
-  const z = text.split("\n");
+  const z = text.split(/\r?\n/);
   if (z.length > 0 && z[z.length - 1] === "") z.pop();
   return z;
 }
@@ -206,11 +207,16 @@ function sammle(ordner, aus = []) {
   behaupte(k.geschlossen, "der Kopf ist geschlossen");
   gleich(k.ueberschriften.length, 2, "zwei Abschnittsüberschriften");
   behaupte(k.zusammenInhalt.includes("gitter.mjs"), "der Inhalt des Abschnitts wird gelesen");
+  const windowsKopf = lieskopf(gut.replace(/\n/g, "\r\n"));
+  gleich(JSON.stringify(windowsKopf), JSON.stringify(k),
+    "CRLF und LF ergeben dieselbe Kopfnotiz mit allen Abschnitten");
 
   gleich(lieskopf("const a = 1;\n").tag, null, "eine Datei ohne Kopf fällt auf");
   gleich(lieskopf("/* [Aufgabe: Prüfwesn] X. */\n").tag, "Prüfwesn",
     "ein verschriebener Tag wird gelesen, nicht stillschweigend berichtigt");
   gleich(lieskopf("/* [Aufgabe: Bild] */\n").tag, null, "ein Kopf ohne Satz gilt nicht als Kopf");
+  gleich(lieskopf("/* [Aufgabe: Bild] */\r\n").tag, null,
+    "auch mit CRLF bleibt ein Kopf ohne Satz ungültig");
   behaupte(!lieskopf("/* [Aufgabe: Bild] X.\n   ohne Schluss\n").geschlossen,
     "ein nie geschlossener Kopf fällt auf");
   const leer = lieskopf("/* [Aufgabe: Bild] X.\n\n   ── Arbeitet zusammen mit ───\n*/\n");
@@ -220,6 +226,12 @@ function sammle(ordner, aus = []) {
   gleich(zeichenzahl("äöüß"), 4, "Umlaute zählen als ein Zeichen, nicht als zwei Bytes");
   gleich(zeilenVon("a\nb\n").length, 2, "der Umbruch am Dateiende beginnt keine Zeile");
   gleich(zeilenVon("a\nb").length, 2, "eine Datei ohne Schlussumbruch zählt gleich");
+  gleich(zeilenVon("a\r\nb\r\n").length, 2, "CRLF erzeugt keine zusätzliche Zeile");
+  gleich(zeichenzahl(zeilenVon("x".repeat(100) + "\r\n")[0]), 100,
+    "CRLF zählt nicht zur Zeichenbreite einer genau 100 Zeichen langen Zeile");
+  gleich(zeichenzahl(zeilenVon("x".repeat(101) + "\r\n")[0]), 101,
+    "eine mit CRLF geschlossene zu breite Zeile bleibt zu breit");
+  gleich(zeilenVon("a\rb\n")[0], "a\rb", "ein einzelnes CR im Text bleibt erhalten");
 
   const lang = "  const s = \"" + "x".repeat(120) + "\";";
   behaupte(zeichenzahl(lang) > HOECHSTENS_ZEICHEN, "die Probezeile ist wirklich zu lang");

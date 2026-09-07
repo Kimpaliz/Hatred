@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorgang #8 und #9 (Merkmale 1–4) liegen auf `main`; niemand schreibt. | 07.09.2026 |
+| frei | frei | Windows-Pfadtrenner und CRLF-Prüfungen auf `pruef/windows-pfade` gemessen; Bereich freigegeben. | 07.09.2026 |
 
 ## Format
 
