@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorgang #8 und #9 (Merkmale 1–4) liegen auf `main`; niemand schreibt. | 07.09.2026 |
+| runtime/lobby.js, runtime/lobby-bild.js, runtime/palette.js, CHANGELOG.md | Codex | Vorgang #9: Vorlauf im Scotophobia-Ton, eigener Zweig flaeche/scotophobia-vorlauf. | 07.09.2026 |
 
 ## Format
 

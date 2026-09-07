@@ -3,6 +3,41 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Vorlauf im Scotophobia-Ton (Vorgang #9, Merkmal 5)
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab. Dann so das man es sich ansehen kann über
+ github seite“*.
+
+Der Vorlauf übernimmt Scotophobias warmes Creme auf fast Schwarz.
+Titel und Unterzeilen beginnen links; dünne Linien ersetzen die Kästen.
+Eine Seitenmarke zeigt Tastaturfokus und Mauszeiger, eine warme Fläche
+kennzeichnet die gewählte Klasse oder das aktive Eingabefeld. Auf großen
+Schirmen ist die Vergrößerung auf 2 begrenzt: bei 1920 × 1080 ist die
+Menüspalte damit 640 statt 1280 Bildpunkte breit. Alle Vergrößerungen
+bleiben ganzzahlig, die Pixelschrift bleibt ungeglättet.
+
+**Aufbau:** `runtime/lobby.js` legt Seiten und Trefferflächen wie zuvor;
+`runtime/lobby-bild.js` malt ausschließlich diesen Zustand. Die Farben
+stehen als eigener Satz `VORLAUF` in `runtime/palette.js`. Der Zugriff
+auf diese Bilddatei ist für diesen Oberflächen-Schritt nötig; die bisherigen
+Farben des Kerkers und alle Regeln unter `spiel/` bleiben unverändert.
+
+**Gemessen am 07.09.2026:** `node werkzeuge/pruefe-einstieg.mjs` zählt
+10 statt 21 Flächen auf der Titelseite bei 640 × 360. Der Vorlauf fügt
+keine Animation oder Lichtberechnung hinzu. Einstieg: 183 Behauptungen
+grün; `node werkzeuge/pruefe-einzeldatei.mjs`: 22 grün. Im echten
+Chrome-Browser: Titel, Heldenwahl und Spielstart bei 1920 × 1080 und
+915 × 412; keine Skriptfehler oder fehlenden Dateien. Auf dem Handy
+sind die gemessenen Trefferflächen mindestens 105 × 48 Bildpunkte groß.
+Screenshots des ursprünglichen Vorlaufs, der neuen Fassung und des
+Scotophobia-Menüs wurden zum visuellen Vergleich aufgenommen.
+
+Die zusätzliche Stilprüfung und die Windows-Berichtigung der bestehenden
+Prüfwerkzeuge werden auf eigenen Prüfzweigen geführt. Veröffentlichung
+über den vorhandenen `gh-pages`-Zweig; Rückkehr zur vorigen Fassung durch
+das Zurücknehmen des jeweiligen Veröffentlichungscommits.
+
 ## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
 
 **Auftrag, wörtlich:** *„nach main"* — und der erste Stand, der `main`
