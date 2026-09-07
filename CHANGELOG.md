@@ -3,6 +3,23 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Abgrund-Innenkanten und verdeckte Rampenflags prüfen
+
+Die Geländeprüfung vergleicht jetzt das fertige Pixelbild bei verbliebenen
+Rampenflags auf Löchern oder Wänden: Das Bild und die Randlippen daneben
+müssen gleich bleiben. Auch eine offene Bodenrampe darf keine Wandlippe
+öffnen. Zusammenhängende Löcher erhalten auf allen vier Seiten eine
+dunkle Innennaht, während ihre Außenlippen sichtbar bleiben. Jeder Fall
+wird sichtbar und im Erinnerungsnebel geprüft.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **480 von 480
+Behauptungen** bestehen auf **131 Feldbildern**. Ohne die Restflag-Sperren
+fallen **8 entsprechende Behauptungen**. Mit dem Helferstand `d28b64c`
+fallen **2 von 480** an der offenen Bodenrampe gegen eine Wand. Wird die
+Abgrund-Nordkante wieder bedingungslos gezeichnet, fallen **2 von 480**
+an der inneren Trennlinie. Jede Gegenprobe endet mit Rückgabewert 1;
+nach Wiederherstellen von `cf44d58` endet die Prüfung mit 0.
+
 ## 07.09.2026 — Fels, Stufen und Ebenenränder werden am Bild geprüft
 
 **Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen

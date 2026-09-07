@@ -266,6 +266,68 @@ abschnitt("Abgrund: gebrochene Lippen und dunkles Inneres");
   behaupte(aufrufe.length <= 64, "Abgrund braucht höchstens 64 Rechtecke pro Feld");
 }
 
+abschnitt("Zusammenhängende Abgründe: dunkle Innennaht und sichtbare Außenlippe");
+for (const seite of SEITEN) {
+  for (const matt of [false, true]) {
+    const probe = macheProbe();
+    const i = probe.karte.index(probe.x, probe.y);
+    probe.karte.setze(probe.x, probe.y, { hindernis: HINDERNIS.abgrund });
+    const nebel = matt ? { sichtbar: new Set(), erinnert: new Set([i]) } : {};
+    const ton = (f) => matt ? abdunkeln(f, ERINNERT_HELLE) : f;
+    const band = (bild) => {
+      const farben = [];
+      for (let entlang = 2; entlang < KACHEL - 2; entlang++) {
+        for (const tiefe of [0, 1]) {
+          const x = seite.dx < 0 ? tiefe : seite.dx > 0 ? KACHEL - 1 - tiefe : entlang;
+          const y = seite.dy < 0 ? tiefe : seite.dy > 0 ? KACHEL - 1 - tiefe : entlang;
+          farben.push(bild[y * KACHEL + x]);
+        }
+      }
+      return farben;
+    };
+    const aussen = band(pixelbild(probe.zeichne(nebel)));
+    behaupte(aussen.some((f) => helligkeit(f) > helligkeit(ton(FARBEN.kontur))),
+      `${seite.name}, matt=${matt}: zum Boden bleibt eine sichtbare Außenlippe`);
+    probe.karte.setze(probe.x + seite.dx, probe.y + seite.dy, { hindernis: HINDERNIS.abgrund });
+    const innen = band(pixelbild(probe.zeichne(nebel)));
+    behaupte(innen.every((f) => f === ton(FARBEN.kontur)),
+      `${seite.name}, matt=${matt}: zwischen Löchern bleibt die Naht dunkel`);
+  }
+}
+
+abschnitt("Restliche Rampenflags: Löcher und Wände bleiben ihre tatsächliche Geländeart");
+for (const hindernis of [HINDERNIS.abgrund, HINDERNIS.wand]) {
+  for (const matt of [false, true]) {
+    const probe = macheProbe();
+    const i = probe.karte.index(probe.x, probe.y);
+    probe.karte.setze(probe.x, probe.y, { hindernis });
+    const nebel = matt ? { sichtbar: new Set(), erinnert: new Set([i]) } : {};
+    const ohne = pixelbild(probe.zeichne(nebel));
+    probe.karte.setze(probe.x, probe.y, { rampe: RAMPE.ost });
+    const summe = probe.karte.summe();
+    const mit = pixelbild(probe.zeichne(nebel));
+    gleich(JSON.stringify(mit), JSON.stringify(ohne),
+      `${hindernis}, matt=${matt}: ein Restflag zeichnet keine Treppe oder Randöffnung`);
+    gleich(probe.karte.summe(), summe,
+      `${hindernis}: der Zeichner lässt auch das Restflag unangetastet`);
+    const nachbar = macheProbe({ ebene: 3 });
+    nachbar.karte.setze(nachbar.x + 1, nachbar.y, { hindernis, ebene: 0 });
+    const randOhne = pixelbild(nachbar.zeichne(nebel));
+    nachbar.karte.setze(nachbar.x + 1, nachbar.y, { rampe: RAMPE.west });
+    const randSumme = nachbar.karte.summe();
+    gleich(JSON.stringify(pixelbild(nachbar.zeichne(nebel))), JSON.stringify(randOhne),
+      `${hindernis}, matt=${matt}: ein verdecktes Nachbarflag öffnet keine Randlippe`);
+    gleich(nachbar.karte.summe(), randSumme,
+      `${hindernis}: auch die Nachbarkarte bleibt unverändert`);
+    if (hindernis === HINDERNIS.wand) {
+      probe.karte.setze(probe.x, probe.y, { rampe: RAMPE.keine });
+      probe.karte.setze(probe.x + 1, probe.y, { rampe: RAMPE.west });
+      gleich(JSON.stringify(pixelbild(probe.zeichne(nebel))), JSON.stringify(ohne),
+        `matt=${matt}: auch eine offene Bodenrampe öffnet keine Wandlippe`);
+    }
+  }
+}
+
 console.log(`  Gemessen: ${bilder} Feldbilder, höchstens ${rechteckMaximum} Rechtecke je Feld, `
   + `${wandMaximum} je Felsfeld, ${felsMuster.size} Felsmuster.`);
 ende("Geländebild: Fels, Stufen und Ränder");
