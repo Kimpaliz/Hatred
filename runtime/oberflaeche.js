@@ -80,9 +80,9 @@ import { gegner, kenntGegner } from "../spiel/katalog/gegner.mjs";
 
 /* ── Die Maße der Anzeige ───────────────────────────────────────────
    Alle in **logischen** Punkten; gezeichnet wird mit der ganzzahligen
-   Vergrößerung der Kamera multipliziert. Damit bleibt die Anzeige auf
-   jedem Bildschirm gleich groß im Verhältnis zur Figur — und jede Kante
-   liegt auf einem ganzen Bildpunkt. */
+   automatischen Fenstervergrößerung multipliziert. Der manuelle Weltzoom
+   lässt die Bedienleiste gleich groß, damit auch beim Heranzoomen alle
+   Aktionen erreichbar bleiben. Jede Kante liegt auf einem ganzen Bildpunkt. */
 const POLSTER = 2;          /* Luft zwischen Rahmen und Text            */
 const RAHMEN = 1;           /* Strichstärke eines Kastens               */
 const PUNKT_GROSS = 2;      /* Kantenlänge eines Aktionspunktes         */
@@ -270,7 +270,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
   const felderListe = [];
 
   function hole() {
-    stufe = Math.max(1, Math.floor(kamera.vergroesserung || 1));
+    stufe = Math.max(1, Math.floor(kamera.standardVergroesserung ?? kamera.vergroesserung ?? 1));
     breite = Math.max(1, Math.floor(kamera.fensterBreite || 1));
     hoehe = Math.max(1, Math.floor(kamera.fensterHoehe || 1));
     polster = POLSTER * stufe;
