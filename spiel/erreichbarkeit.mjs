@@ -25,7 +25,7 @@
    `spiel/gitter.mjs`. Gelesen von `spiel/landschaft.mjs`,
    `spiel/ausstattung.mjs` und `werkzeuge/pruefe-landschaft.mjs`. */
 
-import { RICHTUNGEN } from "./gitter.mjs";
+import { richtungen } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
 import { PIXEL_JE_FELD } from "./bauart.mjs";
 
@@ -51,7 +51,7 @@ export function laufKostenFeld(karte, quellen) {
     for (const i of eimer[stand]) {
       if (kosten[i] !== stand) continue;
       const x = spalte(karte, i), y = zeile(karte, i);
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         const preis = karte.drin(nx, ny) ? laufKosten(karte, x, y, nx, ny) : null;
         if (preis === null) continue;
@@ -87,7 +87,7 @@ export function erreichbareFelder(karte, quellen, rueckwaerts = false, fenster =
   while (stapel.length) {
     const i = stapel.pop();
     const x = spalte(karte, i), y = zeile(karte, i);
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       const nx = x + r.dx, ny = y + r.dy;
       if (!drin(nx, ny) || gut[ny * karte.breite + nx]) continue;
       const geht = rueckwaerts
@@ -113,38 +113,6 @@ export function beidseitigErreichbar(karte, quellen, fenster = null) {
    Frage („liegt Fels dazwischen?"); die feine stellt `erreichbareFelder`. */
 export function offeneGebiete(karte) {
   return gebiete(karte, (i) => offen(karte, i), alleDabei);
-}
-
-/* (c) Die Nur-Diagonale in **einem** Zweierblock: (x,y) und (x+1,y+1)
-   offen, (x+1,y) und (x,y+1) gesperrt — oder über die andere
-   Diagonale. Im Bild ein Durchgang, im Spiel keiner, denn hier wird in
-   vier Richtungen gegangen. Gefragt wird nach `offen` und nicht nach
-   „ist Wand": Säule und Fass sperren genauso. Mehr als ein Fund je
-   Block ist unmöglich — die zweite Diagonale bräuchte offen, was die
-   erste gesperrt verlangt. */
-export function diagonalFund(karte, x, y) {
-  if (x < 0 || y < 0 || x + 1 >= karte.breite || y + 1 >= karte.hoehe) return null;
-  const a = y * karte.breite + x, b = a + 1, c = a + karte.breite, d = c + 1;
-  for (const [p, q, w1, w2] of [[a, d, b, c], [b, c, a, d]]) {
-    if (!offen(karte, p) || !offen(karte, q)) continue;
-    if (offen(karte, w1) || offen(karte, w2)) continue;
-    return { p, q, w1, w2 };
-  }
-  return null;
-}
-
-/* Alle Nur-Diagonalen der Karte, in fester Reihenfolge. Die Prüfung
-   behauptet über dieselbe Liste, die der Erzeuger abarbeitet — sonst
-   gäbe es zwei Auslegungen desselben Begriffs. */
-export function nurDiagonalen(karte) {
-  const funde = [];
-  for (let y = 0; y < karte.hoehe - 1; y++) {
-    for (let x = 0; x < karte.breite - 1; x++) {
-      const fund = diagonalFund(karte, x, y);
-      if (fund) funde.push(fund);
-    }
-  }
-  return funde;
 }
 
 /* Das größte Plateau — von dort wird geflutet. Die erste offene Kachel

@@ -62,7 +62,7 @@ import { KACHEL } from "./licht.js";
 import { SPIELER_FARBEN } from "./sprite-daten.js";
 import { macheLeiste } from "./oberflaeche-leiste.js";
 
-import { EBENEN, FLUESSIG, HINDERNIS, schussweite } from "../spiel/gitter.mjs";
+import { EBENEN, FLUESSIG, HINDERNIS, abstand } from "../spiel/gitter.mjs";
 import { amZugWesen, wesenMitId } from "../spiel/zug.mjs";
 import { kostenVon } from "../spiel/aktionen.mjs";
 import {
@@ -576,7 +576,7 @@ export function macheOberflaeche({ ctx, schrift, kamera } = {}) {
     const w = waffe(angreifer.waffe);
     const zeilen = [{ text: nameVon(zustand, ziel), farbe: FARBEN.hudSchrift }];
 
-    const weite = schussweite(angreifer.x, angreifer.y, ziel.x, ziel.y);
+    const weite = abstand(angreifer.x, angreifer.y, ziel.x, ziel.y);
     const traegt = reichweiteVon(karte, angreifer, ziel, w);
     if (weite > traegt) {
       zeilen.push({

@@ -101,13 +101,13 @@
 
    `spiel/hoehen.mjs` (Höhenvorteil, Deckung, Sturz, Stoß),
    `spiel/sicht.mjs` (`sichtlinie` — durch eine Wand schießt niemand),
-   `spiel/gitter.mjs` (`schussweite`, `RICHTUNGEN`),
+   `spiel/gitter.mjs` (`abstand`, `richtungen`),
    `spiel/wesen.mjs` (Rüstung mit Schild, `brennt` anhängen, wer wo
    steht), `spiel/katalog/waffen.mjs` (die Zettel), `spiel/zufall.mjs`
    (der gesäte Strom aus `zustand.zufall`),
    `werkzeuge/pruefe-kampf.mjs`. */
 
-import { RICHTUNGEN, schussweite } from "./gitter.mjs";
+import { richtungen, abstand } from "./gitter.mjs";
 import {
   DECKUNG_MALUS, hoehenVorteil, trefferBonus, reichweitenBonus,
   hatDeckung, sturzTiefe, sturzSchaden, stossZiel, betretenSchaden
@@ -229,7 +229,7 @@ export function reichweiteVon(karte, angreifer, ziel, waffe) {
    hier billiger als zwei, die auseinanderlaufen können. */
 export function inReichweite(karte, angreifer, ziel, waffe) {
   if (!karte || !angreifer || !ziel || !waffe) return false;
-  const weite = schussweite(angreifer.x, angreifer.y, ziel.x, ziel.y);
+  const weite = abstand(angreifer.x, angreifer.y, ziel.x, ziel.y);
   if (weite < 1) return false;             /* auf sich selbst zielt niemand */
   if (weite > reichweiteVon(karte, angreifer, ziel, waffe)) return false;
   return sichtlinie(karte, angreifer.x, angreifer.y, ziel.x, ziel.y);
@@ -378,11 +378,11 @@ function stossFolgen(zustand, angreifer, ziel, ereignisse) {
    Zettel, und eine Waffe, die Freund und Feind trifft, ist eine
    Entscheidung; eine, die nur Feinde trifft, ist keine.
 
-   Die vier Richtungen werden in der Reihenfolge aus `RICHTUNGEN`
+   Die vier Richtungen werden in der Reihenfolge aus `richtungen`
    abgegangen — sonst hinge die Folge der Ereignisse an der Reihenfolge
    der Wesenliste (Fehlerbuch B2). */
 function flaechenFolgen(zustand, ziel, waffe, ereignisse) {
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(ziel.y)) {
     const nachbar = wesenBei(zustand.wesen, ziel.x + r.dx, ziel.y + r.dy);
     if (!nachbar || nachbar.id === ziel.id) continue;
     const roh = wuerfelWurf(zustand.zufall, waffe.wuerfel, waffe.schluessel);

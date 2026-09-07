@@ -57,7 +57,7 @@
    `begehbar` überhaupt hinauf lässt), `runtime/zeichnen.js` (zeigt
    dieselben Kanten, die hier blocken). */
 
-import { RICHTUNGEN, RAMPE, FLUESSIG } from "./gitter.mjs";
+import { abstand, nachbarn, richtungen, RAMPE, FLUESSIG } from "./gitter.mjs";
 
 /* Die Preise. Sie stehen als Zahlen hier und nicht in einer
    Einstellungsdatei, weil jede Änderung daran eine Regeländerung ist:
@@ -84,7 +84,7 @@ export const DECKUNG_MALUS = 0.20;
    und Sprünge über mehrere Felder fallen hier heraus, damit sie nicht
    weiter unten aus Versehen billig werden. */
 function schrittRichtung(vx, vy, nx, ny) {
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(vy)) {
     if (vx + r.dx === nx && vy + r.dy === ny) return r;
   }
   return null;
@@ -180,24 +180,36 @@ export function blocktSichtlinie(karte, zx, zy, augenEbene, zielEbene) {
 }
 
 /* Steht auf dem Feld zwischen Ziel und Angreifer etwas, das halbe
-   Deckung gibt? Steht der Angreifer exakt über Eck, zählen beide Felder
-   dieser Ecke — die Schusslinie streift sie beide. */
+   Deckung gibt?
+
+   ── Warum das seit dem Sechseck einfacher ist ──────────────────────
+
+   Bis zum 07.09.2026 stand hier eine Fallunterscheidung: Ein Feld,
+   wenn der Angreifer gerade davor steht, zwei Felder, wenn er „exakt
+   über Eck" steht — die Schusslinie streift dann beide. Das war die
+   Sonderregel, die das Quadratraster erzwingt, weil seine Diagonale
+   keine Nachbarschaft ist.
+
+   Auf dem Sechseck gibt es keine Ecke. Gefragt wird jetzt geradeheraus:
+   **Welche Nachbarn des Ziels liegen näher am Angreifer als das Ziel
+   selbst?** Bei einem Angreifer geradeaus ist das genau einer, bei
+   einem zwischen zwei Richtungen sind es zwei — dieselbe Wirkung wie
+   vorher, aber als Folge der Geometrie statt als Sonderfall.
+
+   Und vor allem: Es rechnet mit `nachbarn` statt mit `Math.sign`. Die
+   alte Fassung zeigte auf dem Sechseck auf Felder, die vom Ziel aus gar
+   keine Nachbarn sind — sie fand Deckung hinter Dingen, die nicht im
+   Weg standen, und übersah welche, die es waren. */
 export function hatDeckung(karte, ax, ay, zx, zy) {
-  const dx = ax - zx;
-  const dy = ay - zy;
-  if (dx === 0 && dy === 0) return false;
+  if (ax === zx && ay === zy) return false;
+  const weit = abstand(zx, zy, ax, ay);
 
-  const waagerecht = Math.abs(dx);
-  const senkrecht = Math.abs(dy);
-  const felder = [];
-  if (dx !== 0 && waagerecht >= senkrecht) felder.push({ x: zx + Math.sign(dx), y: zy });
-  if (dy !== 0 && senkrecht >= waagerecht) felder.push({ x: zx, y: zy + Math.sign(dy) });
-
-  for (const f of felder) {
+  for (const n of nachbarn(karte, zx, zy)) {
+    if (abstand(n.x, n.y, ax, ay) >= weit) continue;
     /* `gibtDeckung` kennt Fass, Kiste, Altar und dergleichen; Wand und
        Säule stehen dort nicht drin, decken aber selbstverständlich —
        deshalb die zweite Frage. */
-    if (karte.gibtDeckung(f.x, f.y) || karte.blocktSicht(f.x, f.y)) return true;
+    if (karte.gibtDeckung(n.x, n.y) || karte.blocktSicht(n.x, n.y)) return true;
   }
   return false;
 }
@@ -208,7 +220,7 @@ export function hatDeckung(karte, ax, ay, zx, zy) {
 export function rampeZeigtNach(karte, x, y) {
   const wert = karte.rampeBei(x, y);
   if (wert === RAMPE.keine) return null;
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     if (r.rampe === wert) return { dx: r.dx, dy: r.dy };
   }
   return null;

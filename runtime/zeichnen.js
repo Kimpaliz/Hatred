@@ -75,7 +75,7 @@ import { KACHEL, LICHTPUNKT } from "./licht.js";
 import { SCHLEIM_RAMPE } from "./partikel.js";
 import { DINGE, GEGNER_BILDER, HELDEN_BILDER, SPIELER_FARBEN, ZEICHEN } from "./sprite-daten.js";
 import { RICHTUNG_NORD, bildAnzahl, macheSpriteBild } from "./sprites.js";
-import { BLOCKT_SICHT, FLUESSIG, HINDERNIS, RAMPE, RICHTUNGEN } from "../spiel/gitter.mjs";
+import { BLOCKT_SICHT, FLUESSIG, HINDERNIS, RAMPE, richtungen } from "../spiel/gitter.mjs";
 import { rampeZeigtNach } from "../spiel/hoehen.mjs";
 import { ganzHash } from "../spiel/rauschen.mjs";
 
@@ -434,7 +434,7 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
        aufhört. Ohne ihn verläuft eine Blutlache in den Boden, statt
        eine Lache zu sein. */
     const rand = ton(satz.tief, gedaempft);
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       if (karte.fluessigBei(x + r.dx, y + r.dy) === art) continue;
       const dx = r.dx > 0 ? KACHEL - 1 : 0;
       const dy = r.dy > 0 ? KACHEL - 1 : 0;
@@ -672,7 +672,7 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
         for (let x = fenster.vonX; x <= fenster.bisX; x++) {
           if (!istDrin(merker.reichweite, karte.index(x, y))) continue;
           const ecke = kamera.feldNachBild(x, y);
-          for (const r of RICHTUNGEN) {
+          for (const r of richtungen(y)) {
             const nx = x + r.dx;
             const ny = y + r.dy;
             if (karte.drin(nx, ny) && istDrin(merker.reichweite, karte.index(nx, ny))) continue;

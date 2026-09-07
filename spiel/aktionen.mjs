@@ -72,7 +72,7 @@
    (schickt Aktionen, nicht Ereignisse), `runtime/zeichnen.js` (spielt
    die Ereignisse ab), `werkzeuge/pruefe-zug.mjs`. */
 
-import { HINDERNIS, RICHTUNGEN, schussweite } from "./gitter.mjs";
+import { HINDERNIS, richtungen, abstand } from "./gitter.mjs";
 import { sturzTiefe, sturzSchaden, stossZiel, betretenSchaden } from "./hoehen.mjs";
 import { sichtlinie } from "./sicht.mjs";
 import { helligkeitsfeld, istVerborgen, SICHT_IM_DUNKELN } from "./licht.mjs";
@@ -180,7 +180,7 @@ function waffeVon(wesen) {
    versteckt sich niemand. */
 function verborgenFuer(lage, beobachter, ziel) {
   if (hatWirkung(ziel, "verbergen")
-    && schussweite(beobachter.x, beobachter.y, ziel.x, ziel.y) > SICHT_IM_DUNKELN) {
+    && abstand(beobachter.x, beobachter.y, ziel.x, ziel.y) > SICHT_IM_DUNKELN) {
     return true;
   }
   return istVerborgen(lage.karte, lage.helligkeit(), beobachter, ziel);
@@ -192,7 +192,7 @@ function verborgenFuer(lage, beobachter, ziel) {
 function erkannt(lage, beobachter, ziel) {
   const karte = lage.karte;
   if (!karte.drin(beobachter.x, beobachter.y) || !karte.drin(ziel.x, ziel.y)) return false;
-  if (schussweite(beobachter.x, beobachter.y, ziel.x, ziel.y) > sichtVon(beobachter)) {
+  if (abstand(beobachter.x, beobachter.y, ziel.x, ziel.y) > sichtVon(beobachter)) {
     return false;
   }
   if (!sichtlinie(karte, beobachter.x, beobachter.y, ziel.x, ziel.y)) return false;
@@ -335,7 +335,7 @@ function pruefeStoss(lage, aktion, wesen) {
   const ziel = wesenMitId(lage.zustand, aktion.ziel);
   const grund = pruefeGegnerisches(lage, wesen, ziel);
   if (grund) return grund;
-  if (schussweite(wesen.x, wesen.y, ziel.x, ziel.y) > 1) {
+  if (abstand(wesen.x, wesen.y, ziel.x, ziel.y) > 1) {
     return "Zum Stoßen muss man daneben stehen.";
   }
   return pruefeSchub(lage, wesen.x, wesen.y, ziel, true);
@@ -383,7 +383,7 @@ function pruefeFaehigkeit(lage, aktion, wesen) {
       const grund = pruefeGegnerisches(lage, wesen, ziel);
       if (grund) return grund;
     }
-    if (schussweite(wesen.x, wesen.y, ziel.x, ziel.y) > f.reichweite) {
+    if (abstand(wesen.x, wesen.y, ziel.x, ziel.y) > f.reichweite) {
       return "Das Ziel steht außer Reichweite.";
     }
     if (wirkung.art === "stossen") return pruefeSchub(lage, wesen.x, wesen.y, ziel, true);
@@ -398,7 +398,7 @@ function pruefeFaehigkeit(lage, aktion, wesen) {
     const weite = wirkung.art === "sprung"
       ? Math.min(f.reichweite, wirkung.felder)
       : f.reichweite;
-    if (schussweite(wesen.x, wesen.y, x, y) > weite) return "Das Feld liegt zu weit weg.";
+    if (abstand(wesen.x, wesen.y, x, y) > weite) return "Das Feld liegt zu weit weg.";
     if (wirkung.art === "sprung") return pruefeSprung(lage, wesen, x, y, wirkung);
     if (wirkung.art === "oeffnen") {
       if (!OEFFENBARE_HINDERNISSE.has(lage.karte.hindernisBei(x, y))) {
@@ -430,11 +430,11 @@ function pruefeSprung(lage, wesen, x, y, wirkung) {
 }
 
 /* Das erste Nachbarfeld mit etwas, das Beute trägt — in der
-   Reihenfolge aus `RICHTUNGEN` (Nord, Ost, Süd, West). Feste
+   Reihenfolge aus `richtungen` (Nord, Ost, Süd, West). Feste
    Reihenfolge, weil `aufheben` kein Feld mitschickt und die Wahl
    damit hier fällt (Fehlerbuch B2). */
 function beuteFeldNeben(zustand, wesen) {
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(wesen.y)) {
     const x = wesen.x + r.dx;
     const y = wesen.y + r.dy;
     if (!zustand.karte.drin(x, y)) continue;

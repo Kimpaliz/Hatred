@@ -28,7 +28,7 @@
    Hallen), `spiel/hoehen.mjs` (Erreichbarkeit nach dem Setzen). */
 
 import {
-  BODEN, FLUESSIG, HINDERNIS, RAMPE, RICHTUNGEN, EBENE_GRABEN
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, richtungen, EBENE_GRABEN, abstand
 } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
@@ -41,7 +41,7 @@ import {
 
 import {
   laufKostenFeld, erreichbareFelder, beidseitigErreichbar, offeneGebiete,
-  diagonalFund, nurDiagonalen, groesstesPlateauFeld, kachelMitte
+  groesstesPlateauFeld, kachelMitte
 } from "./erreichbarkeit.mjs";
 
 /* Bildpunkte je Kachel. */
@@ -176,7 +176,7 @@ export function zierErlaubt(karte, x, y) {
   const merk = karte.hindernis[i];
   karte.hindernis[i] = HINDERNIS.wand;
   const nachbarn = [];
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     const nx = x + r.dx, ny = y + r.dy;
     if (karte.drin(nx, ny) && !karte.blocktBewegung(nx, ny)) nachbarn.push({ x: nx, y: ny });
   }
@@ -186,7 +186,6 @@ export function zierErlaubt(karte, x, y) {
     for (const n of nachbarn) if (!da[karte.index(n.x, n.y)]) gut = false;
   }
   for (let b = -1; b <= 0 && gut; b++) {
-    for (let a = -1; a <= 0 && gut; a++) if (diagonalFund(karte, x + a, y + b)) gut = false;
   }
   karte.hindernis[i] = merk;
   return gut;
@@ -195,7 +194,7 @@ export function zierErlaubt(karte, x, y) {
 /* Berührt die Kachel orthogonal eine Wand? Die Stelle für Fackeln und
    Spieße — beide hängen an der Wand und nicht in der Luft. */
 function anDerWand(karte, x, y) {
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     if (karte.hindernisBei(x + r.dx, y + r.dy) === HINDERNIS.wand) return true;
   }
   return false;
@@ -272,11 +271,18 @@ export function setzeZier(karte, welt, saat) {
    kostet und der erste Zug der teuerste des Laufs ist. */
 function umkreis(karte, x, y, weite, brauchbar) {
   const raus = [];
+  /* Gemessen wird mit `abstand`, dem Maß des Rasters — nicht mit
+     `|dx| + |dy|`. Bis zum 07.09.2026 stand hier die Manhattan-Formel
+     des Quadratrasters; auf Versatzzeilen beschreibt sie eine Raute,
+     die schräg über die Sechsecke liegt und dabei Felder ausläßt.
+     Gemessen hat es die Landschaftsprüfung: Auf einer engen Karte fand
+     `waehleStarts` nur noch ein einziges Startfeld statt zweier. */
   for (let b = -weite; b <= weite; b++) {
     for (let a = -weite; a <= weite; a++) {
-      const d = Math.abs(a) + Math.abs(b);
       const nx = x + a, ny = y + b;
-      if (d > weite || !karte.drin(nx, ny)) continue;
+      if (!karte.drin(nx, ny)) continue;
+      const d = abstand(x, y, nx, ny);
+      if (d > weite) continue;
       const j = ny * karte.breite + nx;
       if (brauchbar(j)) raus.push({ x: nx, y: ny, d, j });
     }

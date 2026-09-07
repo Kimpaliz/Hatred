@@ -99,7 +99,7 @@
    `runtime/zeichnen.js` (malt `ansicht()`),
    `werkzeuge/pruefe-eingabe.mjs`. */
 
-import { RICHTUNGEN } from "../spiel/gitter.mjs";
+import { nachbarn, richtungen } from "../spiel/gitter.mjs";
 import { erreichbareFelder, pfadAus } from "../spiel/wegfindung.mjs";
 import { sturzTiefe, sturzSchaden, stossZiel } from "../spiel/hoehen.mjs";
 import { AKTION, kostenVon, pruefeAktion } from "../spiel/aktionen.mjs";
@@ -136,12 +136,42 @@ export const SLOTS = [
   { taste: "6", art: "sofort", typ: AKTION.trank }
 ];
 
-/* Pfeiltaste → Stelle in `RICHTUNGEN` (nord, ost, süd, west). */
+/* Pfeiltaste → Stelle in `richtungen`.
+
+   ── Sechs Richtungen, vier Pfeile ──────────────────────────────────
+
+   Seit dem 07.09.2026 hat ein Feld sechs Nachbarn (Vorgang #7). Eine
+   Tastatur hat vier Pfeile. Das geht nicht auf, und der erste Anlauf
+   ließ es dabei — Ergebnis: Der Feldzeiger erreichte **32 von 320**
+   Feldern, gemessen von `pruefe-eingabe.mjs`.
+
+   Die Zuordnung hier ist deshalb nicht „Pfeil = Richtung", sondern
+   „Pfeil = Richtung, und die Seitenpfeile teilen sich die schrägen":
+
+   · **Links / Rechts** gehen waagerecht — die beiden Richtungen, die
+     es auf jedem Raster gibt.
+   · **Hoch / Runter** gehen schräg, und zwar in die Richtung, die
+     dem Zeiger am nächsten liegt: Hoch nimmt Nordost, Runter Südost.
+   · **Umschalt + Hoch/Runter** nehmen die andere schräge Seite,
+     Nordwest und Südwest.
+
+   Vier Pfeile erreichen damit vier der sechs Richtungen, und mit der
+   Umschalttaste alle sechs. Ohne sie käme man aus keiner Zeile heraus,
+   die eine gerade Zahl von Schritten entfernt liegt.
+
+   Die Zahlen sind Stellen in der Tabelle aus `spiel/gitter.mjs`:
+   0 ost · 1 suedost · 2 suedwest · 3 west · 4 nordwest · 5 nordost. */
 export const ZEIGER_TASTEN = {
-  ArrowUp: 0,
-  ArrowRight: 1,
+  ArrowRight: 0,
+  ArrowDown: 1,
+  ArrowLeft: 3,
+  ArrowUp: 5
+};
+
+/* Mit gedrückter Umschalttaste: die andere schräge Seite. */
+export const ZEIGER_TASTEN_UM = {
   ArrowDown: 2,
-  ArrowLeft: 3
+  ArrowUp: 4
 };
 
 /* Tasten, die diese Datei beansprucht. Der Browser täte sonst sein
@@ -414,13 +444,21 @@ export function macheEingabe({
     if (!karte.drin(x, y) || karte.blocktBewegung(x, y)) return null;
     if (merkReichweite.has(karte.index(x, y))) return null;
 
+    /* Von welchem erreichbaren Nachbarn aus führte hierher ein Sturz?
+
+       Bis zum 07.09.2026 stand hier `x - r.dx` über die Tabelle der
+       eigenen Zeile — auf dem Quadrat war die Gegenrichtung einfach
+       das Vorzeichen. Auf Versatzzeilen ist sie das **nicht**: Der
+       umgekehrte Schritt landet je nach Zeilenparität auf einem Feld,
+       das gar kein Nachbar ist. Gemessen hat es `pruefe-eingabe.mjs` —
+       vier Felder wichen ab, zwei warnten zu Unrecht und zwei
+       schwiegen zu Unrecht.
+
+       `nachbarn` beantwortet die Frage direkt und ohne Vorzeichen. */
     let tiefste = 0;
-    for (const r of RICHTUNGEN) {
-      const nx = x - r.dx;
-      const ny = y - r.dy;
-      if (!karte.drin(nx, ny)) continue;
-      if (!merkReichweite.has(karte.index(nx, ny))) continue;
-      const stufen = sturzTiefe(karte, nx, ny, x, y);
+    for (const n of nachbarn(karte, x, y)) {
+      if (!merkReichweite.has(karte.index(n.x, n.y))) continue;
+      const stufen = sturzTiefe(karte, n.x, n.y, x, y);
       if (stufen > tiefste) tiefste = stufen;
     }
     if (tiefste <= 0) return null;
@@ -575,7 +613,10 @@ export function macheEingabe({
   function zeigerSchritt(stelle) {
     const z = holeZustand();
     const w = eigenesWesen();
-    const r = RICHTUNGEN[stelle];
+    /* Die Tabelle der Zeile, auf der der Zeiger gerade steht — auf dem
+       Sechseckraster hängt die Richtung an der Zeilenparität. */
+    const zeile = zeigerFeld ? zeigerFeld.y : (w ? w.y : 0);
+    const r = richtungen(zeile)[stelle];
     if (modus === MODUS.stoss && w) return stossInRichtung(z, w, r);
     if (!zeigerFeld) {
       zeigerFeld = w ? { x: w.x, y: w.y } : null;
@@ -673,7 +714,7 @@ export function macheEingabe({
       [tastenZiel, "pointercancel", (e) => { beiZeigerEnde(nummerVon(e)); }],
       [leinwand, "contextmenu", halteAn],
       [tastenZiel, "keydown", (e) => { if (EIGENE_TASTEN.has(e.key)) halteAn(e);
-        beiTaste(e.key, true); }],
+        beiTaste(e.key, true, e.shiftKey === true); }],
       [tastenZiel, "keyup", (e) => { beiTaste(e.key, false); }]
     ];
     for (const [wo, name, hoerer] of paare) {
@@ -819,10 +860,13 @@ export function macheEingabe({
     return zeigerArt === ZEIGER_FINGER;
   }
 
-  function beiTaste(taste, gedrueckt = true) {
+  function beiTaste(taste, gedrueckt = true, umschalt = false) {
     if (!gedrueckt || gesperrt) return null;
     if (taste === "Escape") { raeumeAuf(); return null; }
     if (taste === "Tab") { ganzeKarte = !ganzeKarte; return null; }
+    if (umschalt && ZEIGER_TASTEN_UM[taste] !== undefined) {
+      return zeigerSchritt(ZEIGER_TASTEN_UM[taste]);
+    }
     if (ZEIGER_TASTEN[taste] !== undefined) return zeigerSchritt(ZEIGER_TASTEN[taste]);
     if (taste === "Enter") return bestaetige(false);
     if (taste === " ") return sofortAktion(AKTION.zugEnde);

@@ -21,13 +21,23 @@
    `spiel/landschaft.mjs`, `spiel/ausstattung.mjs` und
    `werkzeuge/pruefe-landschaft.mjs`. Liest selbst nichts aus dem Spiel. */
 
-import { RICHTUNGEN, BLOCKT_BEWEGUNG } from "./gitter.mjs";
+import { richtungen, BLOCKT_BEWEGUNG } from "./gitter.mjs";
 
 export const spalte = (karte, i) => i % karte.breite;
 export const zeile = (karte, i) => (i / karte.breite) | 0;
 
-/* Die Gegenrichtung. Vier Richtungen, also liegt sie zwei weiter. */
-export const gegen = (k) => RICHTUNGEN[(k + 2) % 4];
+/* Die Gegenrichtung. Sechs Richtungen, also liegt sie drei weiter —
+   und sie kommt aus der Tabelle **des Nachbarn**, nicht aus der des
+   Ausgangsfeldes.
+
+   Der erste Anlauf am 07.09.2026 schrieb `richtungen(y + 1)`, also
+   „die andere Parität". Das stimmt für die vier schrägen Richtungen
+   und ist für **Ost und West falsch**: Dort bleibt man in derselben
+   Zeile. Gemessen hat es die Landschaftsprüfung — von 35 möglichen
+   Aufstiegen bekamen nur 18 ihre Rampe, die übrigen zeigten ins
+   Leere. Deshalb nimmt diese Funktion jetzt die Zeile des Nachbarn
+   und rechnet sie nicht aus. */
+export const gegen = (zeileDesNachbarn, k) => richtungen(zeileDesNachbarn)[(k + 3) % 6];
 
 export const offen = (karte, i) => !BLOCKT_BEWEGUNG.has(karte.hindernis[i]);
 
@@ -38,7 +48,7 @@ export const gleicheEbene = (karte) => (i, j) => karte.ebene[i] === karte.ebene[
    „welche Kacheln hängen zusammen?" — und unterscheiden sich nur in
    `dabei` (wer zählt mit) und `gleich`. Viermal derselbe Stapel wäre
    viermal die Gelegenheit, die Randprüfung zu vergessen. Immer vier
-   Richtungen in der Reihenfolge aus `RICHTUNGEN`, damit die
+   Richtungen in der Reihenfolge aus `richtungen`, damit die
    Nummerierung auf jedem Rechner dieselbe ist (Fehlerbuch B2). */
 export function gebiete(karte, dabei, gleich) {
   const nummer = new Int32Array(karte.anzahl).fill(-1);
@@ -54,7 +64,7 @@ export function gebiete(karte, dabei, gleich) {
       const i = stapel.pop();
       zahl++;
       const x = spalte(karte, i), y = zeile(karte, i);
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         if (!karte.drin(nx, ny)) continue;
         const j = ny * karte.breite + nx;

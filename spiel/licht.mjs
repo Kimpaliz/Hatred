@@ -41,14 +41,14 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `spiel/gitter.mjs` (`karte.lichter`, `schussweite`), `spiel/sicht.mjs`
+   `spiel/gitter.mjs` (`karte.lichter`, `abstand`), `spiel/sicht.mjs`
    (`sichtlinie` — Licht wird von denselben Feldern aufgehalten wie der
    Blick), `spiel/kampf.mjs` und `spiel/gegner-ki.mjs` (fragen
    `istVerborgen`, bevor sie ein Ziel zulassen), `runtime/licht.js` (das
    schöne Licht; es darf weicher malen, muss aber dieselben
    Reichweiten benutzen — siehe `LICHT_WEITEN`). */
 
-import { schussweite } from "./gitter.mjs";
+import { abstand } from "./gitter.mjs";
 import { sichtlinie } from "./sicht.mjs";
 
 /* Wie weit man ein Wesen im Dunkeln überhaupt noch ausmacht. Nicht 0,
@@ -166,7 +166,7 @@ export function helligkeitBei(feld, x, y, karte) {
    Fackelschein verstecken.
 
    Gemessen wird in derselben Schachbrett-Elle wie das Sichtfeld
-   (`schussweite`), damit „außer Sichtweite" und „im Dunkeln" nicht
+   (`abstand`), damit „außer Sichtweite" und „im Dunkeln" nicht
    zwei verschiedene Kreise um dasselbe Wesen ziehen.
 
    `helligkeit` ist das Feld aus `helligkeitsfeld` — es wird gereicht
@@ -176,5 +176,5 @@ export function istVerborgen(karte, helligkeit, beobachter, ziel) {
   if (!beobachter || !ziel) return false;
   const hell = helligkeitBei(helligkeit, ziel.x, ziel.y, karte);
   if (hell >= VERBORGEN_UNTER) return false;
-  return schussweite(beobachter.x, beobachter.y, ziel.x, ziel.y) > SICHT_IM_DUNKELN;
+  return abstand(beobachter.x, beobachter.y, ziel.x, ziel.y) > SICHT_IM_DUNKELN;
 }

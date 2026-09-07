@@ -3,6 +3,333 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
+
+**Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*
+
+Schritt 2 von #7 ist durch. Aus dem Arbeitsstand mit sieben roten
+Prüfungen sind **40 von 40 grün** geworden, **12.302 Behauptungen**.
+
+## Was jetzt auf Sechsecken rechnet
+
+`RICHTUNGEN` mit vier Einträgen gibt es nicht mehr, `schussweite` auch
+nicht.
+
+| Stelle | vorher | jetzt |
+| --- | --- | --- |
+| `nachbarn()` | vier feste Richtungen | sechs, je nach Zeilenparität |
+| `abstand()` | Manhattan | Sechseck-Entfernung |
+| `schussweite()` | Schachbrett | **entfallen** — `abstand` ist beides |
+| `RAMPE` | nord/ost/sued/west | sechs Sechseck-Richtungen |
+| Sichtlinie | Bresenham (Quadrat) | Würfelkoordinaten, ganzzahlig |
+| `hatDeckung` | Sonderregel „über Eck" | jeder näher liegende Nachbar |
+| `umkreis` | Manhattan-Raute | `abstand` |
+| Abtastung der Welt | Quadratgitter | Versatzzeilen, √3/2 Zeilenabstand |
+| Pfeiltasten | vier Richtungen | vier plus Umschalt = alle sechs |
+
+**Ersatzlos gelöscht:** `diagonalFund`, `nurDiagonalen` (erreichbarkeit,
+zusammen 44 Zeilen) und `oeffneDiagonalen` (landschaft). Sechsecke
+berühren sich nie nur über Eck — den Fall gibt es nicht mehr, und mit
+ihm nicht die Suche danach.
+
+## Fünf Fehler, die der Umbau ans Licht geholt hat
+
+Jeder einzelne war schon vorher da oder entstand beim Umstellen, und
+jeder wurde von einer Prüfung gefunden, nicht von mir:
+
+**1. Die Sichtlinie war die zweite Geometrie im Spiel.** Sie lief auf
+Bresenham, also auf Quadraten — man wäre über Sechsecke gelaufen und
+über Quadrate gesehen. Jetzt Würfelkoordinaten, und **ohne eine einzige
+Kommazahl**: Zwei Browser dürfen hier nicht auseinanderlaufen. Rotprobe:
+Linie verbogen → **8 von 128** Behauptungen fielen, darunter „hinter der
+Wand kommt kein Licht an: ist 0,787, soll 0".
+
+**2. Die Deckungsregel zeigte ins Leere.** `hatDeckung` rechnete mit
+`Math.sign` auf Versatzzeilen und fand Deckung hinter Dingen, die nicht
+im Weg standen. Jetzt: jeder Nachbar des Ziels, der näher am Angreifer
+liegt. Die Sonderregel „steht er exakt über Eck, zählen beide Felder"
+ist **ersatzlos entfallen** — sie war der Preis des Quadratrasters. Die
+Prüfung deckt dafür jetzt alle sechs Richtungen systematisch ab statt
+vier von Hand: **127 → 149** Behauptungen.
+
+**3. Die Sturzwarnung stand an falschen Feldern.** `runtime/eingabe.js`
+suchte den Nachbarn über `x - r.dx` — die Gegenrichtung als Vorzeichen.
+Auf Versatzzeilen landet das auf einem Feld, das gar kein Nachbar ist.
+Gemessen: **vier Felder wichen ab**, zwei warnten zu Unrecht, zwei
+schwiegen zu Unrecht.
+
+**4. Die Gegenrichtung nahm die falsche Zeile.** Mein erster Anlauf
+schrieb `richtungen(y + 1)`. Für die vier schrägen Richtungen stimmt
+das, für **Ost und West nicht** — dort bleibt man in derselben Zeile.
+Von 35 möglichen Aufstiegen bekamen nur **18** ihre Rampe.
+
+**5. Der Startplatz wurde in einer Raute gesucht.** `umkreis` maß
+`|dx| + |dy|` — die Manhattan-Raute des Quadratrasters, die schräg über
+den Sechsecken liegt. Auf einer engen Karte fand `waehleStarts` nur noch
+**ein einziges** Startfeld statt zweier.
+
+## Eine Messung, die eine Fehlentscheidung verhindert hat
+
+Der Zeilenabstand eines Sechseckrasters ist √3/2 der Feldbreite, nicht
+die Breite selbst. Der erste Blick darauf war **eine einzelne Karte**
+(Saat 5, 44 x 32): 6,5 % offene Kacheln gegen 22,4 % ohne den engeren
+Abstand. Das sah nach einem klaren Rückschritt aus, und beinahe wäre
+`y * P` stehengeblieben — mit einer schriftlichen Begründung, die falsch
+gewesen wäre.
+
+Über **60 Saaten** gemessen: **35,8 %** mit dem Sechseck-Abstand gegen
+**36,5 %** ohne, und in beiden Fällen bauen alle 60 Karten fehlerfrei.
+Saat 5 war eine dünne Karte, kein Beleg.
+
+*Eine Zahl aus einem Lauf ist keine Messung.* Steht jetzt so im Code.
+
+## Eine Lücke, die beim Rotmachen auffiel
+
+Der **halbe Versatz der ungeraden Zeilen** in der Abtastung war von
+keiner einzigen Prüfung gedeckt: Nimmt man ihn heraus, bleibt die ganze
+Kette grün. Die Karte sieht dann nur ein wenig anders aus — und „ein
+wenig anders" merkt niemand.
+
+**Neu deshalb: „Keine Vorzugsrichtung".** Die Weltformel kennt kein Oben
+und kein Schräg, also muss die gerasterte Karte in alle sechs Richtungen
+gleich aussehen. Gemessen wird über zwanzig Karten, wie oft zwei
+Nachbarn im selben Zustand sind — je Richtung:
+
+| | Spanne über die sechs Richtungen |
+| --- | --- |
+| mit halbem Versatz | **1,27** Prozentpunkte (82,7 – 84,0 %) |
+| ohne halben Versatz | **2,25** Prozentpunkte (81,7 – 84,0 %) |
+
+Schwelle 1,8, mit Luft nach beiden Seiten. Rotprobe: Versatz entfernt →
+„Spanne 2,25 von erlaubten 1,8 Punkten".
+
+## Was der Umbau von selbst besser gemacht hat
+
+- **Ein Maßband statt zwei.**
+- **Ein Gegner nimmt jetzt Deckung**, wo er vorher weitergelaufen wäre —
+  drei Felder vor dem Jäger hinter einer Wand. Auf dem Quadrat hätte
+  dieselbe Wand nicht gedeckt. Ich hielt es erst für einen Fehler.
+- **Sechs Richtungen auf vier Pfeiltasten**: Links und Rechts waagerecht,
+  Hoch und Runter schräg, mit Umschalt die andere schräge Seite. Der
+  Feldzeiger erreicht damit wieder **320 von 320** Feldern — ohne die
+  Umschalttaste waren es 32.
+
+## Prüfungen, die dabei besser geworden sind
+
+Statt Zahlen nachzuziehen, wurden sechs Behauptungen **umgestellt** auf
+das, was sie eigentlich fragen:
+
+- Der Gleichstand in der Wegfindung wird nicht mehr gegen einen
+  abgeschriebenen Pfad geprüft, sondern gegen **sich selbst**: zweimal
+  gebaut, zweimal derselbe Weg — und jeder Schritt ein Nachbarschritt.
+- Die Reichweite wird gegen die **Formel** der Sechseck-Scheibe geprüft
+  (1 + 3n(n+1)), nicht gegen eine gezählte 25.
+- Die Sturzwarnung wird gegen die **Regel** geprüft, nicht gegen eine
+  Liste von Hand.
+- Die Gegneranzeige bekommt drei Aufstellungen statt einer: „setzt diese
+  Art ihre Fähigkeit ein" statt „setzt sie sie **hier** ein".
+- Die Trefferzahl im Vollspiel wird an den Angriffen gemessen, nicht an
+  einer festen Zehn.
+- Die Rampenzahl zählt **tiefe Felder**, nicht Kanten — ein Feld trägt
+  höchstens eine Rampe, und auf dem Sechseck grenzt dasselbe tiefe Feld
+  öfter an mehrere höhere.
+
+## Eine Beobachtung zu Regel 2
+
+Ein Rasterwechsel ist **eine** Änderung, aber er berührt alle drei
+Systeme: Regelkern, Bild und Oberfläche. Regel 2 will je System einen
+Zweig; die Prüfkette läuft dagegen immer ganz. Beides zusammen heißt:
+Ein Rasterwechsel kann nur auf **einem** Zweig grün werden.
+
+Dieser Zweig heißt `kern/sechseck` und trägt deshalb auch die
+Bildstellen (Rampenstriche, Umriss der Reichweite) und die
+Oberflächenstellen (Pfeiltasten, Sturzwarnung). Das ist kein Verstoß aus
+Bequemlichkeit, sondern die Grenze der Regel — sie steht hier, damit sie
+beim nächsten Mal nicht neu entdeckt werden muss.
+
+**Kette: 40 von 40 grün, 12.302 Behauptungen, 66,1 s.**
+
+---
+
+## 07.09.2026 — Das Sechseckraster rechnet, ohne dass etwas umgeschaltet ist
+
+**Janniks Entscheidung, wörtlich:** *„ja hexagon. raster form."* (#6)
+
+Erster Schritt von #7 — und bewusst einer, der **nichts umstellt**. Die
+Sechseck-Rechnung liegt jetzt neben der alten und ist bewiesen; das
+Vierer-Raster ist weiter in Betrieb. Wer beides in einem Schritt macht,
+kann hinterher nicht mehr sagen, welche Hälfte den Fehler hatte.
+
+**Die Bauform: Versatzzeilen.** Jede ungerade Zeile liegt ein halbes Feld
+weiter rechts — wie Ziegel in einer Mauer. Ein Ziegel berührt genau
+sechs andere: zwei oben, zwei unten, einen links, einen rechts.
+
+*Warum das die Speicherform rettet:* `index: (x, y) => y * breite + x`
+gilt unverändert weiter. `macheKarte`, die fünf Datenreihen, `summe()`
+und damit das ganze Netzprotokoll bleiben unangetastet. Was sich ändert,
+ist allein, **wer neben wem liegt** und **wie weit es ist**.
+
+**Neu in `spiel/gitter.mjs`:** `SECHS_GERADE`, `SECHS_UNGERADE`,
+`sechsRichtungen(y)`, `sechsNachbarn(karte, x, y)`,
+`sechsAbstand(ax, ay, bx, by)`. Die Datei wuchs von 210 auf 304 Zeilen.
+
+*Warum zwei Richtungstabellen und nicht eine:* Auf einer geraden Zeile
+liegen die oberen Nachbarn links und mittig, auf einer ungeraden mittig
+und rechts. Wer eine Tabelle für beide nimmt, bekommt eine Nachbarschaft,
+die **nicht gegenseitig** ist — A sieht B, B sieht A nicht. Im Kampf
+hieße das: Man wird von jemandem geschlagen, den man selbst nicht
+erreichen kann.
+
+*Warum nur ein Entfernungsmaß:* Auf dem Quadrat braucht es zwei
+(`abstand` fürs Laufen, `schussweite` fürs Schießen), weil die Diagonale
+nicht beides zugleich sein kann. Sechs gleichwertige Nachbarn haben das
+Problem nicht. `sechsAbstand` ist beides.
+
+**Neu: `werkzeuge/pruefe-sechseck.mjs`** — 26 Behauptungen. Die
+tragende darunter prüft die beiden Hälften **gegeneinander** statt jede
+gegen sich selbst: Eine Breitensuche läuft ausschließlich über die
+Richtungstabelle und zählt Schritte; die Formel rechnet dieselbe Strecke,
+ohne die Tabelle je anzusehen. Für **jedes** Feldpaar müssen beide Zahlen
+gleich sein — das kann nur stimmen, wenn Tabelle und Formel dasselbe
+Raster meinen.
+
+**Messungen:**
+
+| Messung | Wert |
+| --- | --- |
+| Karte 21 × 17, Felder im Inneren | **285**, alle mit sechs Nachbarn |
+| einseitige Nachbarschaften | **0** |
+| Felder von (10,8) durchgezählt | **357**, weiteste Entfernung 14 |
+| Schritte gegen Formel | **überall gleich** |
+| Ringe um (20,20) | 1 · **6** · **12** · **18** · **24** · **30** |
+
+Die Ringe sind die Signatur: Ein Ring im Abstand *n* hat **6n** Felder.
+Auf einem Quadratraster mit vier Richtungen wären es 4n.
+
+**Rotprobe — dreimal, und einmal davon lehrreich:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| eine Tabelle für beide Zeilen | **5 von 26** fielen — „Nachbarschaft ist gegenseitig: ist 640, soll 0", dazu „gelaufen 2, gerechnet 3" |
+| Versatz auf die andere Zeilenhälfte gelegt | **2 von 26** — „(1,0)→(0,1) ist 2" und „gelaufen 1, gerechnet 2" |
+| fünf Richtungen statt sechs | **6 von 26** — „die gerade Zeile hat sechs Richtungen: ist 5, soll 6" |
+
+*Und der lehrreiche Teil:* Der erste Versuch der zweiten Rotprobe schrieb
+`x - (y >> 1)` statt `x - ((y - (y & 1)) >> 1)` — und die Prüfung blieb
+grün. Zu Recht: Für nicht-negative `y` rundet `>>` ohnehin ab, beide
+Ausdrücke sind **derselbe Wert**. Es war gar kein eingebauter Fehler.
+Erst der Versatz auf die andere Zeilenhälfte war einer.
+
+Das ist genau der Grund, warum jede Prüfung einmal rot gewesen sein
+muss: Ohne den zweiten Anlauf stünde hier eine Rotprobe, die nie eine
+war.
+
+**Ausdrücklich noch nicht getan:** Nichts ist umgestellt. `RICHTUNGEN`
+hat weiter vier Einträge, `schussweite` gibt es noch — und eine eigene
+Behauptung wacht darüber, damit niemand die Umstellung versehentlich
+in diesen Schritt hineinzieht.
+
+Kette: **40 Prüfungen grün** (vorher 39).
+
+---
+
+## 07.09.2026 — Welle 2 ist geplant: achtzehn Vorgänge
+
+**Auftrag, wörtlich:** *„erstelle die passenden issues erst mal dazu und
+dann arbeiten wir das alles ab."*
+
+Jannik hat in zwei Nachrichten beschrieben, wohin Hatred geht. Sein
+Wortlaut steht in `docs/ROADMAP.md` und oben in jedem Vorgang — zitiert,
+nicht umformuliert.
+
+**Angelegt: #6 bis #23** in `Kimpaliz/Hatred`, gruppiert in sechs Blöcke.
+`docs/ROADMAP.md` trägt die Reihenfolge und je Vorgang das
+Abnahmekriterium.
+
+**Sechs Flächen vorher vermessen** — zwölf Agenten, je einer der misst
+und einer der widerlegt. Was dabei herauskam, hat die Planung an drei
+Stellen umgeworfen:
+
+### Das gemeinsame Sichtfeld gibt es schon — und es hat zwei Löcher
+
+Janniks *„alle spieler teilen sich eine gemeinsames sichtfeld"* ist seit
+Phase 2 gebaut: `runtime/start.js` bildet die Vereinigung über alle
+lebenden Jäger. Der Auftrag ist also nicht bauen, sondern **absichern**.
+Denn dabei fielen zwei echte Fehler auf, beide nachgeprüft:
+
+| Fehler | gemessen |
+| --- | --- |
+| **Weitblick wirkt nicht auf das Bild.** Die Regeln rechnen mit `sichtVon()`, das Bild liest den rohen Wert. | sieht **181** Felder statt der **208**, die ihm zustehen |
+| **Blendung ebenso** — nur andersherum: Man sieht mehr, als man darf. | sieht **127** Felder statt **25** |
+
+Dazu ein dritter, stiller: Die Erinnerung an schon Gesehenes wächst je
+**Bild**, nicht je Aktion, und steht nicht in der Zustandssumme. Zwei
+Rechner mit verschiedener Bildrate können sich an verschiedene Felder
+erinnern. `grep -rn "frischeSicht" werkzeuge/` findet **0 Treffer** —
+es gibt keine Prüfung dafür. Steht als #10.
+
+### Flüssigkeiten tun im Kampf nichts
+
+Sechs Flüssigkeiten werden erzeugt und gezeichnet — Wasser, Blut,
+Schleim, Lava, Öl. Gemessen:
+`grep -rn "fluessig" spiel/kampf.mjs spiel/zug.mjs spiel/wesen.mjs`
+findet **null Treffer**. Kein Schaden, kein Abzug, keine
+Bewegungskosten. Janniks *„flüssigkeiten spielen eine sehr grosse rolle
+im kampf"* ist damit die größte Lücke zwischen dem, was dasteht, und
+dem, was das Spiel könnte. Steht als #15.
+
+### Scotophobia hat gar kein Spielraster
+
+Der überraschendste Fund, selbst nachgesehen: In keiner der 26
+Doku-Dateien von `granithoehle` kommt „Hexagon" oder „Sechseck" vor. Das
+Raster dort ist ein **Abtastraster** von 10 Bildpunkten, die Bewegung
+ist frei. `WELTGENERIERUNG.md` Zeile 340 sagt es selbst: *„Ein Raster,
+das man nicht als Raster sieht."*
+
+Janniks zwei Wünsche — *„aussehen wie Scotophobia"* und *„am liebsten
+hexagon"* — sind also **verschiedene Wünsche**, keine zwei Hälften
+desselben. Beide gehen; das Raster bestimmt, wie man läuft, das Zeichnen
+bestimmt, ob man es sieht. Das gehört in die Entscheidung, und es steht
+jetzt drin (#6).
+
+**Und: zwei Drittel des Satzes sind schon erfüllt.** „pixelslop engine
+als Kern" — 655 Zeilen portiert. „in rasterform generiert" — die
+Weltformel wird mit 3×3-Überabtastung in ein Raster gegossen. Neu ist
+allein das Wort *hexagon*, und das steht als „am liebsten" da, nicht als
+Bedingung.
+
+### Was ein Sechseck kostet — und was es spart
+
+Der teure Posten ist `runtime/zeichnen.js`: Die Datei kennt genau **eine**
+Grundform, das Rechteck. Ein Sechseck wird ein Stapel Zeilenläufe, 14 bis
+16 statt einem je Kachel.
+
+Aber es **spart** auch, und das wurde bisher nirgends gesagt:
+`oeffneDiagonalen` (19 Zeilen) entfällt ersatzlos — Sechsecke berühren
+sich nie nur über Eck. `diagonalFund` und `nurDiagonalen` (~35 Zeilen)
+ebenso. Und `schussweite` verschwindet: Im Sechseck sind Lauf- und
+Schussentfernung dasselbe Maß, wo das Quadrat zwei braucht.
+
+Deshalb die Empfehlung in #6: **Sechseck-Regeln, Ziegelmauer-Bild.**
+Jede zweite Reihe um ein halbes Feld versetzt — ein Ziegel in einer
+Mauer berührt genau sechs andere. Dieselbe Nachbarschaft, kein einziger
+zusätzlicher Zeichenschritt, und später ohne Regeländerung auf echte
+Sechsecke umstellbar.
+
+### Nebenbei
+
+`alpha-code.json` zeigte noch auf `Kimpaliz/Hatred-`; Jannik hat das
+Repository umbenannt. Korrigiert.
+
+*Eine Anmerkung zum ersten Anlauf:* Die Vermessung lief zweimal. Beim
+ersten Mal haben alle sechs Agenten die Arbeit getan und konnten sie
+nicht abliefern — das Antwortformat, das ich ihnen vorgegeben hatte, war
+zu verschachtelt. 375.742 Token für nichts. Beim zweiten Mal reiner
+Text, und alle zwölf kamen durch. Die Lehre gehört ins Fehlerbuch: Ein
+Format, das der Absender nicht selbst erfüllen könnte, ist kein Format.
+
+---
+
 ## 06.09.2026 — Dieselbe Frage an alle Werkzeuge gestellt
 
 Nachdem die Einzeldatei tot war, während die Kette grün meldete, lag die
