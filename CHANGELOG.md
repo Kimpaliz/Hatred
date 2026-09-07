@@ -3,6 +3,47 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Gesten-Hörer von der Spieleingabe unterscheiden
+
+Die bestehende Touch-Prüfung zählt Vorlauf-Hörer gezielt am Canvas und
+beim Spielstart genau einen neu hinzukommenden Eingabehörer. Der schon
+vorher registrierte Gestenwächter ist keine zweite Spieleingabe. Vor
+dieser Präzisierung fielen **3 von 283 Behauptungen**; danach bestehen
+**283 von 283**. Eine Gegenprobe fügt beim Spielstart einen zusätzlichen
+Eingabehörer ein: Die Prüfung fällt mit **1 von 283**, Rückgabewert 1.
+Der zusätzliche Hörer wird anschließend wieder entfernt. Die Grenze
+gegen doppelte Läufe bleibt damit ausdrücklich geprüft.
+
+**Integration am 07.09.2026:** Alle **47 Prüfungen** der vollständigen
+Kette bestehen in **34,0 Sekunden** auf dem zusammengeführten Stand.
+
+## 07.09.2026 — Zoomgesten und Toolbar unabhängig am Ereignisweg prüfen
+
+`werkzeuge/pruefe-ansicht.mjs` liefert eine kleine DOM-Bühne mit echter
+Capture- und Bubble-Reihenfolge. Die Kamera ist echt; eine mitschreibende
+Spieleingabe erkennt jeden durchgelassenen Tipp. Einzeltipps müssen bis
+zum Loslassen warten, Mehrfingergesten dürfen bis zum letzten Finger
+weder einen Kartentipp noch den Ausgang für Pause oder Abstieg aufrufen.
+
+Die Prüfung deckt beide Loslassreihenfolgen, Abbruch, Fokusverlust,
+Sichtbarkeits- und Sitzungswechsel sowie überlappende Kontakte auf dem
+Vorlauf und der Toolbar ab. Sie misst zusätzlich Canvas-Koordinaten,
+Zoomgrenzen, Knöpfe, drei Mausrad-Einheiten, Reset, Tastatur, Vollbild-
+Weitergabe und das vollständige Abmelden der eigenen Hörer. Enter und
+Leertaste behalten auf Knöpfen ihre native Bedienung; F und Plus bleiben
+Ansichtsaktionen. Eingabefelder werden nicht von Zoomkürzeln abgefangen.
+
+**Gemessen am 07.09.2026:** `node werkzeuge/pruefe-ansicht.mjs` besteht
+mit **94 Behauptungen**. Ein echtes versetztes Loslassen ohne vorherige
+Bewegungsmeldung fiel im ersten Controllerstand rot aus und nach dessen
+Berichtigung grün. Zwei absichtliche Fehler beweisen die neue Prüfung:
+Touch bereits auf `pointerdown` weitergereicht ergibt **27 von 94 rot**;
+die Mehrfinger-Sperre entfernt ergibt **7 von 94 rot**. Beide Gegenproben
+enden mit Exit 1, nach Wiederherstellung endet die Prüfung mit Exit 0.
+`node werkzeuge/pruefe-kopfnotiz.mjs` besteht auf den zusammengelegten
+Prüfkopien mit **868 Behauptungen**. Echtes Browser-Vollbild und die
+Gesamtkette werden beim Zusammenführen separat geprüft.
+
 ## 07.09.2026 — Manueller Zoom ohne Verlust der Kameraautomatik
 
 `runtime/kamera.js` erhält `zoome`, `setzeZoom`, `zoomZurueck` und

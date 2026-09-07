@@ -127,8 +127,9 @@ function tippeSaat(welt, tippeAuf) {
     gleich(welt.zaehle("mousedown"), 0, "auf `mousedown` hört im Vorlauf niemand");
     gleich(welt.zaehle("mousemove"), 0, "auf `mousemove` auch nicht");
     gleich(welt.zaehle("click"), 0, "und auf `click` erst recht nicht");
-    gleich(welt.zaehle("pointerdown"), 1, "der Vorlauf hört auf `pointerdown`");
-    gleich(welt.zaehle("pointermove"), 1, "und auf `pointermove`");
+    const amBlatt = (name) => welt.hoerer.filter((h) => h.wo === "blatt" && h.name === name).length;
+    gleich(amBlatt("pointerdown"), 1, "der Vorlauf hört am Blatt auf `pointerdown`");
+    gleich(amBlatt("pointermove"), 1, "und am Blatt auf `pointermove`");
 
     welt.naechstesBild(16);
     behaupte(welt.ctx.anzahl() > 0, "der Vorlauf malt");
@@ -150,23 +151,26 @@ function tippeSaat(welt, tippeAuf) {
 
     /* Der ganze Weg bis in den Kerker, jeder Tipp mit der vollen
        Android-Folge. Am Ende hängt genau **eine** Eingabe am Blatt:
-       `pointerup` meldet niemand außer `runtime/eingabe.js` an, und die
-       entsteht einmal je Lauf. Zwei Läufe wären zwei Hörer. */
+       Neben dem schon vorhandenen Gestenwächter entsteht genau ein
+       weiterer `pointerup`-Hörer in `runtime/eingabe.js`. Zwei neu
+       entstandene Läufe wären zwei zusätzliche Hörer. */
     tippeSaat(welt, tippeAuf);
     gleich(lauf.lobby().stand().saat, SAAT, "die getippte Saat steht im Feld");
+    const vorEingabe = welt.zaehle("pointerup");
     tippeAuf("los");
 
     gleich(lauf.lobby(), null, "der Vorlauf ist fort");
     behaupte(lauf.stand() !== null, "und das Spiel steht");
     gleich(lauf.stand() && lauf.stand().tiefe, 1, "es beginnt in der ersten Tiefe");
-    gleich(welt.zaehle("pointerup"), 1, "genau ein Lauf läuft — eine einzige Eingabe hört zu");
+    gleich(welt.zaehle("pointerup") - vorEingabe, 1,
+      "genau ein Lauf läuft — eine einzige neue Eingabe hört zu");
     gleich(welt.zaehle("mousedown"), 0, "und der Mausweg ist bis zuletzt leer");
 
     /* Keine Rechteckzahl: Der Vorlauf würfelt seine Saat, und eine
        andere Ziffernzahl im Feld malt andere Rechtecke — eine Zahl, die
        niemand nachrechnen kann, ist keine Messung (Regel 11). */
     messungen.push(`Vorlauf mit der vollen Android-Folge: 1 Lauf, `
-      + `${welt.hoerer.length} Hörer, davon ${welt.zaehle("pointerup")} Eingabe`);
+      + `${welt.hoerer.length} Hörer, davon ${welt.zaehle("pointerup") - vorEingabe} Spieleingabe`);
   } finally {
     welt.raeumeAuf();
   }
@@ -200,13 +204,14 @@ function tippeSaat(welt, tippeAuf) {
       for (const knopf of KNOEPFE) tippeAuf(knopf);
       tippeSaat(welt, tippeAuf);
       const vorLos = JSON.stringify(lobby.stand());
+      const vorEingabe = welt.zaehle("pointerup");
       tippeAuf("los");
       welt.naechstesBild(4800);
       const spielstand = lauf.stand();
       return {
         erreicht, vorLos,
         tiefe: spielstand && spielstand.tiefe,
-        eingaben: welt.zaehle("pointerup")
+        eingaben: welt.zaehle("pointerup") - vorEingabe
       };
     } finally {
       welt.raeumeAuf();

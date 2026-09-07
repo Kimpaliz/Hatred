@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| runtime/ansicht.js, runtime/start.js, runtime/oberflaeche.js, index.html, CHANGELOG.md | Codex | Sichtbarer Zoom, Vollbild und sichere Gesten. | 07.09.2026 |
+| frei | frei | Zoom, Vollbild und zugehörige Prüfungen am 07.09.2026 integriert. | 07.09.2026 |
 
 ## Format
 
