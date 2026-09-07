@@ -38,6 +38,37 @@ Prüfwerkzeuge werden auf eigenen Prüfzweigen geführt. Veröffentlichung
 über den vorhandenen `gh-pages`-Zweig; Rückkehr zur vorigen Fassung durch
 das Zurücknehmen des jeweiligen Veröffentlichungscommits.
 
+## 07.09.2026 — Pfadgrenzen und Kopfnotizen auch unter Windows prüfen
+
+`pruefe-kern.mjs` verglich den von Node zusammengesetzten Dateipfad mit
+einem fest eingetragenen `/`. Unter Windows entstehen dort `\`:
+**71 von 211 Behauptungen** lehnten deshalb gültige interne Einfuhren
+ab. Der Vergleich verwendet jetzt den Plattformtrenner, weiterhin mit
+einer vollständigen Ordnergrenze. **10 neue Selbstproben** prüfen auf
+jedem Rechner Windows- und POSIX-Pfade einschließlich `..` und dem
+ähnlich benannten Nachbarordner `spiel-fremd/`.
+
+`pruefe-kopfnotiz.mjs` liest CRLF als einen Zeilenumbruch. Das CR gehört
+weder zum ersten Satz noch zur Zeichenbreite. **6 neue Selbstproben**
+halten LF und CRLF gleich, verlangen weiterhin einen Satz im Kopf und
+unterscheiden weiterhin exakt 100 von 101 Zeichen. Ein einzelnes CR
+innerhalb einer Zeile wird nicht entfernt. Vor der Berichtigung fielen
+**3 dieser Proben** rot aus.
+
+**Gemessen am 07.09.2026 unter Windows:**
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `node werkzeuge/pruefe-kern.mjs` | 221 Behauptungen grün |
+| `node werkzeuge/pruefe-kopfnotiz.mjs` | 820 Behauptungen grün |
+
+In einer temporären Kopie wurden zusätzlich echte Importzeilen nach
+`../runtime/fremd.js` und `../spiel-fremd/fremd.mjs` eingesetzt: **beide
+führten zum erwarteten Exit 1 mit der Meldung zur Kerngrenze**. Nach
+Rücknahme und Umstellung aller **99 Quelldateien auf CRLF** bestanden
+beide Befehle erneut mit denselben 221 und 820 Behauptungen. Die
+integrierte Gesamtkette wird beim Zusammenführen geprüft.
+
 ## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
 
 **Auftrag, wörtlich:** *„nach main"* — und der erste Stand, der `main`

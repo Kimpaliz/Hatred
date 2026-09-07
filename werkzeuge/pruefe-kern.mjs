@@ -40,7 +40,7 @@
    pruefe-alles.mjs`, das diese Datei als eigenen Prozess startet. */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, dirname, extname, relative } from "node:path";
+import { join, dirname, extname, relative, sep, posix, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
 import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 
@@ -182,6 +182,29 @@ function sammle(ordner, aus = []) {
   return aus;
 }
 
+/* `join` löst zuvor `..` auf. Der Trenner hält ähnlich benannte
+   Nachbarordner wie `spiel-fremd/` außerhalb der Kerngrenze. */
+function liegtUnter(ziel, wurzel, trenner = sep) {
+  return ziel.startsWith(wurzel + trenner);
+}
+
+/* Beide Pfadarten laufen auf jedem Rechner, auch in der Linux-Kette. */
+{
+  abschnitt("Pfadgrenzen");
+  for (const pfade of [posix, win32]) {
+    const kern = pfade.join("wurzel", "spiel");
+    const erlaubt = pfade.join(kern, "katalog", "waffen.mjs");
+    behaupte(liegtUnter(erlaubt, kern, pfade.sep),
+      `${pfade.sep}: eine verschachtelte Einfuhr bleibt im Kern`);
+    for (const woher of ["../runtime/start.js", "../spiel-fremd/fremd.mjs", ".."]) {
+      behaupte(!liegtUnter(pfade.join(kern, woher), kern, pfade.sep),
+        `${pfade.sep}: Einfuhr "${woher}" verlässt den Kern`);
+    }
+    behaupte(!liegtUnter(kern, kern, pfade.sep),
+      `${pfade.sep}: der Kernordner selbst ist keine Datei im Kern`);
+  }
+}
+
 /* ── 1. Der Schneider selbst ────────────────────────────────────────
    Zuerst die Selbstprobe. Wäre sie unten, liefe im Fehlerfall erst die
    ganze Kernprüfung mit einem kaputten Werkzeug durch. */
@@ -267,7 +290,7 @@ let geprueft = 0, zeilenGesamt = 0;
       behaupte(eigen, `${kurz}: Einfuhr "${woher}" ist kein eigener Pfad`);
       if (!eigen) continue;
       const ziel = join(dirname(pfad), woher);
-      behaupte(ziel.startsWith(KERN + "/"), `${kurz}: Einfuhr "${woher}" führt aus spiel/ heraus`);
+      behaupte(liegtUnter(ziel, KERN), `${kurz}: Einfuhr "${woher}" führt aus spiel/ heraus`);
     }
   }
 }
