@@ -35,11 +35,13 @@
    hier), `runtime/eingabe.js` (hängt sich an dieselben Hörer),
    `runtime/palette.js` (`FARBEN.hudGrund` — daran wird die Leiste im
    Bild wiedererkannt), `runtime/licht.js` (`KACHEL`),
+   `runtime/torwaechter.js` (`merkeTor` — für `torSchonOffen`),
    `werkzeuge/buehne-eingabe.mjs` und `werkzeuge/buehne-oberflaeche.mjs`
    (dasselbe Muster). */
 
 import { FARBEN } from "../runtime/palette.js";
 import { KACHEL } from "../runtime/licht.js";
+import { merkeTor } from "../runtime/torwaechter.js";
 
 /* Das Handy, an dem gemessen wird: ein Pixel 7 quer, mit dem **ganzen**
    Bildschirm — 412 x 915 CSS-Punkte bei devicePixelRatio 2,625. Das ist
@@ -58,6 +60,32 @@ import { KACHEL } from "../runtime/licht.js";
    2,625 fällt in beiden Angaben gleich aus und ist der eigentliche
    Punkt: Sie macht halbe Bildpunkte, wenn man sie nicht abfängt. */
 export const HANDY = { breite: 915, hoehe: 412, dpr: 2.625 };
+
+/* ══════════════════════════════════════════════════════════════════
+   Der Browser eines Mitspielers, der schon einmal drin war
+   ══════════════════════════════════════════════════════════════════
+
+   Seit dem 07.09.2026 steht vor dem Vorlauf der Torwächter
+   (`runtime/torwaechter.js`): Ohne das Zugangswort entsteht die Lobby
+   gar nicht erst. Jede Prüfung, die den **Vorlauf** oder das Spiel
+   dahinter misst, braucht deshalb einen Browser, in dem das Wort schon
+   einmal getippt wurde — den zweiten Start, den jeder Mitspieler nach
+   dem ersten hat.
+
+   Das ist kein Schleichweg um den Riegel: Gemerkt wird derselbe
+   Fingerabdruck, den auch das Tor hinterlegt, und das Wort selbst
+   kommt hier so wenig vor wie in jeder anderen Datei. Das Tor
+   **selbst** prüft `werkzeuge/pruefe-torwaechter.mjs`, und nur dort. */
+export function torSchonOffen() {
+  const inhalt = new Map();
+  globalThis.localStorage = {
+    getItem: (name) => (inhalt.has(name) ? inhalt.get(name) : null),
+    setItem: (name, wert) => { inhalt.set(name, String(wert)); },
+    removeItem: (name) => { inhalt.delete(name); }
+  };
+  merkeTor();
+  return inhalt;
+}
 /* ══════════════════════════════════════════════════════════════════
    Das mitschreibende Blatt
    ══════════════════════════════════════════════════════════════════

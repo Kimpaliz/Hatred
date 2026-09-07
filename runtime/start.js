@@ -52,7 +52,9 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `index.html` (holt diese Datei), `runtime/lobby.js` (der Vorlauf,
+   `index.html` (holt diese Datei), `runtime/torwaechter.js` (das Tor
+   vor dem Vorlauf — was der Riegel ist und was nicht, steht dort),
+   `runtime/lobby.js` (der Vorlauf,
    bekommt `wuerfleSaat` und gibt `beiStart` zurück), `runtime/kamera.js`,
    `runtime/zeichnen.js`, `runtime/licht.js`, `runtime/partikel.js`,
    `runtime/oberflaeche.js`, `runtime/eingabe.js`, `runtime/schrift.js`,
@@ -71,6 +73,7 @@ import { macheZeichner } from "./zeichnen.js";
 import { macheOberflaeche } from "./oberflaeche.js";
 import { ZEIGER_FINGER, macheEingabe } from "./eingabe.js";
 import { macheLobby, lesbar } from "./lobby.js";
+import { macheTor, torErinnert } from "./torwaechter.js";
 import { AKTION } from "../spiel/aktionen.mjs";
 import { macheLauf, naechsteTiefe } from "../spiel/lauf.mjs";
 import { SEITE_BRUT, amZugWesen, wesenMitId } from "../spiel/zug.mjs";
@@ -428,6 +431,7 @@ export function starte(blatt) {
   const ctx = blatt.getContext("2d");
   ctx.imageSmoothingEnabled = false;
 
+  let tor = null;
   let lobby = null;
   let spiel = null;
   let sitzung = null;
@@ -477,6 +481,7 @@ export function starte(blatt) {
     const { breite, hoehe } = setzeBlatt();
     if (spiel) spiel.setzeFenster(breite, hoehe);
     if (lobby) lobby.setzeFenster(breite, hoehe);
+    if (tor) tor.setzeFenster(breite, hoehe);
   }
 
   /* Die Vergrößerung, mit der dieses Blatt gerade arbeitet: ganzzahlig
@@ -524,14 +529,35 @@ export function starte(blatt) {
     } catch { /* manche Browser verweigern es ohne Klick - dann eben nicht */ }
   }
 
-  /* ── Der Vorlauf ────────────────────────────────────────────────*/
+  /* ── Das Tor und der Vorlauf ────────────────────────────────────
+
+     Vor dem Vorlauf steht der Torwächter. War das Tor in diesem
+     Browser schon einmal offen, entsteht es gar nicht erst und der
+     Vorlauf beginnt wie eh und je - sonst tippte Jannik das Wort bei
+     jedem Start neu. Was der Riegel ist und was nicht, steht in der
+     Kopfnotiz von `runtime/torwaechter.js`; hier steht nur die
+     Verdrahtung. */
 
   const { breite, hoehe } = setzeBlatt();
-  lobby = macheLobby({
-    ctx, wuerfleSaat, fensterBreite: breite, fensterHoehe: hoehe,
-    ablage: macheAblage(globalThis.document),
-    beiStart: (was) => beginneSpiel(was)
-  });
+  if (torErinnert()) baueVorlauf(breite, hoehe);
+  else {
+    tor = macheTor({
+      ctx, fensterBreite: breite, fensterHoehe: hoehe,
+      beiOffen: () => {
+        tor = null;
+        const masse = setzeBlatt();
+        baueVorlauf(masse.breite, masse.hoehe);
+      }
+    });
+  }
+
+  function baueVorlauf(b, h) {
+    lobby = macheLobby({
+      ctx, wuerfleSaat, fensterBreite: b, fensterHoehe: h,
+      ablage: macheAblage(globalThis.document),
+      beiStart: (was) => beginneSpiel(was)
+    });
+  }
 
   function beginneSpiel(was) {
     angaben = was;
@@ -642,7 +668,8 @@ export function starte(blatt) {
       }
       spiel.bild(zeit);
       schlusszeile();
-    } else if (lobby) lobby.zeichne(zeit);
+    } else if (tor) tor.zeichne(zeit);
+    else if (lobby) lobby.zeichne(zeit);
     globalThis.requestAnimationFrame(bild);
   }
 
@@ -660,6 +687,7 @@ export function starte(blatt) {
 
   function beiVorlaufZeiger(fund) {
     if (fund.pointerType) zuletztFinger = fund.pointerType === ZEIGER_FINGER;
+    if (tor) { const wo = punktAus(fund); tor.beiZeiger(wo.x, wo.y); return; }
     if (!lobby) return;
     const punkt = punktAus(fund);
     lobby.beiZeiger(punkt.x, punkt.y);
@@ -673,6 +701,8 @@ export function starte(blatt) {
        wieder zurück, wenn jemand im Spiel zur Maus greift. */
     if (fund.pointerType) zuletztFinger = fund.pointerType === ZEIGER_FINGER;
     if (pausiert) { pausiert = false; return; }
+    /* Solange das Tor zu ist, bekommt es den Tipp - und nur es. */
+    if (tor) { const wo = punktAus(fund); tor.beiKlick(wo.x, wo.y); return; }
     if (!lobby) { if (tieferMoeglich()) tiefer(); return; }
     const punkt = punktAus(fund);
     if (lobby.beiKlick(punkt.x, punkt.y) === "vollbild") vollbild();
@@ -696,6 +726,12 @@ export function starte(blatt) {
 
   globalThis.document.addEventListener("keydown", (fund) => {
     if (fund.ctrlKey || fund.metaKey || fund.altKey) return;
+    /* Am Tor wie im Vorlauf gehört **jede** Taste dem Eingabefeld. */
+    if (tor) {
+      if (fund.key === "Tab" || fund.key === " ") fund.preventDefault();
+      tor.beiTaste(fund.key);
+      return;
+    }
     /* Im Vorlauf gehört **jede** Taste den Eingabefeldern - wer sonst
        „Wolf" heißen will, schaltet mit dem F das Vollbild um statt zu
        tippen. Dort führt allein der Knopf ins Vollbild. */
@@ -709,7 +745,13 @@ export function starte(blatt) {
   });
 
   globalThis.document.addEventListener("paste", (fund) => {
-    if (!lobby || !fund.clipboardData) return;
+    if (!fund.clipboardData) return;
+    if (tor) {
+      fund.preventDefault();
+      tor.beiEinfuegen(fund.clipboardData.getData("text"));
+      return;
+    }
+    if (!lobby) return;
     fund.preventDefault();
     lobby.beiEinfuegen(fund.clipboardData.getData("text"));
   });
@@ -728,6 +770,7 @@ export function starte(blatt) {
      ansehen, und damit gar nicht. */
   return {
     vollbild, passeAn, tiefer, vergroesserung,
+    tor: () => tor,
     lobby: () => lobby,
     spiel: () => spiel,
     stand: () => (spiel ? spiel.stand() : null)

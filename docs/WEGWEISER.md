@@ -62,6 +62,8 @@ Rechner der Wahrheit eines anderen glauben, statt sie nachzurechnen.
 | Lebensbalken, Punkteanzeige, Zugleiste | `runtime/oberflaeche.js` |
 | „Eine Bewegung läuft zu schnell/langsam ab" | `runtime/abspieler.js` → `TEMPO` |
 | „Man kommt nicht zusammen" | `netz/sitzung.mjs`, `netz/verbindung.mjs` |
+| „Nur wir sollen hereinkommen" — das Zugangswort vor dem Vorlauf, und was der Riegel wirklich taugt | `runtime/torwaechter.js` (Kopfnotiz) |
+| Das Zugangswort wechseln | `node werkzeuge/zugangswort.mjs <neues wort>` |
 | Die Prüfkette | `werkzeuge/pruefe-alles.mjs` |
 
 ## Die Reihenfolge eines Bildes

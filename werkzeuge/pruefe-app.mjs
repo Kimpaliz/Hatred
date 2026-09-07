@@ -65,6 +65,17 @@ import {
 } from "../spiel/zug.mjs";
 import { planeZug } from "../spiel/gegner-ki.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
+import { torSchonOffen } from "./buehne-browser.mjs";
+
+/* Der Browser eines Mitspielers, der schon einmal drin war: Seit dem
+   07.09.2026 steht vor dem Vorlauf der Torwächter
+   (`runtime/torwaechter.js`), und ohne das Zugangswort entsteht die
+   Lobby gar nicht erst. Diese Prüfung misst den Vorlauf und was
+   dahinter kommt, nicht das Tor — also bekommt sie den zweiten Start,
+   den jeder Mitspieler nach dem ersten hat. Das Tor selbst prüft
+   `werkzeuge/pruefe-torwaechter.mjs`. */
+torSchonOffen();
+
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 const liesWurzel = (name) => readFileSync(join(WURZEL, name), "utf8");
