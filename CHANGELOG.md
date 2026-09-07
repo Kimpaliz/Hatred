@@ -3,6 +3,83 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Regel 14 nannte die falsche Prüfdatei
+
+**Auftrag, wörtlich:** *„weil das github auch ohne den bindestrich
+geschrieben wird jetzt!"*
+
+Die Adresse zu berichtigen war der Anlass; beim Nachmessen fiel etwas
+anderes auf.
+
+### Die Adresse
+
+Der Ablageort heißt kanonisch **`Kimpaliz/Hatred`**. Gemessen:
+
+```
+curl -sSI https://github.com/Kimpaliz/hatred- | grep -i ^location:
+→ Location: https://github.com/Kimpaliz/Hatred
+```
+
+`hatred-` und `hatred` erreichen ihn weiter über eine Umleitung. In
+`docs/REGELN.md` 14 stand die Adresse klein geschrieben; sie steht jetzt
+so da, wie der Ablageort heißt.
+
+### Das Loch in der eigenen Prüfung
+
+Die Auslieferung wurde bis hierher **im Wurzelverzeichnis** nachgestellt.
+GitHub Pages liefert die Seite aber unter `/Hatred/` aus — und genau
+dort, und nur dort, fällt ein führender Schrägstrich auf. Ein Prüflauf an
+der Wurzel kann diesen Fehler nicht finden; er beweist das Gegenteil von
+dem, was er zu beweisen scheint.
+
+Nachgeholt, mit dem ausgelieferten Baum unter einem Unterordner:
+
+| Messung | Wert |
+| --- | --- |
+| Antworten insgesamt | 46 |
+| davon Module | 44 |
+| Anfragen **außerhalb** von `/Hatred/` | **0** |
+| Antworten ungleich 200 | **0** |
+| Fehler in der Ausgabe der Seite | **0** |
+| Bereich des Zwischenspeicher-Arbeiters | `/Hatred/` |
+| `manifest.webmanifest` | 200 unter `/Hatred/` |
+| Zeichenblatt | 915 × 412 bei Bildpunktverhältnis 2,625 |
+
+Dazu ein Textdurchgang über alle 63 ausgelieferten Dateien aus fünf
+Blickwinkeln — Seite und Anwendungsverzeichnis, Modulpfade, der
+Zwischenspeicher-Arbeiter, das Nachladen zur Laufzeit, und einer, der
+ausdrücklich das Gegenteil beweisen sollte. Aufgelöst wurden dabei 160
+Verweise, jeder Pfadabschnitt auch auf Groß- und Kleinschreibung.
+**Null Befunde.** Der Modulbaum vom Einstieg aus: 44 Module, 0 fehlend,
+0 absolut.
+
+### Und der eigentliche Fund
+
+`docs/REGELN.md` 14 („Alle Importpfade sind relativ") nannte als Beweis
+`werkzeuge/pruefe-verweise.mjs`. Diese Datei prüft etwas ganz anderes:
+Markdown-Verweise in der Doku gegen die Platte. Sie sieht **keinen
+einzigen Importpfad** — 54 Zeilen, kein Treffer auf `import`, `src=`
+oder `href=`.
+
+Gedeckt ist die Regel trotzdem, nur woanders:
+
+| Datei | was sie wirklich beweist |
+| --- | --- |
+| `werkzeuge/pruefe-einstieg.mjs` | die Verweise in `index.html` selbst |
+| `werkzeuge/pruefe-app.mjs` | den ganzen Modulbaum darunter, Kante für Kante |
+
+Der Verweis ist berichtigt, mitsamt der Begründung, warum ausgerechnet
+diese Regel nicht am Aufruf hängen darf.
+
+**Was dabei ungeprüft bleibt — bewusst gemeldet, nicht behoben:** Kein
+Werkzeug hält die `*Geprüft:*`-Verweise in `docs/REGELN.md` gegen das,
+was die genannte Datei tut. Gemessen über alle neun Verweise: **0 von 9**
+Prüfdateien nennen die Regelnummer, auf die sie sich beziehen. Eine
+Prüfung, die nur das Vorhandensein der Datei fordert, wäre hier grün
+geblieben — `pruefe-verweise.mjs` gibt es ja. Ein Rückverweis in beide
+Richtungen wäre der Beweis; er verlangt einen Zusatz in acht Dateien und
+wartet deshalb auf eine Entscheidung des Auftraggebers.
+
 ## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 
 **Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*

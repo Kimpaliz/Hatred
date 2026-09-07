@@ -136,12 +136,24 @@ den Vorgang. Im Dokument stehen sie nur **datiert**: „gemessen am …".
 
 ## 14. Alle Importpfade sind relativ
 
-Unter `https://kimpaliz.github.io/hatred/` liegt die Seite in einem
+Unter `https://kimpaliz.github.io/Hatred/` liegt die Seite in einem
 Unterordner. Ein `/runtime/start.js` zeigte dort ins Leere — und zwar
 ohne Fehlermeldung im Änderungsvergleich. Das ist der häufigste Grund,
 warum ein Spiel daheim läuft und im Netz weiß bleibt.
 
-*Geprüft:* `werkzeuge/pruefe-verweise.mjs`.
+Ein Prüflauf im Wurzelverzeichnis findet das nie: Dort ist `/runtime/…`
+richtig. Der Beweis muss deshalb am Text hängen und nicht am Aufruf.
+
+*Geprüft:* `werkzeuge/pruefe-einstieg.mjs` für die Seite selbst und
+`werkzeuge/pruefe-app.mjs` für den Baum darunter — es verfolgt jeden
+`from "…"` vom Einstiegsskript aus, bis nichts Neues mehr kommt, und
+schlägt bei jedem Pfad an, der weder mit `./` noch mit `../` beginnt.
+
+**Nicht** `werkzeuge/pruefe-verweise.mjs`. Bis zum 07.09.2026 stand hier
+dieser Name, und er war falsch: Jene Datei hält Markdown-Verweise in der
+Doku gegen die Platte und sieht keinen einzigen Importpfad. Der Verweis
+selbst wird von nichts geprüft — wer eine Regel für gedeckt hält, weil
+hier ein Dateiname steht, muss die Datei aufschlagen.
 
 ## Die ganze Kette
 
