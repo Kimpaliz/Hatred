@@ -3,6 +3,29 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Manueller Zoom ohne Verlust der Kameraautomatik
+
+`runtime/kamera.js` erhält `zoome`, `setzeZoom`, `zoomZurueck` und
+`zoomStand`. Ohne Eingriff bleibt die bisherige automatische Stufe
+unverändert. Ein manueller Wunsch ist eine absolute ganze Zahl, bleibt
+bei Fensterwechseln erhalten und lässt sich auf die Automatik zurücksetzen.
+`standardVergroesserung` gibt der Oberfläche unabhängig vom Nutzerzoom
+das automatische Maß; es wird nur bei einer Fensteränderung neu bestimmt.
+
+Die Stufen reichen von **1 bis mindestens 12**, auf sehr großen Fenstern
+bis zur höheren automatischen Stufe. Ein Wunsch oberhalb eines später
+kleineren Maximums bleibt gespeichert und kehrt beim Vergrößern zurück.
+Weiches Kamerazentrum und Rüttelversatz werden durch Zoomen nicht versetzt.
+Der Zoom verändert keine Spielfeldwerte und fügt keinen Zeichenlauf hinzu.
+
+`node werkzeuge/pruefe-kamera-zoom.mjs` besteht mit **955 Behauptungen**,
+über **12 Stufen**, **5 Fenstergrößen** und **240 Feld-Bild-Umkehrungen**.
+Die alte Kamera fällt an **4 fehlenden Methoden**. Ein absichtlich beim
+Resize gelöschter Nutzerwunsch lässt **17 Behauptungen** fallen; eine
+fehlende Standardstufe für das HUD **10**. Nach Rücknahme bestehen alle
+Behauptungen. `node werkzeuge/pruefe-schrift.mjs` besteht vor und nach
+der Änderung mit **102 Behauptungen**, die Kopfnotizenprüfung mit **860**.
+
 ## 07.09.2026 — Abgrund-Innenkanten und verdeckte Rampenflags prüfen
 
 Die Geländeprüfung vergleicht jetzt das fertige Pixelbild bei verbliebenen

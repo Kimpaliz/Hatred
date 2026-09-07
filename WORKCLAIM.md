@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Felswände, Treppen, Ebenenränder und zugehörige Prüfungen am 07.09.2026 integriert. | 07.09.2026 |
+| frei | frei | Kamerazoom und zugehörige Prüfung am 07.09.2026 zur Integration freigegeben. | 07.09.2026 |
 
 ## Format
 
