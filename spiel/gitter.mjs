@@ -208,3 +208,97 @@ export const abstand = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by)
    soll diagonal genauso weit schießen wie gerade — sonst hat die
    Reichweite die Form eines Rhombus, und das sieht falsch aus. */
 export const schussweite = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+
+/* ══════════════════════════════════════════════════════════════════
+   Das Sechseckraster
+   ══════════════════════════════════════════════════════════════════
+
+   Entschieden am 07.09.2026 (Vorgang #6): *„ja hexagon. raster form."*
+
+   ── Warum die Speicherform bleibt ──────────────────────────────────
+
+   Ein Sechseckraster wird hier als **Versatzzeilen** geführt: Jede
+   ungerade Zeile liegt ein halbes Feld weiter rechts — wie die Ziegel
+   in einer Mauer. Ein Ziegel berührt genau sechs andere: zwei oben,
+   zwei unten, einen links, einen rechts. Das ist buchstäblich dieselbe
+   Nachbarschaft wie beim Sechseck.
+
+   Der Gewinn: `index: (x, y) => y * breite + x` gilt unverändert
+   weiter. `macheKarte`, die fünf Reihen, `summe()` und damit das ganze
+   Netzprotokoll bleiben, wie sie sind. Was sich ändert, ist allein
+   **wer neben wem liegt** und **wie weit es ist**.
+
+   ── Warum zwei Tabellen und nicht eine ─────────────────────────────
+
+   Auf einer geraden Zeile liegen die oberen Nachbarn links und
+   mittig; auf einer ungeraden mittig und rechts. Das ist keine
+   Feinheit, sondern der ganze Trick: Wer hier eine Tabelle für beide
+   nimmt, bekommt eine Nachbarschaft, die **nicht gegenseitig** ist —
+   A sieht B, aber B sieht A nicht. Im Kampf heißt das: Man wird von
+   jemandem geschlagen, den man selbst nicht erreichen kann, und
+   niemand versteht warum. Die Prüfung dazu heißt „Nachbarschaft ist
+   gegenseitig" und war absichtlich rot.
+
+   ── Warum nur **ein** Entfernungsmaß ───────────────────────────────
+
+   Auf dem Quadrat braucht es zwei (`abstand` fürs Laufen, `schussweite`
+   fürs Schießen), weil die Diagonale beides nicht zugleich sein kann.
+   Sechs gleichwertige Nachbarn haben dieses Problem nicht: Der Schritt
+   in jede Richtung ist gleich weit. `sechsAbstand` ist zugleich die
+   Laufentfernung und die Schussweite — bewiesen unten dadurch, dass sie
+   mit der gezählten Schrittzahl übereinstimmt.
+
+   ── Arbeitet zusammen mit ──────────────────────────────────────────
+
+   `werkzeuge/pruefe-sechseck.mjs` (misst alles hier), und später
+   `spiel/wegfindung.mjs`, `spiel/sicht.mjs`, `spiel/hoehen.mjs`. */
+
+/* Sechs Richtungen, getrennt nach gerader und ungerader Zeile. Die
+   Namen sind die eines spitz nach oben stehenden Sechsecks: zwei
+   waagerechte Nachbarn, je zwei schräg oben und schräg unten. */
+export const SECHS_GERADE = [
+  { dx: 1, dy: 0, name: "ost" },
+  { dx: 0, dy: 1, name: "suedost" },
+  { dx: -1, dy: 1, name: "suedwest" },
+  { dx: -1, dy: 0, name: "west" },
+  { dx: -1, dy: -1, name: "nordwest" },
+  { dx: 0, dy: -1, name: "nordost" }
+];
+
+export const SECHS_UNGERADE = [
+  { dx: 1, dy: 0, name: "ost" },
+  { dx: 1, dy: 1, name: "suedost" },
+  { dx: 0, dy: 1, name: "suedwest" },
+  { dx: -1, dy: 0, name: "west" },
+  { dx: 0, dy: -1, name: "nordwest" },
+  { dx: 1, dy: -1, name: "nordost" }
+];
+
+/* Welche Tabelle für diese Zeile gilt. Ungerade Zeilen liegen versetzt. */
+export const sechsRichtungen = (y) => ((y & 1) === 0 ? SECHS_GERADE : SECHS_UNGERADE);
+
+/* Die sechs Nachbarn eines Feldes, ohne die außerhalb der Karte. */
+export function sechsNachbarn(karte, x, y) {
+  const raus = [];
+  for (const r of sechsRichtungen(y)) {
+    const nx = x + r.dx, ny = y + r.dy;
+    if (karte.drin(nx, ny)) raus.push({ x: nx, y: ny, richtung: r });
+  }
+  return raus;
+}
+
+/* Versatzzeilen in Würfelkoordinaten. Nur dort ist die Entfernung eine
+   einfache Rechnung; in Versatzzeilen selbst wäre sie ein Wust von
+   Fallunterscheidungen — und jede davon eine Stelle, an der jemand sich
+   vertut. */
+function alsWuerfel(x, y) {
+  const wx = x - ((y - (y & 1)) >> 1);
+  const wz = y;
+  return { wx, wy: -wx - wz, wz };
+}
+
+/* Die Entfernung in Schritten — zugleich Laufweg und Schussweite. */
+export function sechsAbstand(ax, ay, bx, by) {
+  const a = alsWuerfel(ax, ay), b = alsWuerfel(bx, by);
+  return (Math.abs(a.wx - b.wx) + Math.abs(a.wy - b.wy) + Math.abs(a.wz - b.wz)) / 2;
+}

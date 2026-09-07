@@ -96,16 +96,20 @@ Die Reihenfolge unten ist **eine Empfehlung**, keine Festlegung — sie
 folgt einer einzigen Regel: *Was viele andere Sachen blockiert, kommt
 zuerst; was nur an sich selbst hängt, kann warten.*
 
-## Block A — die Frage, die alles andere aufhält
+## Block A — die Frage, die alles andere aufhielt
 
 Vorgang: #6
-**Abnahme:** Jannik hat „Sechseck-Regeln", „Sechsecke auch im Bild"
-oder „bleibt beim Quadrat" gesagt.
+**Abnahme:** erfüllt am 07.09.2026 — *„ja hexagon. raster form."*
 
-*Warum zuerst:* Sie ist die einzige Frage, die die Form jedes Feldes
-festlegt. Wer die Wasserbecken oder die Optik vorher baut, baut sie
-danach ein zweites Mal. Sie kostet Jannik fünf Minuten und uns sonst
-Wochen.
+*Warum sie zuerst kam:* Sie war die einzige Frage, die die Form jedes
+Feldes festlegt. Wer Wasserbecken oder Optik vorher baut, baut sie
+danach ein zweites Mal.
+
+*Offen geblieben, aber nicht blockierend:* ob die Felder auch **aussehen**
+sollen wie Sechsecke. Beide Wege beginnen mit denselben Regeln; erst
+danach unterscheiden sie sich, und nur im Zeichnen. Die Frage wird
+gestellt, wenn die Karte steht — dann ist sie ein Austausch des
+Bodenmalers, keine Regeländerung.
 
 ## Block B — der Unterbau
 
@@ -211,15 +215,28 @@ finden dieselbe Beute an denselben Stellen.
 ## Block E — die Home-Base
 
 Vorgang: #19
-**Abnahme:** Zwei Browser in derselben Base sehen sich gegenseitig
-flüssig laufen, ohne Runden — und nichts, was dort passiert, kann eine
-laufende Mission auseinanderlaufen lassen.
+**Abnahme:** Jede Kategorie ist mit einem Tipp erreichbar, die Base
+sieht bei jedem Start gleich aus, zwei Browser sehen dieselbe Lobby —
+und es geht **kein Ort** über die Leitung.
 
-*Warum zuletzt und trotzdem nicht später:* Die Base ist eine **zweite
-Spielart** — gleichzeitige Bewegung statt Runden. Sie berührt das
-Rundenspiel nicht, kann also unabhängig entstehen. Aber sie ist der
-Rahmen, in dem alles andere Sinn ergibt: Ohne Kiste ist Beute wertlos,
-ohne Missionen sind Biome Zierde.
+*Warum das jetzt einfach ist:* Hier stand bis zum 07.09.2026 die
+größte technische Warnung des ganzen Plans. Gleichzeitige Bewegung hat
+keine Reihenfolge, und das Netz-Koop von Hatred steht darauf, dass alle
+Rechner dieselben Züge in derselben Reihenfolge rechnen — zwei Spieler
+laufen zur selben Zeit, und wer zuerst da war, kann auf zwei Rechnern
+verschieden ausfallen.
+
+Jannik hat die Frage weggeräumt, bevor wir sie beantworten mussten:
+*„man könnte in der base auch statt sich zu bewegen einfach einen
+passendes ui haben mit lobby und den einzelnen handwerkern als
+kategorie"*. Wo niemand läuft, kann niemand aneinander vorbeilaufen.
+Kein zweiter Netzmodus, kein zweites Protokoll — nur Handlungen, wie
+das Spiel sie ohnehin schon verschickt.
+
+*Warum trotzdem zuletzt:* Die Base ist der Rahmen, in dem alles andere
+Sinn ergibt. Ohne Kiste ist Beute wertlos, ohne Missionen sind Biome
+Zierde. Sie kann unabhängig entstehen, aber sie braucht etwas, das sie
+umrahmt.
 
 ### Private Kiste — Besitz über alle Läufe
 

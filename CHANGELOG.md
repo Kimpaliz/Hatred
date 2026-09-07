@@ -3,6 +3,88 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Das Sechseckraster rechnet, ohne dass etwas umgeschaltet ist
+
+**Janniks Entscheidung, wörtlich:** *„ja hexagon. raster form."* (#6)
+
+Erster Schritt von #7 — und bewusst einer, der **nichts umstellt**. Die
+Sechseck-Rechnung liegt jetzt neben der alten und ist bewiesen; das
+Vierer-Raster ist weiter in Betrieb. Wer beides in einem Schritt macht,
+kann hinterher nicht mehr sagen, welche Hälfte den Fehler hatte.
+
+**Die Bauform: Versatzzeilen.** Jede ungerade Zeile liegt ein halbes Feld
+weiter rechts — wie Ziegel in einer Mauer. Ein Ziegel berührt genau
+sechs andere: zwei oben, zwei unten, einen links, einen rechts.
+
+*Warum das die Speicherform rettet:* `index: (x, y) => y * breite + x`
+gilt unverändert weiter. `macheKarte`, die fünf Datenreihen, `summe()`
+und damit das ganze Netzprotokoll bleiben unangetastet. Was sich ändert,
+ist allein, **wer neben wem liegt** und **wie weit es ist**.
+
+**Neu in `spiel/gitter.mjs`:** `SECHS_GERADE`, `SECHS_UNGERADE`,
+`sechsRichtungen(y)`, `sechsNachbarn(karte, x, y)`,
+`sechsAbstand(ax, ay, bx, by)`. Die Datei wuchs von 210 auf 304 Zeilen.
+
+*Warum zwei Richtungstabellen und nicht eine:* Auf einer geraden Zeile
+liegen die oberen Nachbarn links und mittig, auf einer ungeraden mittig
+und rechts. Wer eine Tabelle für beide nimmt, bekommt eine Nachbarschaft,
+die **nicht gegenseitig** ist — A sieht B, B sieht A nicht. Im Kampf
+hieße das: Man wird von jemandem geschlagen, den man selbst nicht
+erreichen kann.
+
+*Warum nur ein Entfernungsmaß:* Auf dem Quadrat braucht es zwei
+(`abstand` fürs Laufen, `schussweite` fürs Schießen), weil die Diagonale
+nicht beides zugleich sein kann. Sechs gleichwertige Nachbarn haben das
+Problem nicht. `sechsAbstand` ist beides.
+
+**Neu: `werkzeuge/pruefe-sechseck.mjs`** — 26 Behauptungen. Die
+tragende darunter prüft die beiden Hälften **gegeneinander** statt jede
+gegen sich selbst: Eine Breitensuche läuft ausschließlich über die
+Richtungstabelle und zählt Schritte; die Formel rechnet dieselbe Strecke,
+ohne die Tabelle je anzusehen. Für **jedes** Feldpaar müssen beide Zahlen
+gleich sein — das kann nur stimmen, wenn Tabelle und Formel dasselbe
+Raster meinen.
+
+**Messungen:**
+
+| Messung | Wert |
+| --- | --- |
+| Karte 21 × 17, Felder im Inneren | **285**, alle mit sechs Nachbarn |
+| einseitige Nachbarschaften | **0** |
+| Felder von (10,8) durchgezählt | **357**, weiteste Entfernung 14 |
+| Schritte gegen Formel | **überall gleich** |
+| Ringe um (20,20) | 1 · **6** · **12** · **18** · **24** · **30** |
+
+Die Ringe sind die Signatur: Ein Ring im Abstand *n* hat **6n** Felder.
+Auf einem Quadratraster mit vier Richtungen wären es 4n.
+
+**Rotprobe — dreimal, und einmal davon lehrreich:**
+
+| absichtlicher Fehler | was anschlug |
+| --- | --- |
+| eine Tabelle für beide Zeilen | **5 von 26** fielen — „Nachbarschaft ist gegenseitig: ist 640, soll 0", dazu „gelaufen 2, gerechnet 3" |
+| Versatz auf die andere Zeilenhälfte gelegt | **2 von 26** — „(1,0)→(0,1) ist 2" und „gelaufen 1, gerechnet 2" |
+| fünf Richtungen statt sechs | **6 von 26** — „die gerade Zeile hat sechs Richtungen: ist 5, soll 6" |
+
+*Und der lehrreiche Teil:* Der erste Versuch der zweiten Rotprobe schrieb
+`x - (y >> 1)` statt `x - ((y - (y & 1)) >> 1)` — und die Prüfung blieb
+grün. Zu Recht: Für nicht-negative `y` rundet `>>` ohnehin ab, beide
+Ausdrücke sind **derselbe Wert**. Es war gar kein eingebauter Fehler.
+Erst der Versatz auf die andere Zeilenhälfte war einer.
+
+Das ist genau der Grund, warum jede Prüfung einmal rot gewesen sein
+muss: Ohne den zweiten Anlauf stünde hier eine Rotprobe, die nie eine
+war.
+
+**Ausdrücklich noch nicht getan:** Nichts ist umgestellt. `RICHTUNGEN`
+hat weiter vier Einträge, `schussweite` gibt es noch — und eine eigene
+Behauptung wacht darüber, damit niemand die Umstellung versehentlich
+in diesen Schritt hineinzieht.
+
+Kette: **40 Prüfungen grün** (vorher 39).
+
+---
+
 ## 07.09.2026 — Welle 2 ist geplant: achtzehn Vorgänge
 
 **Auftrag, wörtlich:** *„erstelle die passenden issues erst mal dazu und
