@@ -3,6 +3,158 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Ein Wort vor dem Vorlauf: der Torwächter
+
+**Auftrag, wörtlich:** *„main schuetzen so das nur ich und freunde das
+spiel spielen koennen"* — und Jannik hat aus vier Möglichkeiten
+ausdrücklich die gewählt, die ihm vorher als die **schwächste**
+beschrieben worden ist: ein Zugangswort im Spiel selbst. Ihm ist gesagt
+worden, dass das kein echter Schutz ist, weil alles, was der Browser
+prüft, auch im Browser steht. Er will es trotzdem. Also ist es so gut
+gebaut, wie ein Riegel sein kann — und in der Doku steht ohne
+Beschönigung, was er ist und was nicht.
+
+**Für Jannik:** Wer die Seite aufruft, sieht zuerst eine Seite mit einem
+Feld: *„Tipp das Wort ein, das du von ihm bekommen hast."* Stimmt das
+Wort, kommt der gewohnte Vorlauf, und der Browser merkt sich das — beim
+nächsten Mal wird nicht wieder gefragt. Groß oder klein geschrieben ist
+egal, Leerzeichen vorn und hinten auch. Ein falsches Wort gibt einen
+ruhigen Satz und lässt das Getippte stehen. Das Wort wechseln kannst du
+selbst:
+
+```bash
+node werkzeuge/zugangswort.mjs <neues wort>
+```
+
+Das Werkzeug druckt die eine Zeile, die in `runtime/torwaechter.js`
+ausgetauscht wird, und sagt in einem Satz, was du damit tust.
+
+### Was der Riegel ist — und was nicht
+
+Der Fingerabdruck des Wortes wird **mit ausgeliefert**; wer die Seite
+öffnet, kann ihn lesen. Er lässt sich mit genug Rechenzeit
+durchprobieren. Er hält den Zufallsbesucher ab, der die Adresse
+aufgeschnappt hat, und sonst nichts. Echter Schutz bräuchte einen
+Server, der das Wort prüft und das Spiel erst danach herausgibt — und
+einen Server will dieses Projekt ausdrücklich nicht (CLAUDE.md,
+„Ausdrücklich nicht gefordert"). Der ganze Absatz steht ausführlich in
+der Kopfnotiz von `runtime/torwaechter.js`.
+
+### Was gemessen wurde
+
+| Was | Wert | Befehl |
+| --- | --- | --- |
+| Runden je Versuch | **200.000** | `node werkzeuge/pruefe-torwaechter.mjs` |
+| Ein Rateversuch | **26,6 ms** | dito |
+| 200.000 Runden gegen 2.000 Runden | **70-fache** Dauer | dito |
+| Ein Wörterbuch mit 500.000 Wörtern | **3,7 Stunden** | dito |
+| Wörterbuchangriff auf die Tor-Dateien | **711 Wörter in 22,3 s**, kein Treffer | dito |
+| Wörterbuchangriff auf den **ganzen** Baum | **11.471 Wörter in 335,6 s** (29,3 ms je Versuch), kein Treffer | `node werkzeuge/zugangswort.mjs --suche` |
+| Behauptungen der neuen Prüfung | **106** | `node werkzeuge/pruefe-torwaechter.mjs` |
+| Neue Zeilen | 587 (`torwaechter.js`), 247 (`zugangswort.mjs`), 677 (Prüfung) | `wc -l` |
+| Behauptungen der Kette | **12.636 → 12.767** | `node werkzeuge/pruefe-alles.mjs` |
+| Prüfungen der Kette | **43 → 44** | dito |
+
+### Der Fund, der die ganze Arbeit gerechtfertigt hat
+
+Als Zugangswort war ein Wort vorgegeben, das **dreizehnmal im
+Repository stand** — der Name einer Figur aus dem eigenen Katalog. Kein
+Mensch hat das bemerkt; die erste vollständige Suche hat es in 337,8
+Sekunden gefunden und beim Namen genannt:
+
+```
+  11455 Wörter in 337.8 s (29.5 ms je Versuch)
+  ✗ Das Zugangswort steht im Repository:
+```
+
+Damit war es keins: Der Katalog wird mit ausgeliefert, und wer die
+Wörter dieses Baums der Reihe nach gegen das Tor hält, hat es in einer
+knappen Viertelstunde. Das Wort ist deshalb **nicht genommen** worden;
+im Tor steht der Fingerabdruck eines Wortes, das in keiner Datei
+vorkommt, und Jannik bekommt es außerhalb des Repositorys gesagt.
+Wechseln kann er es jederzeit mit dem Werkzeug.
+
+Und weil derselbe Fehler jedem wieder passieren kann, sucht
+`werkzeuge/zugangswort.mjs` jetzt **vor** dem Rechnen: Beim Wechseln des
+Wortes ist es genau einmal im Klartext da, und dann ist eine wörtliche
+Suche in Millisekunden erledigt statt in fünfeinhalb Minuten. Wer ein
+Wort nimmt, das schon dasteht, bekommt keine Zeile zum Austauschen,
+sondern die Fundstelle.
+
+### Wie das Wort geprüft wird
+
+`runtime/torwaechter.js` trägt **nur einen Fingerabdruck**, nie das
+Wort. Er entsteht aus FNV-1a über (Salz + Wort), **200.000 Mal
+wiederholt** — reines JavaScript mit `Math.imul` und XOR, ohne
+`crypto.subtle`: Das Spiel soll auch als einzelne Datei von der
+Festplatte laufen (`file://`), und dort gibt der Browser die Web-Krypto
+nicht heraus. Zwei Ströme mit verschiedenen Anfangswerten ergeben 64
+Bit. Verglichen wird in **konstanter Zeit** — alle Stellen werden
+durchlaufen, in der Schleife steht weder `break` noch `return`.
+
+Gemerkt wird im Browser (`localStorage`) **nicht das Wort, sondern der
+Fingerabdruck**: Wer den Speicher ausliest, hat genau das, was ohnehin
+im Quelltext steht. Jeder Zugriff steht in `try`/`catch`, und zwar schon
+der Zugriff selbst — im privaten Fenster wirft bereits
+`globalThis.localStorage`, nicht erst `getItem`.
+
+### Die wichtigste Behauptung: das Wort steht in keiner Datei
+
+`werkzeuge/pruefe-torwaechter.mjs` sucht nicht nach dem Wort — es kennt
+es nicht. Es hält **jedes Wort des Baums gegen das Tor**: Öffnet eines,
+steht es im Repository. Geprüft werden bei jedem Lauf die Wörter, die es
+**nur** in den Dateien gibt, in denen vom Tor die Rede ist (711 Stück,
+gemessen am 07.09.2026 — die Zahl wächst mit jeder Notiz, die vom Tor
+spricht) —
+genau dort landet ein Versehen. Vom Changelog zählt nur die oberste
+Notiz; jede war einmal die oberste und ist dabei geprüft worden.
+`node werkzeuge/zugangswort.mjs --suche` nimmt den ganzen Baum. Dass das
+Minuten dauert, ist kein Mangel: Es **ist** ein Wörterbuchangriff auf
+das eigene Tor, und dass er Minuten braucht statt Sekunden, ist der
+Beweis, dass die Runden wirken.
+
+### Jede Behauptung war zuerst rot
+
+**Einmal war es von selbst rot, und das zählt am meisten:** Der
+Wörterbuchangriff über den ganzen Baum hat das vorgegebene Zugangswort
+gefunden (siehe oben). Dazu **sechsundzwanzig** absichtliche Fehler,
+jeder einzeln eingebaut, angeschlagen gesehen und zurückgenommen — unter
+anderem: `wortStimmt` gibt immer
+`true` (12 Behauptungen fallen, darunter *„keins der 12 naheliegenden
+Wörter öffnet das Tor: ist 12, soll 0"*); der Fingerabdruck wird auf den
+eines Wortes gesetzt, das im Baum steht (*„kein Wort der Tor-Dateien
+öffnet das Tor — «zugangswort» in WORKCLAIM.md"*); eine statt 200.000
+Runden (*„200.000 Runden dauern 0-mal so lange wie 2.000"*); ein
+`return` in der Vergleichsschleife (*„genau ein `return`: ist 2, soll
+1"*); `try`/`catch` um den Speicher entfernt (*„ist «WIRFT: Zugriff auf
+Website-Daten verweigert», soll false"*); der Knopf auf 24 Bildpunkte
+(*„die Fläche «eintreten» ist 24 Bildpunkte hoch, nötig sind 48"*); und
+die neue Absage des Werkzeugs abgeschaltet (*„ein Wort, das schon im
+Baum steht, wird abgelehnt"*).
+
+Zwei Funde kamen aus diesen Rotläufen selbst und sind behoben: Die
+Prüfung **stürzte ab**, statt den Fund zu melden — und eine abgestürzte
+Prüfung druckt keine einzige ihrer Behauptungen, auch nicht die
+gefallene (Fehlerbuch C5). Und die Durchsicht des Speichers stand
+**vor** dem Öffnen des Tores; ein Tor, das nebenher das Wort selbst
+hinterlegt, wäre nicht aufgefallen.
+
+### Was sonst noch geändert wurde, und warum
+
+`runtime/start.js` baut den Vorlauf jetzt erst, wenn das Tor offen ist
+(vorher unbedingt); Zeiger, Tastatur, Einfügen und Größenänderung gehen
+an das Tor, solange es zu ist. `werkzeuge/buehne-browser.mjs` bekommt
+`torSchonOffen()` — den Browser eines Mitspielers, der das Wort schon
+einmal getippt hat. `pruefe-app.mjs`, `pruefe-einstieg.mjs` und
+`pruefe-tippen.mjs` rufen es einmal auf: Sie messen den Vorlauf und das
+Spiel dahinter, nicht das Tor, und ohne den zweiten Start gäbe es für
+sie gar keinen Vorlauf mehr. Das ist die übliche Ausnahme zu Regel 2
+(Prüfdateien dürfen mit) und steht deshalb hier. `index.html` und
+`docs/WEGWEISER.md` bekommen je einen Verweis auf die neue Datei.
+
+**Kette auf diesem Stand: 44 von 44 grün in 86,9 s** (vorher 43 in 66,0 s;
+die neue Prüfung braucht 23,3 s, davon 22,3 s für den Wörterbuchangriff
+auf das eigene Tor).
 ## 07.09.2026 — Gesten-Hörer von der Spieleingabe unterscheiden
 
 Die bestehende Touch-Prüfung zählt Vorlauf-Hörer gezielt am Canvas und

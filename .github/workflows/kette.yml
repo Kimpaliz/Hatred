@@ -1,0 +1,72 @@
+# [Aufgabe: Werkzeug] Die Prüfkette läuft bei jedem Stand, der auf
+# `main` ankommt — auf einem fremden Rechner, nicht auf dem eigenen.
+#
+# ── Warum hier NICHT veröffentlicht wird ─────────────────────────────
+#
+# Bis zum 07.09.2026 stand hier ein zweiter Veröffentlichungsweg:
+# `configure-pages`, `upload-pages-artifact` und `deploy-pages` über die
+# Umgebung `github-pages`. Er hat nie funktioniert und konnte es auch
+# nicht. Gemessen am 07.09.2026, beim ersten Stand, der `main` je
+# erreicht hat: Lauf 34142713477 endete nach **einer Sekunde** mit
+# `failure`, ohne einen einzigen Schritt auszuführen und ohne ein
+# einziges Protokoll — die Signatur einer verweigerten Umgebung.
+#
+# Der Grund ist eine Einstellung des Ablageorts, die dieser Ablauf nicht
+# sehen kann: Die Seite wird aus dem Zweig `gh-pages` ausgeliefert
+# („Deploy from a branch"). Dann gehört die Umgebung `github-pages`
+# allein dem eingebauten Ablauf `pages build and deployment`, und jeder
+# fremde Ablauf, der sie anfordert, wird abgewiesen, bevor er beginnt.
+# Nachweis, dass der andere Weg lebt: derselbe eingebaute Ablauf, Nummer
+# 34137617843 auf `gh-pages`, Stand ebe3b27 — `success`.
+#
+# Zwei Wege ins Netz wären ohnehin zwei Wahrheiten. Der Zweig `gh-pages`
+# trägt bewusst **nicht** den ganzen Ordner, sondern die 63 Dateien, die
+# ein Browser wirklich anfragt — ohne `werkzeuge/`, ohne `CLAUDE.md`,
+# ohne `WORKCLAIM.md`. Was hier stattdessen bleibt, ist der Teil, der
+# etwas beweist: Die Kette läuft auf einem Rechner, der nichts von der
+# Werkstatt weiß, in der der Stand entstanden ist.
+#
+# ── Warum die ganze Kette und keine Einzelschritte ───────────────────
+#
+# Vorher standen hier zwei benannte Schritte, „Prüfkette" und
+# „Pfade prüfen" mit `werkzeuge/pruefe-verweise.mjs`. Der zweite war
+# eine Fehlannahme: Diese Datei hält Markdown-Verweise in der Doku gegen
+# die Platte und sieht keinen einzigen Importpfad. Regel 14 („Alle
+# Importpfade sind relativ") wird von `werkzeuge/pruefe-einstieg.mjs`
+# und `werkzeuge/pruefe-app.mjs` bewiesen, und beide laufen in der Kette
+# ohnehin mit — genau wie `pruefe-verweise.mjs` selbst. Ein zweiter
+# Aufruf derselben Datei prüfte nichts doppelt, er behauptete es nur.
+#
+# ── Arbeitet zusammen mit ────────────────────────────────────────────
+#
+# `werkzeuge/pruefe-alles.mjs` (die Kette selbst), der Zweig `gh-pages`
+# (der Weg ins Netz), `.nojekyll` und `index.html` (dort liegen die
+# beiden Fallstricke der Auslieferung, begründet in ihren eigenen
+# Kopfnotizen), `docs/REGELN.md` 14.
+
+name: Kette auf main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kette-main
+  cancel-in-progress: false
+
+jobs:
+  kette:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Prüfkette
+        run: node werkzeuge/pruefe-alles.mjs
