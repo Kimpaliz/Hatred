@@ -648,7 +648,10 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
       zeichneAbgrund(karte, x, y, ecke, gedaempft);
       gelaende.zeichneTiefe(karte, x, y, ecke, gedaempft);
     }
-    if (karte.rampe[i] !== RAMPE.keine) {
+    /* Die Erzeugung kann ein altes Rampenmerkmal unter Fels oder Loch
+       belassen. Dort darf keine Treppe die fertige Oberfläche überdecken. */
+    if (karte.rampe[i] !== RAMPE.keine
+      && hindernis !== HINDERNIS.wand && hindernis !== HINDERNIS.abgrund) {
       gelaende.zeichneTreppe(karte, x, y, i, ecke, gedaempft);
     }
     if (hindernis !== HINDERNIS.keins && hindernis !== HINDERNIS.wand) {

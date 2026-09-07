@@ -95,6 +95,10 @@ export function macheGelaendeBild({
   }
 
   function treppeVerbindet(karte, x, y, nx, ny) {
+    const hier = karte.hindernisBei(x, y);
+    const dort = karte.hindernisBei(nx, ny);
+    if (hier === HINDERNIS.wand || hier === HINDERNIS.abgrund
+      || dort === HINDERNIS.wand || dort === HINDERNIS.abgrund) return false;
     const von = rampeZeigtNach(karte, x, y);
     const nach = rampeZeigtNach(karte, nx, ny);
     return (von && x + von.dx === nx && y + von.dy === ny)
