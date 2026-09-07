@@ -751,6 +751,99 @@ Grund- und Zweitton, und daran sieht man beim Laufen die eigene
 Bewegung — von 1.407 benachbarten Bodenpaaren gleicher Art und Ebene
 sind auf derselben Karte nur 437 farbgleich, also 31,1 %. Ob dort
 zusätzlich gekörnt wird, ist eine eigene Entscheidung von Jannik.
+## 07.09.2026 — Drei der fünf Scotophobia-Merkmale sind bewiesen statt behauptet
+
+**Abnahme von #9, wörtlich:** *„Fünf benannte, prüfbare Merkmale sind
+grün — Licht in mindestens fünf Stufen, farbige Quellen mischen sich,
+Körnung im Fels, harte Kanten, Vorlauf im selben Ton."*
+
+Die Merkmale **1, 2 und 4** waren schon wahr — es fehlte der Beweis.
+Deshalb wurde **keine Zeile Zeichencode geändert**: `git diff --stat`
+gegen `kern/sechseck` zeigt **drei** Dateien, und keine davon liegt
+unter `runtime/` oder `spiel/`. Was sich ändert, sind die Prüfungen.
+
+Gemessen mit `node werkzeuge/pruefe-bild.mjs` und
+`node werkzeuge/pruefe-zeichnen.mjs`: **147 statt 138** Behauptungen im
+Licht, **145 statt 104** im Weltzeichner.
+
+### Merkmal 1 — „Licht in mindestens fünf Stufen"
+
+Die Untergrenze stand auf **4** und war damit lockerer als Janniks
+Wortlaut. Sie steht jetzt auf **5**. Gemessen in einer Szene mit fünf
+Quellen (Fackel, Arkan, Schleim, Gift, Gold): **7 von 8 Sprossen** je
+Kanal — 0,1429 0,2857 0,4286 0,5714 0,7143 0,8571 1,0000. Sprosse 0
+kommt nie vor, weil `GRUNDHELLE` 0,16 schon auf Sprosse 1 fällt.
+
+Daneben steht eine **zweite Zählung**, die die erste nicht leisten
+kann: verschiedene **RGB-Tripel** statt Kanalwerte — **82 von höchstens
+512** (`STUFEN³`, **nicht** 8; wer beide Zählungen in dasselbe Set
+schreibt, macht die Prüfung rot, ohne dass etwas kaputt wäre). Ein
+farbloser Grauverlauf hätte hier genauso viele Tripel wie Sprossen,
+nämlich 7. Beide Zahlen werden am Dateiende mitgedruckt.
+
+**Rotprobe:** `STUFEN` in `runtime/licht.js` kurz auf 2 gesetzt →
+**7 von 147** Behauptungen gefallen, darunter „Licht in mindestens fünf
+Stufen, nicht als Schalter (2 Sprossen)" und „die fünf Quellen
+überlagern einander wirklich (8 Tripel, gemessen 82)". Zurückgenommen.
+
+### Merkmal 2 — „farbige Quellen mischen sich"
+
+Diesen Abschnitt gab es **gar nicht**. Er heißt jetzt „4 ·
+Farbmischung" und misst auf der Warm-Kalt-Achse `r − b`, auf Feld (8,6)
+zwischen einer Fackel (#ff9438) bei (4,6) und einem Arkanlicht
+(#5c8cff) bei (12,6):
+
+| | r | g | b | r − b |
+| --- | --- | --- | --- | --- |
+| nur Fackel | 0,8571 | 0,5714 | 0,2857 | **+0,5714** |
+| nur Arkan | 0,2857 | 0,4286 | 0,5714 | **−0,2857** |
+| beide | 1,0000 | 0,7143 | 0,7143 | **+0,2857** |
+
+Die Mischung liegt **echt zwischen** beiden Einzelquellen — genau das
+täte sie nicht, wenn die zuletzt gerechnete Quelle die andere
+überschriebe.
+
+Die Geometrie ist empfindlich, und das steht als Begründung im Code:
+Bei Abstand **5** reicht das Arkanlicht nicht mehr bis zur Mitte
+(r − b = 0,0000), die „Mischung" ist die reine Fackel und die Prüfung
+wäre grün, ohne etwas zu zeigen; bei Abstand **3** stoßen alle drei
+Kanäle an 1,0000 und die Mischung ist reines Weiß. Ohne diese Notiz
+repariert der Nächste die Prüfung statt des Fehlers.
+
+**Rotprobe:** in `quelleAus` kurz `r = g = b = 255` erzwungen →
+**8 von 147** gefallen. Zwei Behauptungen blieben dabei grün („die
+Mischung ist nicht die reine Fackel"): Weißes Licht ergibt drei
+**verschiedene** Grauwerte. Genau dafür steht dort eine vierte
+Behauptung — „die Mischung hat noch einen Ton und ist kein farbloses
+Weiß" —, und sie fiel. Zurückgenommen.
+
+### Merkmal 4 — „harte Kanten"
+
+Bisher lief die Frage nebenbei mit, an zwei Fenstergrößen und ohne
+Zahl. Jetzt heißt der Abschnitt „2 · Harte Kanten" und druckt sie:
+
+- **0 von 607.095 Rechtecken** auf einem halben Bildpunkt, über
+  **8 Fenstergrößen × 5 Bilder**, Vergrößerungen 1 2 3 4 5 6 11.
+  Darunter krumme Fenster (1237×813, 4001×3697) und das Hochformat
+  eines Handys (412×915).
+- **`vergroesserungFuer` über 1.088 Fenstergrößen**: **0** nicht
+  ganzzahlig, Spanne **1 bis 11 ohne Lücke** (`MINDEST_KANTE` 336).
+
+Keine sechste Fassung von `ersterBruch`: Der vorhandene Abschnitt wurde
+erweitert. Was `pruefe-schrift.mjs` (passt die volle Sicht hinein?) und
+`pruefe-tippen.mjs` (Androids krumme 2,625 ergibt dasselbe ganze Blatt)
+schon fragen, steht als Verweis in der Kopfnotiz und wird nicht
+wiederholt.
+
+**Rotprobe:** `Math.floor` in `vergroesserungFuer` entfernt → **24 von
+145** gefallen, und die gedruckte Zahl kippte von „0 von 607.095" auf
+„7 von 599.615". Zurückgenommen; `git diff --stat runtime/` ist leer.
+
+### Was bewusst nicht geändert wurde
+
+`runtime/licht.js`, `runtime/kamera.js` und `runtime/zeichnen.js` —
+kein Byte. Die Merkmale **3 („Körnung im Fels")** und **5 („Vorlauf im
+selben Ton")** stehen noch aus; #9 ist damit noch nicht abgenommen.
 
 ## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 

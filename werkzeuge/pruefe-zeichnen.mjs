@@ -20,6 +20,11 @@
    Geprüft wird der Fall, der ohne die Arbeit falsch wäre — nicht der,
    der ohnehin gewinnt:
 
+   · **Harte Kanten.** Kein Rechteck auf einem halben Bildpunkt, und
+     die Vergrößerung ohne Komma — bei jeder Fenstergröße, nicht nur
+     bei den beiden, die man von Hand ausprobiert. Das ist Janniks
+     viertes Merkmal für die Kerkerstimmung und steht als eigener
+     Abschnitt „2 · Harte Kanten" mit einer mitgedruckten Zahl da.
    · Eine Ebenenkante muss einen **schwarzen Balken der richtigen
      Höhe** erzeugen. Ohne ihn ist die Höhe im Bild unsichtbar, und
      das ganze Höhensystem des Spiels wäre umsonst.
@@ -58,7 +63,7 @@ import {
 } from "../runtime/palette.js";
 import { KACHEL, LICHTPUNKT, macheLichtwerk } from "../runtime/licht.js";
 import { machePartikelwerk } from "../runtime/partikel.js";
-import { macheKamera } from "../runtime/kamera.js";
+import { MINDEST_KANTE, macheKamera, vergroesserungFuer } from "../runtime/kamera.js";
 import {
   DING_NAMEN, GLUT_TAKT, RAMPEN_STRICHE, RISS_ANTEIL, STRICH_HELLE, STRICH_LAENGE,
   STRICH_LAGEN, WAND_FLANKE, WAND_STUFEN, hoeheBei, macheZeichner, wandTon
@@ -231,47 +236,141 @@ abschnitt("1 · Anlegen");
   gleich(DING_NAMEN[HINDERNIS.wand], null, "die Wand ist ein Block und kein Sprite");
 }
 
-/* ── 2 · Ganze Bildpunkte, auch bei Vergrößerung 3 ──────────────────
-   Vergrößerung 1 verzeiht jeden Rundungsfehler, weil eine halbe
-   logische Einheit dort auch ein halber Bildschirmpunkt wäre. Erst
-   bei 3 zeigt sich, wer zuerst multipliziert und dann rundet. */
-abschnitt("2 · Ganze Bildpunkte");
-{
-  const karte = macheProbeKarte();
-  karte.setze(5, 5, { ebene: 3 });
-  karte.setze(5, 6, { ebene: 2, rampe: RAMPE.nordost });
-  karte.setze(6, 5, { hindernis: HINDERNIS.wand });
-  karte.setze(9, 9, { fluessig: FLUESSIG.lava });
-  karte.setze(10, 9, { fluessig: FLUESSIG.schleim });
-  karte.setze(3, 3, { hindernis: HINDERNIS.fass });
-  karte.setze(3, 4, { hindernis: HINDERNIS.fackelsockel });
-  karte.lichter = [{ x: 4, y: 4, art: "fackel", staerke: 1 }];
-  const zustand = {
-    karte,
-    wesen: [
-      { id: 1, art: "spaeher", seite: "jaeger", x: 4, y: 4, lebt: true, spielerPlatz: 1 },
-      { id: 2, art: "kraetzling", seite: "brut", x: 8, y: 8, lebt: true }
-    ]
-  };
-  const merker = {
-    reichweite: new Set([karte.index(4, 4), karte.index(5, 4)]),
-    weg: [{ x: 5, y: 4 }, { x: 6, y: 4 }],
-    ziel: { x: 8, y: 8 },
-    marken: [{ x: 7, y: 7, zeichen: "wachtauge" }]
-  };
+/* ── 2 · Harte Kanten, ganzzahlige Vergrößerung ─────────────────────
 
-  for (const [breite, hoehe, erwartet] of [[320, 180, 1], [1600, 1080, 3]]) {
+   Janniks viertes Merkmal für die Kerkerstimmung, aus seinem
+   Wortlaut: „Exaktes top down. Pixel grafik." Im Bild heißt das genau
+   zwei Dinge, und beide stehen hier: **kein Rechteck auf einem halben
+   Bildpunkt** und **keine Vergrößerung mit Komma** (Fehlerbuch D1).
+
+   Vergrößerung 1 verzeiht jeden Rundungsfehler, weil eine halbe
+   logische Einheit dort auch ein halber Bildschirmpunkt wäre. Erst ab
+   2 zeigt sich, wer zuerst multipliziert und dann rundet. Deshalb
+   werden acht Fenstergrößen durchgezeichnet, darunter krumme wie
+   1237×813 und 4001×3697 und das Hochformat eines Handys (412×915).
+
+   ── Was anderswo steht und hier nicht noch einmal gefragt wird ─────
+
+   `pruefe-schrift.mjs` würfelt 1.000 Fenster und fragt, ob die volle
+   Sicht (`MINDEST_FELDER`) hineinpasst — eine Frage an die *Größe*
+   des Ausschnitts. `pruefe-tippen.mjs` fährt vier
+   Bildpunktverhältnisse durch, darunter Androids krumme 2,625, und
+   verlangt, dass alle vier dasselbe ganzzahlige Blatt ergeben — eine
+   Frage an das *Blatt*. Hier steht die dritte und einzige noch offene
+   Frage: Liegt das, was am Ende **gezeichnet** wird, bei jeder dieser
+   Vergrößerungen auf ganzen Bildpunkten? Sie braucht den vollen
+   Zeichner und kann deshalb nur hier stehen.
+
+   Die Zahl wird mitgedruckt, statt nur nebenbei geprüft zu werden:
+   Wenn aus „0 von einer halben Million" einmal „0 von zwölf" wird,
+   fällt das nur auf, wenn die Zahl im Protokoll steht. */
+abschnitt("2 · Harte Kanten");
+{
+  /* Erst die Vergrößerung selbst: ein systematischer Gang über 34
+     Breiten × 32 Höhen = 1.088 Fenstergrößen. Die Schritte 111 und
+     123 sind mit Absicht krumm — glatte Vielfache von `MINDEST_KANTE`
+     träfen jede Grenze genau und ließen einen Rundungsfehler
+     unentdeckt. */
+  const BREITEN = Array.from({ length: 34 }, (_, i) => 320 + i * 111);
+  const HOEHEN = Array.from({ length: 32 }, (_, j) => 180 + j * 123);
+  let krumm = 0;
+  let zuKlein = 0;
+  const gesehen = new Set();
+  for (const breite of BREITEN) {
+    for (const hoehe of HOEHEN) {
+      const v = vergroesserungFuer(breite, hoehe);
+      if (!Number.isInteger(v)) krumm++;
+      if (v < 1) zuKlein++;
+      gesehen.add(v);
+    }
+  }
+  const stufen = [...gesehen].sort((a, b) => a - b);
+  const wieViele = BREITEN.length * HOEHEN.length;
+  gleich(wieViele, 1088, "der Gang deckt 1.088 Fenstergrößen ab");
+  gleich(krumm, 0, `keine der ${wieViele} Vergrößerungen hat ein Komma`);
+  gleich(zuKlein, 0, "keine Vergrößerung fällt unter 1 — ein Fenster ist nie zu klein");
+  gleich(stufen[0], 1, "die kleinste Vergrößerung ist 1");
+  /* Und die Spanne hat keine Lücke: 1, 2, 3 … bis zur größten. Ohne
+     das bestünde der Gang auch bei einer Funktion, die nur 1 und 40
+     kennt — und dazwischen sprünge das Bild. Gefragt wird über die
+     Anzahl und nicht über die Liste: Bei einer krummen Vergrößerung
+     stünden sonst sechzig Kommazahlen im Fehlertext. */
+  gleich(stufen.length, stufen[stufen.length - 1],
+    `die Spanne 1 bis ${stufen[stufen.length - 1]} hat keine Lücke (${stufen.length} Werte)`);
+  const vergroesserungsBericht = `Vergrößerung über ${wieViele} Fenstergrößen `
+    + `(${BREITEN[0]}–${BREITEN[BREITEN.length - 1]} × ${HOEHEN[0]}–${HOEHEN[HOEHEN.length - 1]}): `
+    + `${krumm} nicht ganzzahlig, Spanne ${stufen[0]} bis ${stufen[stufen.length - 1]} `
+    + `ohne Lücke, MINDEST_KANTE ${MINDEST_KANTE}`;
+
+  /* Und nun die Wirkung. Die Karte ist mit 64 × 48 Feldern größer als
+     das größte Fenster zeigt — sonst zeichnete ein 3840×2160-Fenster
+     überwiegend Kartenrand, und die Zahl käme nicht zustande. */
+  const bauKarte = () => {
+    const karte = macheProbeKarte(64, 48, 90210);
+    for (let x = 0; x < karte.breite; x++) karte.setze(x, 21, { ebene: 3 });
+    karte.setze(19, 22, { ebene: 2, rampe: RAMPE.nordost });
+    karte.setze(22, 21, { hindernis: HINDERNIS.wand });
+    karte.setze(24, 24, { fluessig: FLUESSIG.lava });
+    karte.setze(25, 24, { fluessig: FLUESSIG.schleim });
+    karte.setze(17, 18, { hindernis: HINDERNIS.fass });
+    karte.setze(17, 19, { hindernis: HINDERNIS.fackelsockel });
+    karte.lichter = [{ x: 18, y: 19, art: "fackel", staerke: 1 }];
+    return karte;
+  };
+  const FENSTER = [
+    [320, 180, 1], [412, 915, 1], [1237, 813, 2], [1920, 1080, 3],
+    [2560, 1440, 4], [1699, 2003, 5], [3840, 2160, 6], [4001, 3697, 11]
+  ];
+  const ZEITEN = [0, 0.2, 0.55, 1.1, 1.7];
+  let alleRechtecke = 0;
+  let brueche = 0;
+  const gezeichnete = new Set();
+  for (const [breite, hoehe, erwartet] of FENSTER) {
+    const karte = bauKarte();
+    const zustand = {
+      karte,
+      wesen: [
+        { id: 1, art: "spaeher", seite: "jaeger", x: 20, y: 20, lebt: true, spielerPlatz: 1 },
+        { id: 2, art: "kraetzling", seite: "brut", x: 24, y: 23, lebt: true }
+      ]
+    };
+    const merker = {
+      reichweite: new Set([karte.index(20, 20), karte.index(21, 20)]),
+      weg: [{ x: 21, y: 20 }, { x: 22, y: 20 }],
+      ziel: { x: 24, y: 23 },
+      marken: [{ x: 23, y: 23, zeichen: "wachtauge" }]
+    };
     const stand = macheStand(karte, breite, hoehe);
     stand.zeichner.setzeFenster(breite, hoehe);
     gleich(stand.kamera.vergroesserung, erwartet, `Vergrößerung bei ${breite}×${hoehe}`);
-    stand.zeichner.bild(zustand, { merker }, 0.4);
+    gleich(vergroesserungFuer(breite, hoehe), erwartet,
+      `${breite}×${hoehe}: Kamera und freie Funktion rechnen dieselbe Zahl`);
+    gezeichnete.add(erwartet);
+    for (const zeit of ZEITEN) {
+      stand.zeichner.bild(zustand, { folgt: { x: 20, y: 20 }, merker }, zeit);
+    }
+    const rechtecke = nurArt(stand.ctx.aufrufe, "rechteck");
     const bruch = ersterBruch(stand.ctx.aufrufe);
+    if (bruch) brueche++;
+    alleRechtecke += rechtecke.length;
     behaupte(bruch === null,
-      `bei Vergrößerung ${erwartet} liegt jedes Rechteck auf ganzen Bildpunkten`
+      `${breite}×${hoehe} bei Vergrößerung ${erwartet}: jedes der ${rechtecke.length} `
+      + `Rechtecke liegt auf ganzen Bildpunkten`
       + (bruch ? ` — ${JSON.stringify(bruch)}` : ""));
-    behaupte(nurArt(stand.ctx.aufrufe, "rechteck").length > 500,
-      `bei Vergrößerung ${erwartet} wird überhaupt etwas gezeichnet`);
+    behaupte(ersteWeicheZeichnung(stand.ctx.aufrufe) === null,
+      `${breite}×${hoehe}: kein Rechteck fällt, bevor die Glättung abgeschaltet ist`);
+    behaupte(rechtecke.length > 500,
+      `${breite}×${hoehe}: es wird überhaupt etwas gezeichnet (${rechtecke.length})`);
   }
+  gleich(brueche, 0, `kein Fenster zeichnet auf halbe Bildpunkte (${alleRechtecke} Rechtecke)`);
+  behaupte(gezeichnete.size >= 6,
+    `die Bilder decken ${gezeichnete.size} verschiedene Vergrößerungen ab, nicht nur eine`);
+  const mitPunkt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  const kantenBericht = `Harte Kanten: ${brueche} von ${mitPunkt(alleRechtecke)} Rechtecken auf `
+    + `einem halben Bildpunkt, über ${FENSTER.length} Fenstergrößen × ${ZEITEN.length} Bilder, `
+    + `Vergrößerungen ${[...gezeichnete].sort((a, b) => a - b).join(" ")}`;
+  console.log(`      · ${kantenBericht}`);
+  console.log(`      · ${vergroesserungsBericht}`);
 }
 
 /* ── 3 · Die Glättung, nach jedem Setzen der Blattmaße ──────────────*/
