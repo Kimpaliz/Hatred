@@ -142,7 +142,13 @@ const BILD_TAKT = 0.18;
    neues Hindernis nicht ohne Bild bleibt. `wand` steht auf `null`,
    weil eine Wand kein Sprite ist, sondern ein Block aus Oberseite und
    Südflanke — ein Wandsprite müsste für jede Nachbarschaft anders
-   aussehen, und das sind sechzehn Raster für eine Fläche. */
+   aussehen, und das sind sechzehn Raster für eine Fläche.
+
+   `abgrund` steht aus demselben Grund auf `null`: Ein Loch ist keine
+   Figur auf dem Boden, sondern das Fehlen von Boden. Es bekommt eine
+   eigene Fläche (`zeichneAbgrund`) — **auf keinen Fall** darf es leer
+   bleiben und wie Boden aussehen, denn genau dann liefe man ahnungslos
+   darauf zu. */
 export const DING_NAMEN = [
   null,            /* keins        */
   null,            /* wand         */
@@ -154,7 +160,8 @@ export const DING_NAMEN = [
   "gitter",
   "fackelsockel",
   "sarg",
-  "truheZu"
+  "truheZu",
+  null             /* abgrund      */
 ];
 
 /* ── Farben, einmal gerechnet ───────────────────────────────────────
@@ -475,6 +482,22 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
       ton(wandTon(ebeneSicher, true), gedaempft));
   }
 
+  /* Der Abgrund: dunkle Fläche mit heller Nordkante. Kein Sprite,
+     sondern derselbe Bau wie die Wand, nur andersherum — die Wand ist
+     ein Klotz nach oben, das Loch eine Öffnung nach unten, und die
+     helle Kante liegt deshalb **oben** am Feld statt unten.
+
+     Warum überhaupt eigens gezeichnet: Ohne diese Fläche bliebe das
+     Feld einfach Boden. Ein Loch, das aussieht wie Boden, ist die
+     gefährlichste Fassung, die es hier gibt — man liefe darauf zu und
+     verstünde erst am Sturzschaden, was passiert ist. Das grobe Bild
+     mit Tiefenverlauf und ausgefransten Rändern kommt später; hier
+     steht das Wenigste, das ehrlich ist. */
+  function zeichneAbgrund(ecke, gedaempft) {
+    kasten(ecke.x, ecke.y, 0, 0, KACHEL, KACHEL, ton(FARBEN.kontur, gedaempft));
+    kasten(ecke.x, ecke.y, 0, 0, KACHEL, 1, ton(FARBEN.steinKante, gedaempft));
+  }
+
   /* Die beiden Mittel, die die Höhe tragen — und der Grund, warum
      beide auf **demselben** Feld entstehen: Der Schattenbalken liegt
      auf dem tieferen Feld an dessen Nordkante, die helle Oberkante
@@ -546,6 +569,11 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     /* Der Schatten kommt **nach** der Wand: Eine Wand, die unter einem
        Plateau steht, liegt selbst im Schatten. */
     zeichneHoehe(karte, x, y, ecke, gedaempft);
+    /* Der Abgrund kommt **nach** dem Schatten und deckt ihn: Sein Feld
+       trägt die Ebene der Sohle, also zöge `zeichneHoehe` ihm einen
+       Schattenbalken über die halbe Fläche, und die helle Kante ginge
+       darin unter — gerade an der Kante erkennt man aber das Loch. */
+    if (hindernis === HINDERNIS.abgrund) zeichneAbgrund(ecke, gedaempft);
     if (hindernis !== HINDERNIS.keins && hindernis !== HINDERNIS.wand) {
       zeichneDing(karte, x, y, hindernis, ecke, zeit, gedaempft);
     }

@@ -127,6 +127,35 @@ export function laufKosten(karte, vx, vy, nx, ny) {
   return kosten;
 }
 
+/* ── Die Sturzregel des Abgrunds ────────────────────────────────────
+
+   **Ein Abgrundfeld (`HINDERNIS.abgrund`) trägt in der Reihe `ebene`
+   die Ebene seiner SOHLE — nicht die des Randes, auf dem man davor
+   steht.** Diese Festlegung gehört hierher, weil die beiden Funktionen
+   direkt darunter von ihr leben.
+
+   Warum so: `sturzTiefe` rechnet die Differenz zweier Ebenen, und
+   `sturzSchaden` rechnet mit dieser Differenz weiter. Trüge das Loch
+   die Ebene seines Randes, wären beide Ebenen gleich, die Differenz
+   0 — und ein Sturz in den Abgrund täte **keinen** Schaden. Um das zu
+   heilen, müsste jede Aufrufstelle eine Sonderrechnung „wenn Abgrund,
+   dann so-und-so-viel tiefer als hier" bekommen. Genau solche über
+   vier Dateien verstreuten Sonderfälle sind es, an denen zwei Rechner
+   auseinanderlaufen. Steht die Sohle in der Reihe, rechnen beide
+   Funktionen hier **unverändert** richtig: Rand auf Ebene 3, Sohle auf
+   Ebene 1 ergibt zwei Stufen und damit 3 Schaden.
+
+   Die zweite Wirkung ist ebenso gewollt: Wer hineingestoßen wird,
+   landet auf der Sohle — „eine Ebene tiefer" ist keine gesonderte
+   Zahl, die irgendwo gepflegt werden müsste, sondern steht auf dem
+   Feld. Und `ebene` ist eine der fünf Reihen, die `karte.summe()`
+   hasht; die Sohle fällt also nicht aus der Desync-Erkennung heraus,
+   wie es eine Nebenliste „Sohlentiefen" täte.
+
+   Wohin ein Gestoßener am Ende kommt und was ein Sturz ohne tiefere
+   Ebene bedeutet, entscheidet nicht dieses Modul — hier steht nur, wie
+   tief es geht und was das kostet. */
+
 /* Wie viele Ebenen es bei diesem Wechsel hinabgeht, wenn es ein Sturz
    ist — sonst 0. Fragt bewusst **nicht**, ob der Schritt erlaubt wäre:
    Gestoßen wird auch dorthin, wohin niemand freiwillig ginge.

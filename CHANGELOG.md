@@ -3,6 +3,197 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der Abgrund ist eine eigene Feldart
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 2 von vier. Dieser Schritt gibt dem Abgrund einen Platz im
+Raster. **Auf eine erzeugte Karte gesetzt wird noch keiner** — das ist
+Schritt 3 —, und was mit einer hineingestoßenen Figur geschieht,
+entscheidet Schritt 4. Für Jannik heißt das: Im Spiel ist heute noch
+nichts zu sehen; das Spielbrett kennt jetzt bloß das Wort „Loch".
+
+### Was neu ist
+
+`HINDERNIS.abgrund = 11` in `spiel/gitter.mjs`, **unten angehängt** —
+gespeicherte Läufe tragen die Zahlen und nicht die Namen, ein Wert
+dazwischen hätte jeden alten Sarg umbenannt. Dazu die Frage
+`karte.istAbgrund(x, y)` neben `blocktBewegung`, damit nicht vier
+Module denselben Zahlenvergleich selbst schreiben.
+
+**Gemessen an den vier Mengen** (Befehl im Abschnitt „Die Zahlen"):
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Hindernisarten | 11 | **12** |
+| höchster Wert | 10 | **11** |
+| `BLOCKT_BEWEGUNG` | 9 | **10** |
+| `BLOCKT_SICHT` | 2 | 2 |
+| `GIBT_DECKUNG` | 7 | 7 |
+| `ZERSTOERBAR` | 3 | 3 |
+| hält auf, ohne Sicht zu nehmen **oder** Deckung zu geben | 0 | **1** |
+
+Die letzte Zeile ist der eigentliche Inhalt dieses Schritts. Bewegung
+blocken und Sicht nicht, das konnten Fass, Kiste, Altar, Gitter,
+Fackelsockel, Sarg und Truhe längst — aber alle sieben geben zugleich
+Deckung. Was aufhielt, war bisher **immer** auch etwas, wohinter man
+sich duckt. Der Abgrund ist der erste Wert, der aufhält und weder das
+eine noch das andere tut. Warum er in keiner der drei anderen Mengen
+steht, ist mit je einem Satz **über** der Menge begründet, nicht im
+Changelog: Dort sucht es der Nächste, der sie „aufräumen" will.
+
+### Die Sturzregel steht als Begründung im Code
+
+**Ein Abgrundfeld trägt in der Reihe `ebene` die Ebene seiner SOHLE,
+nicht die des Randes.** Die Entscheidung steht in `spiel/hoehen.mjs`
+direkt über `sturzTiefe`, weil die beiden Funktionen darunter von ihr
+leben: Trüge das Loch die Ebene seines Randes, wäre die Differenz 0 und
+ein Sturz hinein täte **keinen** Schaden. So rechnen `sturzTiefe` und
+`sturzSchaden` unverändert richtig — Rand auf Ebene 3, Sohle auf Ebene
+1 sind zwei Stufen und damit 3 Schaden. Und weil `ebene` eine der fünf
+Reihen ist, die `karte.summe()` hasht, fällt die Sohle nicht aus der
+Desync-Erkennung heraus, wie es eine Nebenliste täte.
+
+### Der Abgrund sieht nicht aus wie Boden
+
+Im Bild (`runtime/zeichnen.js`) ist er kein Sprite, sondern eine eigene
+dunkle Fläche mit heller Nordkante — derselbe Bau wie die Wand, nur
+andersherum: Die Wand ist ein Klotz nach oben, das Loch eine Öffnung
+nach unten. Ohne das bliebe das Feld schlicht Boden, und ein Loch, das
+aussieht wie Boden, ist die gefährlichste Fassung, die es hier gibt.
+In der Textkarte (`werkzeuge/karte-zeigen.mjs`) steht er als `▓`, samt
+Legende. Das große Bild — Tiefenverlauf, ausgefranste Ränder — ist
+Vorgang #9 und ausdrücklich nicht hier.
+
+**Auf der Zeichenfläche nachgezählt:** Ein Fenster über einer leeren
+Karte erzeugt **282 Rechtecke**, dieselbe Karte mit einem Abgrund auf
+einem einzigen Feld **286** — und **5** davon kommen im Bodenbild gar
+nicht vor, darunter eine volle Kachel 16×16 in `#07060c` und die
+1 Bildpunkt hohe helle Kante in `#5a5270`. Wäre der Abgrund ohne eigene
+Fläche geblieben, stünde hier dreimal dieselbe Zahl.
+
+```bash
+node --input-type=module -e 'import { macheKarte, HINDERNIS } from "./spiel/gitter.mjs";
+import { macheZeichner } from "./runtime/zeichnen.js";
+import { macheKamera } from "./runtime/kamera.js";
+const male = (h) => { const k = macheKarte(20, 20); const a = []; let f = "";
+  if (h !== null) k.setze(10, 10, { hindernis: h, ebene: 0 });
+  const ctx = { canvas: { width: 320, height: 180 }, imageSmoothingEnabled: false,
+    globalCompositeOperation: "", set fillStyle(v) { f = v; }, get fillStyle() { return f; },
+    fillRect: (x, y, b, g) => a.push(`${x},${y},${b},${g},${f}`) };
+  macheZeichner({ ctx, kamera: macheKamera({ fensterBreite: 320, fensterHoehe: 180, karte: k }) })
+    .zeichneWelt(k, null, null, 0); return a; };
+const boden = male(null), loch = male(HINDERNIS.abgrund);
+console.log(boden.length, loch.length, loch.filter(z => !boden.includes(z)).length);'
+```
+
+### Neue Prüfung: `werkzeuge/pruefe-abgrund.mjs`
+
+Eine eigene Datei, weil `pruefe-landschaft.mjs` mit 990 Zeilen nur noch
+10 Zeilen Luft unter der 1000-Zeilen-Grenze hat. **60 Behauptungen** auf
+**einer** von Hand gebauten Karte mit Wänden und Höhen — eine Karte und
+nicht zwei, weil „über den Abgrund sieht man" und „durch die Wand
+nicht" sonst zwei Aussagen über zwei verschiedene Welten wären.
+Geprüft wird dasselbe Feld, dreimal verschieden belegt.
+
+Zwei Vorkehrungen, damit die Prüfung den Fall misst, der ohne diese
+Arbeit falsch wäre, und nicht den, der ohnehin gewinnt:
+
+- Die Sohle des Prüf-Abgrunds liegt bei den Begehbarkeitsfragen nur
+  **eine** Ebene tiefer. Zwei Ebenen wären ein Sturz, und Stürze sind
+  ohnehin kein Weg — die Prüfung bestünde dann auch ohne den Eintrag in
+  `BLOCKT_BEWEGUNG`.
+- Bei der Wegfindung läuft die Suche mit `stuerzeErlaubt`, und die
+  Sohle liegt dort sogar auf Höhe des Randes. Sonst hielte schon die
+  Rampenregel die Figur im Loch fest — aus einer Grube klettert man
+  ohne Rampe nicht heraus —, und gemessen wäre die Rampenregel.
+
+**Dreimal absichtlich rot gemacht (Regel 10), jedes Mal
+zurückgenommen:**
+
+1. `HINDERNIS.abgrund` in `BLOCKT_SICHT` geschrieben — **7 von 60
+   gefallen**, darunter wörtlich: *„3 · Sicht über den Abgrund → über
+   den Abgrund hinweg ist die Sicht frei"* und *„4 · Sicht vom Podest →
+   von Podest zu Podest über die Sohle hinweg ist die Sicht frei"*.
+2. `HINDERNIS.abgrund` aus `BLOCKT_BEWEGUNG` entfernt — **21 von 60
+   gefallen**, darunter alle zwölf Richtungen und wörtlich: *„6 ·
+   Wegfindung → durch die einzige Lücke, in der ein Abgrund liegt,
+   führt kein Weg: ist [object Object], soll null"* und *„6 ·
+   Wegfindung → kein Feld des Weges ist ein Abgrund: ist 1, soll 0"*.
+3. `HINDERNIS.abgrund` in `GIBT_DECKUNG` geschrieben — **3 von 60
+   gefallen**, wörtlich: *„1 · Der Wert → genau ein Hindernis hält auf,
+   ohne Sicht zu nehmen oder Deckung zu geben: ist 0, soll 1"*.
+
+Ein vierter Versuch — `istAbgrund` auf `HINDERNIS.gitter` verbogen —
+warf nur **1 von 60** um. Das ist notiert, nicht schöngeredet: Die
+Wegfindungsfragen filtern mit `istAbgrund`, und ein Filter, der nie
+etwas findet, findet auch nichts Falsches. Deshalb fragt der Abschnitt
+zusätzlich den Feldindex direkt ab.
+
+### Zwei Fremdänderungen (Ausnahme zu Regel 2)
+
+Beide liegen außerhalb von `kern/` und mussten mit auf diesen Zweig,
+weil die Kette sonst als Ganzes rot bliebe:
+
+- **`werkzeuge/karte-zeigen.mjs`** (`werk/`): das Zeichen `▓` und die
+  Legendenzeile. Ohne Eintrag druckte das Werkzeug ein `?`, und
+  `pruefe-karte-zeigen.mjs` verbietet unbekannte Zeichen im Bild.
+- **`werkzeuge/pruefe-kopfnotiz.mjs`** (`pruef/`): Die bekannte
+  Abweichung für `spiel/gitter.mjs` nannte Zeile **134**; der Abgrund
+  hat 24 Zeilen darüber eingefügt, die Zeile steht jetzt auf **158**.
+  Die Zeile selbst ist unverändert (101 Zeichen), nur ihre Nummer
+  wandert. Genau dafür ist die Liste da — der Nagel wird nachgezogen,
+  die Regel bleibt stehen.
+
+`runtime/zeichnen.js` (`bild/`) ist die dritte fremde Datei, aber keine
+Ausnahme im selben Sinn: `pruefe-zeichnen.mjs` verlangt zu jedem
+Hindernis einen Eintrag in `DING_NAMEN`, und ohne ihn wäre die Kette
+sofort rot.
+
+### Die Zahlen
+
+```bash
+node werkzeuge/pruefe-alles.mjs        # 40 → 41 Prüfungen, alle grün
+node werkzeuge/pruefe-abgrund.mjs      # 60 Behauptungen
+```
+
+Die vier Mengen zählt:
+
+```bash
+node --input-type=module -e 'import { HINDERNIS, BLOCKT_BEWEGUNG,
+  BLOCKT_SICHT, GIBT_DECKUNG, ZERSTOERBAR } from "./spiel/gitter.mjs";
+const nurBew = [...BLOCKT_BEWEGUNG].filter(w => !BLOCKT_SICHT.has(w));
+console.log(Object.keys(HINDERNIS).length, Math.max(...Object.values(HINDERNIS)),
+  BLOCKT_BEWEGUNG.size, BLOCKT_SICHT.size, GIBT_DECKUNG.size, ZERSTOERBAR.size,
+  nurBew.filter(w => !GIBT_DECKUNG.has(w)).length);'
+```
+
+**Umbau ohne sichtbare Änderung, byteweise bewiesen (Regel 12).** Es
+setzt noch niemand einen Abgrund, also darf sich an erzeugten Karten
+**nichts** ändern:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+const s = []; for (let i = 1; i <= 20; i++)
+  s.push(baueLandschaft({ saat: i, breite: 48, hoehe: 32 }).summe());
+console.log(s.join(","));'
+```
+
+Zwanzig Saaten, zwanzig Prüfsummen — vor und nach dieser Änderung
+Zeichen für Zeichen dieselben, Saat 1 zum Beispiel **2740303601**.
+Dazu über dieselben zwanzig Karten **11.558 begehbare Kacheln** vorher
+wie nachher, und auf Saat 1 **2.070 freie Sichtpaare** vorher wie
+nachher.
+
+### Was bewusst nicht geändert wurde
+
+`spiel/landschaft.mjs` und `spiel/ausstattung.mjs` — dort entstehen die
+Abgründe und die Wasserbecken auf mehreren Ebenen, und das ist Schritt
+3. `spiel/aktionen.mjs` und `spiel/kampf.mjs` — der Stoß in den Abgrund
+ist Schritt 4. `stossZiel` gibt heute für ein Abgrundfeld noch `null`,
+weil es `begehbar` fragt; das ist so gewollt und wird dort geändert,
+wo die Sturzregel für Figuren entsteht.
+
 ## 07.09.2026 — Der Stoß rechnet endlich auch auf dem Sechseck
 
 **Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene

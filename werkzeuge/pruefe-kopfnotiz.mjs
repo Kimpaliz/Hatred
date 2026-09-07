@@ -96,7 +96,11 @@ const AUS_DEM_SKILL = new Set([
 const BEKANNTE_ABWEICHUNGEN = [
   {
     datei: "spiel/gitter.mjs",
-    zeile: 134,
+    /* War Zeile 134; der Abgrund (Vorgang #8) hat 24 Zeilen darüber
+       eingefügt und sie nach 158 geschoben. Die Zeile selbst ist
+       unverändert — nur ihre Nummer wandert, und genau dafür ist diese
+       Liste da: Sie hält den Nagel fest, statt die Regel aufzugeben. */
+    zeile: 158,
     zeichen: 101,
     grund: "vom Vertrag eingefroren: „Was schon fertig ist — NICHT ändern, nur benutzen.“"
   }

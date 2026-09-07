@@ -61,7 +61,8 @@ export const HINDERNIS = {
   gitter: 7,       /* blockt Bewegung, **nicht** Sicht             */
   fackelsockel: 8, /* blockt Bewegung, trägt ein Licht             */
   sarg: 9,         /* zerstörbar, halbe Deckung                    */
-  truhe: 10        /* blockt Bewegung, gibt Beute                  */
+  truhe: 10,       /* blockt Bewegung, gibt Beute                  */
+  abgrund: 11      /* kein Boden: blockt Bewegung, **nicht** Sicht */
 };
 
 /* Was eine Wand voll blockt, was nur halbe Deckung gibt, was gar
@@ -70,18 +71,41 @@ export const HINDERNIS = {
 export const BLOCKT_BEWEGUNG = new Set([
   HINDERNIS.wand, HINDERNIS.saeule, HINDERNIS.fass, HINDERNIS.kiste,
   HINDERNIS.altar, HINDERNIS.gitter, HINDERNIS.fackelsockel,
-  HINDERNIS.sarg, HINDERNIS.truhe
+  HINDERNIS.sarg, HINDERNIS.truhe,
+  /* Der Abgrund gehört hierher, weil dort niemand **freiwillig**
+     hingeht: Die Wegfindung soll ihn umlaufen, nicht durchqueren. Dass
+     man hineingestoßen werden kann, ist eine andere Frage — die
+     beantwortet der Stoß selbst, nicht diese Liste. */
+  HINDERNIS.abgrund
 ]);
 
+/* Ohne den Abgrund — und das ist sein ganzer Witz: Ein Loch im Boden
+   nimmt niemandem die Sicht, man schaut darüber hinweg wie über eine
+   Schlucht. Stünde er hier, wäre jeder Abgrund eine unsichtbare
+   Nebelwand quer durch den Saal, und niemandem fiele es auf: Es
+   stürzt ja nichts ab.
+
+   Bewegung blocken und Sicht nicht, das können auch Fass, Kiste,
+   Altar, Gitter, Fackelsockel, Sarg und Truhe. Neu ist die
+   **Verbindung** darunter: Alle sieben stehen zugleich in
+   `GIBT_DECKUNG` — was einen bisher aufhielt, war immer auch etwas,
+   wohinter man sich duckt. Der Abgrund ist der erste Wert, der aufhält
+   und **weder** die Sicht nimmt **noch** Deckung gibt. */
 export const BLOCKT_SICHT = new Set([
   HINDERNIS.wand, HINDERNIS.saeule
 ]);
 
+/* Ohne den Abgrund: Deckung ist etwas, wohinter man sich duckt. Vor
+   einem Loch im Boden geht das nicht — da steht nichts, was einen
+   Pfeil aufhielte. */
 export const GIBT_DECKUNG = new Set([
   HINDERNIS.fass, HINDERNIS.kiste, HINDERNIS.altar, HINDERNIS.gitter,
   HINDERNIS.sarg, HINDERNIS.truhe, HINDERNIS.fackelsockel
 ]);
 
+/* Ohne den Abgrund: Zerstörbar ist, was als Ding auf dem Boden steht
+   und in Trümmer fallen kann. Der Abgrund ist kein Ding, sondern das
+   Fehlen von Boden — ein Loch zerschlägt man nicht. */
 export const ZERSTOERBAR = new Set([
   HINDERNIS.fass, HINDERNIS.kiste, HINDERNIS.sarg
 ]);
@@ -141,6 +165,19 @@ export function macheKarte(breite, hoehe) {
     blocktBewegung(x, y) {
       if (!this.drin(x, y)) return true;
       return BLOCKT_BEWEGUNG.has(this.hindernis[y * breite + x]);
+    },
+    /* Ist hier gar kein Boden? Eine eigene Frage statt eines
+       Zahlenvergleichs in jedem Modul: Am Abgrund hängen gleich
+       mehrere Regeln — Sturz, Wegfindung, Bild —, und ein über vier
+       Dateien verstreutes `=== 11` ist genau die Stelle, an der eine
+       davon beim nächsten Umbau vergessen wird.
+
+       Außerhalb der Karte ist **kein** Abgrund, sondern Wand: Wer über
+       den Rand gestoßen wird, fällt nicht, er steht an. `blocktBewegung`
+       hält ihn ohnehin auf. */
+    istAbgrund(x, y) {
+      if (!this.drin(x, y)) return false;
+      return this.hindernis[y * breite + x] === HINDERNIS.abgrund;
     },
     blocktSicht(x, y) {
       if (!this.drin(x, y)) return true;

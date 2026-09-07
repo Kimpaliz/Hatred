@@ -44,7 +44,12 @@ const ZEICHEN_HINDERNIS = {
   [HINDERNIS.gitter]: "+",
   [HINDERNIS.fackelsockel]: "Y",
   [HINDERNIS.sarg]: "T",
-  [HINDERNIS.truhe]: "$"
+  [HINDERNIS.truhe]: "$",
+  /* Ein Loch und kein Ding: Deshalb kein Buchstabe, sondern ein
+     Zeichen, das als Fläche gelesen wird. Ohne Eintrag stünde hier ein
+     „?" — und ein Abgrund, den man für einen Druckfehler hält, ist
+     schlimmer als gar keiner. */
+  [HINDERNIS.abgrund]: "▓"
 };
 
 const ZEICHEN_FLUESSIG = {
@@ -195,7 +200,7 @@ function zahlen(karte) {
 
 function legende() {
   console.log("  Zeichen: 0-3 Ebene · # Wand · I Säule · o Fass · = Kiste · T Sarg · $ Truhe");
-  console.log("           A Altar · + Gitter · Y Fackelsockel · * Spieß");
+  console.log("           A Altar · + Gitter · Y Fackelsockel · * Spieß · ▓ Abgrund");
   console.log("           w Wasser · b Blut · s Schleim · L Lava · O Öl");
   console.log("           ↑→↓← Rampe (zeigt hinauf) · ①②③④ Startfeld · X Ausgang");
 }
