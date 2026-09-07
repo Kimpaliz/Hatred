@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorgang #8 Schritt 1 (Stoß auf dem Sechseck) und Schritt 2 (der Abgrund als Feldart) sind fertig; Schritt 3 (Abgründe und Becken auf die Karte setzen) und Schritt 4 (der Stoß hinein) stehen noch aus. | 07.09.2026 |
+| frei | frei | Vorgang #8: Schritt 1 (Stoß auf dem Sechseck), Schritt 2 (der Abgrund als Feldart) und Schritt 3 (Wasserbecken auf jeder Ebene) sind fertig; Schritt 4 (Abgründe auf die Karte setzen und der Stoß hinein) steht noch aus. | 07.09.2026 |
 
 ## Format
 

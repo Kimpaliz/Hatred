@@ -28,7 +28,7 @@
    Hallen), `spiel/hoehen.mjs` (Erreichbarkeit nach dem Setzen). */
 
 import {
-  BODEN, FLUESSIG, HINDERNIS, RAMPE, richtungen, EBENE_GRABEN, abstand
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, richtungen, abstand
 } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
@@ -36,7 +36,7 @@ import { PIXEL_JE_FELD } from "./bauart.mjs";
 import { hash, fbm } from "./welt-rauschen.mjs";
 
 import {
-  spalte, zeile, gegen, offen, alleDabei, gleicheEbene, gebiete
+  spalte, zeile, gegen, offen, gleicheEbene, beckenGebiete
 } from "./kachelhilfe.mjs";
 
 import {
@@ -83,23 +83,37 @@ export const ZIER_FENSTER = 3;
    anderen Schlüssel in `gitter.mjs` sind keine Lücke, sondern eine
    spätere Entscheidung.
 
-   Wasser steht in Ebene 0 und nur, wo die Senke groß genug ist: Eine
+   Wasser steht **in jedem Becken** und nur, wo es groß genug ist: Eine
    einzelne nasse Kachel im Trockenen sieht nach einem Fehler aus,
    nicht nach einem See. Die Mindestgröße steht in `bauart.mjs`, weil
    sie zur Höhle gehört. Wasser kostet einen Punkt mehr, sperrt aber
-   nichts; deshalb darf es nach den Rampen kommen. */
+   nichts; deshalb darf es nach den Rampen kommen.
+
+   Bis zum 07.09.2026 hieß „Becken" hier schlicht **Ebene 0**. Das war
+   die bequeme Näherung — der Graben ist die tiefste Ebene, dort sammelt
+   sich also das Wasser — und sie war falsch herum gedacht: Nicht die
+   *Zahl* der Ebene macht eine Mulde, sondern dass es von ihr aus nur
+   hinauf geht. Janniks Satz zu Vorgang #8 lautet wörtlich
+   *„unterschiedliche ebenen und auf jeder ebene kann es wasserbecken
+   oder sbruende [Abgründe] geben"*; mit der alten Regel lag über zehn
+   Saaten hinweg kein einziges Wasserfeld auf Ebene 1, 2 oder 3.
+   Gefragt wird jetzt `beckenGebiete` aus `kachelhilfe.mjs` — dieselbe
+   Frage, aber an die Form der Karte gestellt statt an eine Zahl.
+
+   Ein See liegt damit immer noch ganz auf **einer** Ebene: Zwei Becken
+   sind nie benachbart, denn das tiefere wäre ein Nachbar des höheren,
+   und der höhere damit kein Becken mehr. Deshalb bleibt die Mindest-
+   größe eines Sees prüfbar, obwohl sie hier je Becken gilt. */
 export function setzeWasser(karte, welt) {
   const mindest = welt.bauart.wasserMindestSee;
-  const { nummer, groessen } = gebiete(karte,
-    (i) => offen(karte, i) && karte.ebene[i] === EBENE_GRABEN, alleDabei);
+  const becken = beckenGebiete(karte);
   let nass = 0, gross = 0;
-  for (const zahl of groessen) if (zahl >= mindest) gross++;
-  for (let i = 0; i < karte.anzahl; i++) {
-    if (nummer[i] < 0 || groessen[nummer[i]] < mindest) continue;
-    karte.fluessig[i] = FLUESSIG.wasser;
-    nass++;
+  for (const b of becken) {
+    if (b.boden.length < mindest) continue;
+    gross++;
+    for (const i of b.boden) { karte.fluessig[i] = FLUESSIG.wasser; nass++; }
   }
-  return { seen: gross, felder: nass, senken: groessen.length };
+  return { seen: gross, felder: nass, senken: becken.length };
 }
 
 /* ═══ Schritt 7 — Boden ═════════════════════════════════════════════════════

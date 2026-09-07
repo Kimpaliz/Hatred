@@ -74,7 +74,8 @@ import {
 } from "./ausstattung.mjs";
 
 import {
-  spalte, zeile, gegen, offen, alleDabei, gleicheEbene, gebiete, plateaus
+  spalte, zeile, gegen, offen, alleDabei, gleicheEbene, gebiete, plateaus,
+  beckenGebiete
 } from "./kachelhilfe.mjs";
 
 import {
@@ -627,7 +628,7 @@ export {
   sammleRaeume
 };
 
-export { offen, gebiete, spalte, zeile };
+export { offen, gebiete, beckenGebiete, spalte, zeile };
 
 export {
   FACKEL_ABSTAND, SPIESS_HAEUFIGKEIT, START_NAEHE, ZIER_ARTEN, ZIER_FENSTER,

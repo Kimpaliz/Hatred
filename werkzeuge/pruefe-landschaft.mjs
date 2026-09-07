@@ -43,7 +43,7 @@ import {
   baueLandschaft, offen, beidseitigErreichbar,
   erreichbareFelder, laufKostenFeld, offeneGebiete, ebenenFlaechen, plateaus, gebiete,
   rastereWaende, setzeRand, setzeEbenen, mehrheitsFilter, legeKleineEbenenZusammen,
-  roheEbenen, schneideKliffe,
+  roheEbenen, schneideKliffe, beckenGebiete,
   schliesseEinzelneHohlraeume, macheSaeulen, raeumeAuf,
   verfuelleNebenraeume, verbindeMitRampen, streueZusatzRampen, aufstiegsKanten,
   setzeWasser, setzeBoden, setzeFackeln, setzeZier, zierErlaubt, waehleStarts,
@@ -108,7 +108,7 @@ abschnitt("Reihenlauf");
 
 const fehler = {
   rand: 0, startBegehbar: 0, startVerbunden: 0, ausgang: 0,
-  unerreichbar: 0, ebenenFlaeche: 0, verbotenNass: 0, wasserEbene: 0,
+  unerreichbar: 0, ebenenFlaeche: 0, verbotenNass: 0, wasserBecken: 0,
   wasserSee: 0, dunkel: 0, startZahl: 0, ausgangAufStart: 0, raumArt: 0
 };
 const messung = {
@@ -155,6 +155,13 @@ for (let saat = 1; saat <= SAATEN; saat++) {
   /* (e) jede offene Kachel erreichbar — hin und zurück */
   let offeneKacheln = 0, wasserKacheln = 0;
   const jeEbene = [0, 0, 0, 0];
+  /* (j) Wo Wasser stehen darf. Bis zum 07.09.2026 lautete die Zusage
+     *in Ebene 0*, seit Vorgang #8 Schritt 3 lautet sie *auf einem
+     Beckenboden* — die stärkere: Ebene 0 ist eine Zahl, ein
+     Beckenboden eine Aussage über die Nachbarn. Von ihm geht es nur
+     hinauf, das Wasser kann nirgends ablaufen. */
+  const beckenBoden = new Uint8Array(karte.anzahl);
+  for (const b of beckenGebiete(karte)) for (const i of b.boden) beckenBoden[i] = 1;
   for (let i = 0; i < karte.anzahl; i++) {
     if (NASS_VERBOTEN.has(karte.fluessig[i])) fehler.verbotenNass++;
     if (karte.hindernis[i] === HINDERNIS.saeule) messung.saeulen++;
@@ -163,10 +170,9 @@ for (let saat = 1; saat <= SAATEN; saat++) {
     offeneKacheln++;
     jeEbene[karte.ebene[i]]++;
     if (!gut[i]) fehler.unerreichbar++;
-    /* (j) Wasser nur in Ebene 0 */
     if (karte.fluessig[i] === FLUESSIG.wasser) {
       wasserKacheln++;
-      if (karte.ebene[i] !== EBENE_GRABEN) fehler.wasserEbene++;
+      if (!beckenBoden[i]) fehler.wasserBecken++;
     }
   }
 
@@ -210,7 +216,8 @@ gleich(fehler.unerreichbar, 0, "(e) jede offene Kachel ist hin und zurück errei
 gleich(fehler.ebenenFlaeche, 0,
   `(h) keine Ebenenfläche unter ${MIN_EBENEN_FLAECHE} Kacheln`);
 gleich(fehler.verbotenNass, 0, "(i) nirgends Lava, Schleim oder Öl — Janniks Vorgabe");
-gleich(fehler.wasserEbene, 0, "(j) jedes Wasserfeld liegt in Ebene 0");
+gleich(fehler.wasserBecken, 0,
+  "(j) jedes Wasserfeld liegt auf einem Beckenboden — alle offenen Nachbarn liegen höher");
 gleich(fehler.wasserSee, 0,
   `(j) jeder See hat mindestens ${BAUART.wasserMindestSee} Kacheln`);
 gleich(fehler.dunkel, 0, `(k) mindestens eine Fackel je ${OFFEN_JE_FACKEL} offene Kacheln`);

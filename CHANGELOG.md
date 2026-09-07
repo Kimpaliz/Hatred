@@ -3,6 +3,190 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Wasserbecken auf jeder Ebene, nicht nur im Graben
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 3 von vier. Dieser Schritt bringt das **Wasser** auf alle
+Ebenen. Abgründe setzt weiterhin niemand auf eine Karte, das ist
+Schritt 4. Für Jannik heißt das: Bisher lag jede Pfütze ganz unten im
+Graben — auf 60 nachgerechneten Karten kein einziges nasses Feld
+weiter oben. Jetzt liegen auf **52 von 60 Karten** Seen auf
+mindestens **zwei verschiedenen Höhen**.
+
+### Was neu ist: `beckenGebiete(karte)`
+
+Eine reine Abfrage in `spiel/kachelhilfe.mjs`. Sie liefert die
+**Becken** einer Karte, und ein Becken hat zwei Teile:
+
+- den **Boden** — ein zusammenhängendes offenes Gebiet gleicher Ebene,
+  dessen sämtliche offenen Nachbarn **höher** liegen. Dort kann Wasser
+  nicht ablaufen;
+- den **Rand** — die angrenzenden höheren offenen Kacheln, jede genau
+  einmal. Von dort schaut man hinein und dorthin klettert man heraus;
+  Schritt 4 braucht ihn für den Stoß.
+
+Sie ändert nichts an der Karte und fragt über `gebiete()`, den einen
+Flutfüller dieser Datei. Eine eigene Nachbarschleife wäre eine zweite
+Reihenfolge gewesen, und zwei Rechner nummerierten ihre Becken
+verschieden (Fehlerbuch B2).
+
+**Warum in `kachelhilfe.mjs` und nicht in `landschaft.mjs`:** Gefragt
+wird sie von `spiel/ausstattung.mjs`. Stünde sie in der Landschaft,
+holte die Ausstattung sie aus der Landschaft — die die Ausstattung
+ihrerseits aufruft. Das ist genau der **Ringschluss**, wegen dessen
+`kachelhilfe.mjs` überhaupt existiert; im Bündler
+(`werkzeuge/eine-datei.mjs`) bricht er ab. Die Begründung steht als
+eigener Abschnitt in der Kopfnotiz der Datei.
+
+### `setzeWasser` fragt nicht mehr nach der Ebene
+
+`spiel/ausstattung.mjs` band das Wasser bisher hart an
+`EBENE_GRABEN`, also an die Zahl 0. Das war falsch herum gedacht:
+Nicht die *Zahl* einer Ebene macht eine Mulde, sondern dass es von ihr
+aus nur hinauf geht. Ein Kessel auf Ebene 2 ist genauso ein Becken wie
+der Graben — er ist nur höher. Die Mindestgröße `wasserMindestSee`
+(6 Kacheln) gilt unverändert weiter, sonst stünden einzelne nasse
+Kacheln im Trockenen.
+
+Ein See liegt weiterhin ganz auf **einer** Ebene, und das ist kein
+Zufall: Zwei Becken sind nie benachbart, denn das tiefere wäre ein
+Nachbar des höheren — und der höhere damit kein Becken mehr.
+
+### Die Zusage (j) ist ersetzt, nicht gelöscht
+
+`werkzeuge/pruefe-landschaft.mjs` versprach bisher *„(j) jedes
+Wasserfeld liegt in Ebene 0"*. Dieser Satz wird durch diese Aufgabe
+falsch. Er ist **nicht** gestrichen, sondern durch die **stärkere**
+Zusage ersetzt: *„(j) jedes Wasserfeld liegt auf einem Beckenboden —
+alle offenen Nachbarn liegen höher."* Ebene 0 war eine Zahl; ein
+Beckenboden ist eine Aussage über die Nachbarn und schließt die alte
+Zusage für den Graben mit ein. Die Zeilenzahl der Datei steigt dabei
+von 990 auf **997** — die Grenze liegt bei 1000.
+
+### Neue Prüfung: `werkzeuge/pruefe-becken.mjs`
+
+**20 Behauptungen**, eine eigene Datei, weil `pruefe-landschaft.mjs`
+keine zehn Zeilen Luft mehr hat. Zwei Teile:
+
+1. **Ein Saal von Hand**, in dem beide Regeln verschieden antworten:
+   eine Mulde auf Ebene 1, vom Hochland (Ebene 2) umschlossen, und ein
+   Graben auf Ebene 0. Die Mulde ist ein Becken — die alte Regel hätte
+   sie übersehen. Die große Fläche auf Ebene 1 ist **keines**, obwohl
+   sie ans Hochland grenzt: Der Graben ist ihr tieferer Nachbar, das
+   Wasser liefe ab. Eine Regel *„irgendein Nachbar liegt höher"* wäre
+   hier grün und trotzdem falsch. Dazu die Randzahlen **10** und **9**,
+   von Hand über die beiden Richtungstabellen nachgezählt: Auf dem
+   Quadratraster hätte die Mulde acht Randkacheln, auf Versatzzeilen
+   sind es zehn.
+2. **Dreißig erzeugte Karten** 44 × 32. Gezählt wird, auf wie vielen
+   verschiedenen Ebenen Wasser steht. **Gemessen: 27 von 30** haben
+   Wasser auf mindestens zwei Ebenen (über 60 Saaten: 52). **Die
+   Schwelle steht bei 20 von 30**, also zwei Dritteln — sieben Karten
+   Abstand, weil kein einzelner Kerker bestellt ist, sondern der
+   Anteil; und nicht tiefer, weil die Hälfte keine „überwiegende
+   Mehrheit" mehr wäre. Die alte Regel liefert **0 von 30**, fällt hier
+   also um zwanzig Karten durch und nicht um eine.
+
+**Zweimal absichtlich rot gemacht (Regel 10), beide Male
+zurückgenommen:**
+
+1. `setzeWasser` wieder auf Ebene 0 festgenagelt (`|| b.ebene !== 0`)
+   — `pruefe-becken.mjs` meldet **3 von 20 gefallen**, wörtlich: *„auf
+   0 von 30 Karten steht Wasser auf mindestens zwei Ebenen (verlangt:
+   20)"*, *„auf jeder der 30 Karten steht überhaupt Wasser: ist 2, soll
+   0"* und *„über den ganzen Lauf tragen 1 verschiedene Ebenen Wasser"*.
+2. `setzeWasser` zusätzlich den **Rand** nass machen lassen — die neue
+   Zusage (j) in `pruefe-landschaft.mjs` meldet **ist 3781, soll 0**.
+   Ohne diesen zweiten Versuch wäre nicht bewiesen, dass (j) den
+   Beckenboden wirklich prüft und nicht bloß mitzählt. Nebenbei fiel
+   dort auch (k) — zu viel Wasser lässt zu wenige Wandfelder für
+   Fackeln übrig.
+
+### Die gemessenen Nebenwirkungen
+
+Mehr Wasser heißt: weniger trockene Kacheln für die Startfelder und
+längere Wege, weil Wasser mit `WASSER_ZUSCHLAG` zählt. Beides wurde
+vorher und nachher gemessen, keines wirft:
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Wasserkacheln je Karte (60 Saaten) | 71,0 | **122,3** |
+| Wasser je Ebene 0/1/2/3 (60 Saaten) | 4259/0/0/0 | **4259/2840/239/0** |
+| Karten mit Wasser auf ≥ 2 Ebenen | 0 von 60 | **52 von 60** |
+| Seen je Karte | 2,7 | **4,9** |
+| trockene offene Kacheln je Karte (20 Saaten) | 426,6 | **369,6** |
+| Laufkosten zum Ausgang (20 Saaten) | 48,5 | **54,5** |
+| kleinste erlaubte Karte 20 × 20, 4 Jäger, 40 Saaten | 40 gebaut, 0 Fehler | **40 gebaut, 0 Fehler** |
+| schlimmste Fackeldichte (erlaubt: 40) | 30,3 | 30,3 |
+
+Ebene 3 bleibt trocken, und das ist kein Fehler: Sie ist die höchste,
+ein Becken dort müsste ringsum noch höhere Nachbarn haben. Ein
+eingemauerter Hohlraum wäre einer — den gibt es auf einer erzeugten
+Karte nicht, weil dort jede offene Kachel erreichbar sein muss.
+
+### Eine Fremdänderung (Ausnahme zu Regel 2)
+
+`werkzeuge/pruefe-landschaft.mjs` und die neue
+`werkzeuge/pruefe-becken.mjs` gehören nach der Systemtabelle auf
+`pruef/`, nicht auf `kern/`. Sie mussten mit auf diesen Zweig, weil die
+Kette sonst als Ganzes rot bliebe: Zusage (j) behauptet wörtlich das
+Gegenteil dessen, was die Aufgabe verlangt. Die Änderung dort ist auf
+das Nötige beschränkt — die eine Zusage und der Import dazu.
+
+### Die Zahlen
+
+```bash
+node werkzeuge/pruefe-alles.mjs      # 41 → 42 Prüfungen, alle grün
+node werkzeuge/pruefe-becken.mjs     # 20 Behauptungen, 3,6 s
+node werkzeuge/pruefe-landschaft.mjs # 139 Behauptungen
+```
+
+Wasser je Ebene, Karten mit zwei nassen Ebenen und Wasser je Karte:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+import { FLUESSIG } from "./spiel/gitter.mjs";
+const je = [0, 0, 0, 0]; let zwei = 0, nass = 0;
+for (let s = 1; s <= 60; s++) {
+  const k = baueLandschaft({ saat: s, breite: 44, hoehe: 32 });
+  const e = new Set();
+  for (let i = 0; i < k.anzahl; i++) if (k.fluessig[i] === FLUESSIG.wasser) {
+    je[k.ebene[i]]++; nass++; e.add(k.ebene[i]); }
+  if (e.size >= 2) zwei++;
+}
+console.log(je.join(" / "), "|", zwei, "|", (nass / 60).toFixed(1));'
+```
+
+Trockene Kacheln, Ausgangsentfernung und die kleinste erlaubte Karte:
+
+```bash
+node --input-type=module -e 'import { baueLandschaft } from "./spiel/landschaft.mjs";
+import { laufKostenFeld } from "./spiel/erreichbarkeit.mjs";
+import { FLUESSIG, BLOCKT_BEWEGUNG } from "./spiel/gitter.mjs";
+let trocken = 0, kosten = 0;
+for (let s = 1; s <= 20; s++) {
+  const k = baueLandschaft({ saat: s, breite: 44, hoehe: 32, spielerZahl: 2 });
+  const f = laufKostenFeld(k, k.starts);
+  for (let i = 0; i < k.anzahl; i++) {
+    if (!BLOCKT_BEWEGUNG.has(k.hindernis[i]) && k.fluessig[i] === FLUESSIG.keine) trocken++;
+  }
+  kosten += f[k.index(k.ausgang.x, k.ausgang.y)];
+}
+let gebaut = 0;
+for (let s = 1; s <= 40; s++) {
+  try { baueLandschaft({ saat: s, breite: 20, hoehe: 20, spielerZahl: 4 }); gebaut++; }
+  catch { /* gezählt wird, was durchkommt */ }
+}
+console.log((trocken / 20).toFixed(1), (kosten / 20).toFixed(1), gebaut);'
+```
+
+**Was bewusst nicht geändert wurde:** `spiel/hoehen.mjs` (der
+Wasserzuschlag bleibt, wie er ist), `spiel/gitter.mjs` (kein neuer
+Feldwert), `runtime/` (Wasser wird gezeichnet wie bisher, nur öfter),
+und `waehleStarts` — es meidet nasse Kacheln nach derselben Regel wie
+zuvor, sie fällt bloß häufiger aus.
+
 ## 07.09.2026 — Der Abgrund ist eine eigene Feldart
 
 **Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
