@@ -44,6 +44,7 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
+   `runtime/lobby-bild.js` (malt den fertig gelegten Vorlauf),
    `runtime/start.js` (baut die Lobby, bekommt `beiStart`, würfelt die
    Saat), `runtime/schrift.js`, `runtime/palette.js`,
    `spiel/katalog/helden.mjs` (sechs Klassen), `spiel/wesen.mjs`
@@ -52,7 +53,8 @@
    `werkzeuge/pruefe-einstieg.mjs`. */
 
 import * as schrift from "./schrift.js";
-import { FARBEN } from "./palette.js";
+import { VORLAUF } from "./palette.js";
+import { zeichneVorlauf } from "./lobby-bild.js";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
 import { MAX_SPIELER } from "../spiel/wesen.mjs";
 import { SAAT_HOECHSTENS, leseCode, macheCode } from "../netz/lobbycode.mjs";
@@ -217,7 +219,6 @@ export function macheLobby({
   let breite = Math.max(1, Math.round(fensterBreite));
   let hoehe = Math.max(1, Math.round(fensterHoehe));
   let stufe = 1;
-  let gezeichnet = 0;
 
   let seite = SEITE.start;
   let art = "allein";
@@ -355,10 +356,10 @@ export function macheLobby({
       art: "text",
       text: `${klasse.name}: LP ${klasse.lpMax} . AP ${klasse.apMax} . Flink `
         + `${klasse.flinkheit} . Rüstung ${klasse.ruestung} . Sicht ${klasse.sicht}`,
-      farbe: FARBEN.hudSchrift
+      farbe: VORLAUF.schrift
     }];
     for (const zeile of umbrich(klasse.zier, Math.floor(SPALTE / schrift.VORSCHUB))) {
-      zeilen.push({ art: "text", text: zeile, farbe: FARBEN.hudMatt });
+      zeilen.push({ art: "text", text: zeile, farbe: VORLAUF.matt });
     }
     return zeilen;
   }
@@ -415,8 +416,8 @@ export function macheLobby({
     return [
       { art: "titel", text: "HATRED" },
       { art: "unter", text: "Einer Runde beitreten" },
-      { art: "text", text: "Dein Gastgeber schickt dir einen langen Code.", farbe: FARBEN.hudMatt },
-      { art: "text", text: "Füg ihn hier ein - Strg+V geht auch.", farbe: FARBEN.hudMatt },
+      { art: "text", text: "Dein Gastgeber schickt dir einen langen Code.", farbe: VORLAUF.matt },
+      { art: "text", text: "Füg ihn hier ein - Strg+V geht auch.", farbe: VORLAUF.matt },
       { art: "leer" },
       { art: "feld", schluessel: "name", marke: "Dein Name" },
       { art: "feld", schluessel: "code", marke: "Einladungscode" },
@@ -437,7 +438,7 @@ export function macheLobby({
       zeilen.push({
         art: "text",
         text: `Platz ${p}: ${klasse ? klasse.name : "?"} - ${wer}`,
-        farbe: verbunden.includes(p) || p === 1 ? FARBEN.hudGut : FARBEN.hudMatt
+        farbe: verbunden.includes(p) || p === 1 ? VORLAUF.gut : VORLAUF.matt
       });
     }
     return zeilen;
@@ -445,10 +446,10 @@ export function macheLobby({
 
   function codeZeilen() {
     if (codeText === "") {
-      return [{ art: "text", text: "Der Code wird gebaut ...", farbe: FARBEN.hudMatt }];
+      return [{ art: "text", text: "Der Code wird gebaut ...", farbe: VORLAUF.matt }];
     }
     const kurz = `${codeText.slice(0, 28)}... (${codeText.length} Zeichen)`;
-    return [{ art: "text", text: kurz, farbe: FARBEN.gold1 }];
+    return [{ art: "text", text: kurz, farbe: VORLAUF.akzent }];
   }
 
   function seiteWarten() {
@@ -457,11 +458,11 @@ export function macheLobby({
       { art: "unter", text: `Runde ${lobbycode}` },
       ...leitungsZeilen(),
       { art: "leer" },
-      { art: "text", text: `Dein Code für Platz ${wartetAuf}:`, farbe: FARBEN.hudSchrift },
+      { art: "text", text: `Dein Code für Platz ${wartetAuf}:`, farbe: VORLAUF.schrift },
       ...codeZeilen(),
       { art: "knopf", schluessel: "kopieren", text: "Code kopieren" },
       { art: "leer" },
-      { art: "text", text: "Er schickt dir einen Antwortcode zurück.", farbe: FARBEN.hudMatt },
+      { art: "text", text: "Er schickt dir einen Antwortcode zurück.", farbe: VORLAUF.matt },
       { art: "feld", schluessel: "code", marke: "Antwortcode" },
       { art: "knopf", schluessel: "einfuegen", text: "Aus der Zwischenablage einfügen" },
       { art: "knopf", schluessel: "annehmen", text: "Antwortcode annehmen" }
@@ -474,16 +475,16 @@ export function macheLobby({
       { art: "unter", text: "Fast geschafft" }
     ];
     if (codeText === "") {
-      zeilen.push({ art: "text", text: "Dein Antwortcode entsteht ...", farbe: FARBEN.hudMatt });
+      zeilen.push({ art: "text", text: "Dein Antwortcode entsteht ...", farbe: VORLAUF.matt });
     } else {
       zeilen.push({ art: "text", text: "Schick diesen Antwortcode zurück:",
-        farbe: FARBEN.hudSchrift });
+        farbe: VORLAUF.schrift });
       zeilen.push(...codeZeilen());
       zeilen.push({ art: "knopf", schluessel: "kopieren", text: "Antwortcode kopieren" });
     }
     zeilen.push({ art: "leer" });
     zeilen.push({ art: "text", text: "Sobald er ihn eingefügt hat, geht es los.",
-      farbe: FARBEN.hudMatt });
+      farbe: VORLAUF.matt });
     return zeilen;
   }
 
@@ -515,7 +516,9 @@ export function macheLobby({
   function stufeFuer(zeilen) {
     const nachBreite = Math.floor(breite / MINDEST_BREITE);
     const nachHoehe = Math.floor(hoehe / gesamtHoehe(zeilen));
-    return Math.max(1, Math.min(nachBreite, nachHoehe));
+    /* Höchstens doppelt: Auf großen Schirmen bleiben ruhige Zeilen
+       mit Luft ringsum, statt die vorhandenen Knöpfe vierfach aufzublasen. */
+    return Math.max(1, Math.min(2, nachBreite, nachHoehe));
   }
 
   /* Trägt eine Spalte ein (einzeln oder eine von zweien), gibt die Höhe
@@ -571,7 +574,7 @@ export function macheLobby({
     const rechts = zeilen.filter((z) => z.spalte === 1);
     const nachBreite = Math.floor(breite / ZWEI_SPALTEN_BREITE);
     const nachHoehe = Math.floor(hoehe / hoeheZweiSpaltig(oben, links, rechts));
-    stufe = Math.max(1, Math.min(nachBreite, nachHoehe));
+    stufe = Math.max(1, Math.min(2, nachBreite, nachHoehe));
 
     const spaltenBreite = SPALTE * stufe;
     const luecke = SPALTEN_LUECKE * stufe;
@@ -602,102 +605,13 @@ export function macheLobby({
 
   /* ── Malen ──────────────────────────────────────────────────────*/
 
-  function male(x, y, b, h, farbe) {
-    if (b <= 0 || h <= 0) return;
-    ctx.fillStyle = farbe;
-    ctx.fillRect(Math.round(x), Math.round(y), Math.round(b), Math.round(h));
-    gezeichnet++;
-  }
-
-  function rahmen(x, y, b, h, farbe) {
-    male(x, y, b, stufe, farbe);
-    male(x, y + h - stufe, b, stufe, farbe);
-    male(x, y, stufe, h, farbe);
-    male(x + b - stufe, y, stufe, h, farbe);
-  }
-
-  function text(inhalt, x, y, farbe, gross = stufe) {
-    return schrift.zeichne(ctx, lesbar(inhalt), x, y, farbe, { gross });
-  }
-
-  function mittig(inhalt, x, y, b, farbe, gross = stufe) {
-    const sauber = lesbar(inhalt);
-    const weite = schrift.breiteVon(sauber) * gross;
-    return text(sauber, x + Math.round((b - weite) / 2), y, farbe, gross);
-  }
-
-  /* Versatz, der eine Zeile im Kasten der Höhe `hoehe` mittig zeigt - ein
-     fester Versatz träfe seit HOCH.knopf/reihe/feld=48 nicht mehr. */
-  function mitteY(hoehe) {
-    return Math.max(0, Math.round(((hoehe - stufe) - schrift.ZEICHEN_HOCH * stufe) / 2));
-  }
-
-  function maleKnopf(stelle, beschriftung, gewaehlt, gewaehltFarbe = FARBEN.gold1) {
-    const dran = stellen[zeiger] && stellen[zeiger].schluessel === stelle.schluessel;
-    const drueber = unterZeiger === stelle.schluessel;
-    male(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe, FARBEN.hudGrund);
-    rahmen(stelle.x, stelle.y, stelle.breite, stelle.hoehe - stufe,
-      gewaehlt ? gewaehltFarbe : (dran || drueber) ? FARBEN.hudSchrift : FARBEN.hudRahmen);
-    mittig(beschriftung, stelle.x, stelle.y + mitteY(stelle.hoehe), stelle.breite,
-      gewaehlt ? gewaehltFarbe : FARBEN.hudSchrift);
-  }
-
-  function maleFeld(zeile) {
-    const marke = `${zeile.marke}:`;
-    const markeBreite = schrift.breiteVon(lesbar(marke)) * stufe + 3 * stufe;
-    const x = zeile.x + markeBreite;
-    const b = zeile.breite - markeBreite;
-    const dran = aktivesFeld === zeile.schluessel;
-    const mitte = mitteY(zeile.hoehe);
-    text(marke, zeile.x, zeile.y + mitte, FARBEN.hudMatt);
-    male(x, zeile.y, b, zeile.hoehe - stufe, FARBEN.hudGrund);
-    rahmen(x, zeile.y, b, zeile.hoehe - stufe, dran ? FARBEN.gold1 : FARBEN.hudRahmen);
-    /* Nur das Ende des Textes: Ein Code mit 274 Zeichen passt in kein
-       Feld, und der Anfang hilft beim Tippen niemandem. */
-    const passt = Math.max(1, Math.floor(b / stufe / schrift.VORSCHUB) - 1);
-    const roh = werte[zeile.schluessel] || "";
-    const sicht = roh.length > passt ? roh.slice(roh.length - passt) : roh;
-    text(sicht + (dran ? "_" : ""), x + 2 * stufe, zeile.y + mitte, FARBEN.hudSchrift);
-  }
-
-  /* Gibt zurück, wie viele **Flächen** gemalt wurden - Kästen, Rahmen,
-     Hintergrund. Die Buchstaben zählt `runtime/schrift.js` selbst und
-     nicht mit; eine Zahl, die beides mischte, sagte über keines von
-     beiden etwas aus. */
   function zeichne() {
     feldMitziehen();
-    gezeichnet = 0;
-    ctx.imageSmoothingEnabled = false;
-    male(0, 0, breite, hoehe, FARBEN.leere);
     const zeilen = lege(zeilenVon());
-
-    for (const zeile of zeilen) {
-      if (zeile.art === "titel") {
-        mittig(zeile.text, zeile.x, zeile.y, zeile.breite, FARBEN.blut2, 4 * stufe);
-      } else if (zeile.art === "unter") {
-        mittig(zeile.text, zeile.x, zeile.y, zeile.breite, FARBEN.hudMatt);
-      } else if (zeile.art === "text") {
-        text(zeile.text, zeile.x, zeile.y, zeile.farbe || FARBEN.hudSchrift);
-      } else if (zeile.art === "knopf") {
-        maleKnopf(zeile, zeile.text, false);
-      } else if (zeile.art === "reihe") {
-        for (const teil of zeile.teile) maleKnopf(teil, teil.text, teil.an === true);
-      } else if (zeile.art === "feld") {
-        maleFeld(zeile);
-      }
-    }
-
-    if (leitungsSatz !== "") {
-      mittig(leitungsSatz, 0, hoehe - 3 * HOCH.text * stufe, breite, FARBEN.hudMatt);
-    }
-    if (meldung !== "") {
-      for (const [i, zeile] of umbrich(meldung, Math.floor(breite / stufe / schrift.VORSCHUB) - 2)
-        .slice(0, 2).entries()) {
-        mittig(zeile, 0, hoehe - (2 - i) * HOCH.text * stufe, breite,
-          meldungGut ? FARBEN.hudGut : FARBEN.hudWarn);
-      }
-    }
-    return gezeichnet;
+    return zeichneVorlauf(ctx, {
+      breite, hoehe, stufe, zeilen, stellen, zeiger, unterZeiger,
+      aktivesFeld, werte, leitungsSatz, meldung, meldungGut, textHoehe: HOCH.text
+    }, lesbar, umbrich);
   }
 
   /* ── Was ein Klick bedeutet ─────────────────────────────────────*/

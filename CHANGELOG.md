@@ -3,6 +3,149 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab Dann so das man es sich ansehen kann über github seite"*
+
+`werkzeuge/pruefe-vorlauf.mjs` prüft Merkmal 5 aus Vorgang #9 an den
+wirklichen Canvas-Rechtecken. So kann eine warme Palette allein keine
+kalt gebliebene Zeichnung verdecken. Die Prüfung umfasst die fünf Seiten,
+Alleinspiel und zwei beziehungsweise vier Plätze sowie die Bilder vor
+und nach der Codeerzeugung. Die Codes entstehen im echten Vermittler;
+eine ersetzte Verbindung hält die Prüfung vollständig ohne Netzwerk.
+
+Gemessen mit `node werkzeuge/pruefe-vorlauf.mjs`: **54 Bilder**, verteilt
+auf **9 Zustände und 6 Fenstergrößen** (412 × 915, 915 × 412, 960 × 540,
+1366 × 768, 360 × 640, 1920 × 1080), und **378 Trefferflächen** innerhalb
+des Fensters
+mit mindestens **48 × 48 Punkten**. Schrift und Nebenzeilen haben gegen
+die dunklen und aktiven Flächen mindestens **6,16:1 Kontrast**; verlangt
+werden 4,5:1. Mauszeiger, Tastaturfokus, gewählte Klasse, Eingabefelder
+und Rückmeldungen müssen ihre vereinbarten Farben tatsächlich malen.
+
+**Rotprobe:** Am unveränderten Vorlauf von `28a3f83` fallen **240 von
+1172 Behauptungen**, Rückgabewert 1. Die Vergrößerung bleibt im neuen
+Vorlauf bei 1920 × 1080 höchstens zweifach. Eine
+Gegenprobe entfernt diese Kappung absichtlich: **6 von 1172 Behauptungen**
+fallen, Rückgabewert 1. Nach dem Wiederherstellen bestehen **1172 von
+1172**, Rückgabewert 0. Die Kopfnotizenprüfung besteht mit
+**830 Behauptungen**, die Sprachprüfung mit **0 Fehlern**. Die vollständige
+Prüfkette und die Veröffentlichung werden nach der Integration geprüft.
+
+## 07.09.2026 — Vorlauf im Scotophobia-Ton (Vorgang #9, Merkmal 5)
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab. Dann so das man es sich ansehen kann über
+ github seite“*.
+
+Der Vorlauf übernimmt Scotophobias warmes Creme auf fast Schwarz.
+Titel und Unterzeilen beginnen links; dünne Linien ersetzen die Kästen.
+Eine Seitenmarke zeigt Tastaturfokus und Mauszeiger, eine warme Fläche
+kennzeichnet die gewählte Klasse oder das aktive Eingabefeld. Auf großen
+Schirmen ist die Vergrößerung auf 2 begrenzt: bei 1920 × 1080 ist die
+Menüspalte damit 640 statt 1280 Bildpunkte breit. Alle Vergrößerungen
+bleiben ganzzahlig, die Pixelschrift bleibt ungeglättet.
+
+**Aufbau:** `runtime/lobby.js` legt Seiten und Trefferflächen wie zuvor;
+`runtime/lobby-bild.js` malt ausschließlich diesen Zustand. Die Farben
+stehen als eigener Satz `VORLAUF` in `runtime/palette.js`. Der Zugriff
+auf diese Bilddatei ist für diesen Oberflächen-Schritt nötig; die bisherigen
+Farben des Kerkers und alle Regeln unter `spiel/` bleiben unverändert.
+
+**Gemessen am 07.09.2026:** `node werkzeuge/pruefe-einstieg.mjs` zählt
+10 statt 21 Flächen auf der Titelseite bei 640 × 360. Der Vorlauf fügt
+keine Animation oder Lichtberechnung hinzu. Einstieg: 183 Behauptungen
+grün; `node werkzeuge/pruefe-einzeldatei.mjs`: 22 grün. Im echten
+Chrome-Browser: Titel, Heldenwahl und Spielstart bei 1920 × 1080 und
+915 × 412; keine Skriptfehler oder fehlenden Dateien. Auf dem Handy
+sind die gemessenen Trefferflächen mindestens 105 × 48 Bildpunkte groß.
+Screenshots des ursprünglichen Vorlaufs, der neuen Fassung und des
+Scotophobia-Menüs wurden zum visuellen Vergleich aufgenommen.
+
+Die zusätzliche Stilprüfung und die Windows-Berichtigung der bestehenden
+Prüfwerkzeuge werden auf eigenen Prüfzweigen geführt. Veröffentlichung
+über den vorhandenen `gh-pages`-Zweig; Rückkehr zur vorigen Fassung durch
+das Zurücknehmen des jeweiligen Veröffentlichungscommits.
+
+## 07.09.2026 — Pfadgrenzen und Kopfnotizen auch unter Windows prüfen
+
+`pruefe-kern.mjs` verglich den von Node zusammengesetzten Dateipfad mit
+einem fest eingetragenen `/`. Unter Windows entstehen dort `\`:
+**71 von 211 Behauptungen** lehnten deshalb gültige interne Einfuhren
+ab. Der Vergleich verwendet jetzt den Plattformtrenner, weiterhin mit
+einer vollständigen Ordnergrenze. **10 neue Selbstproben** prüfen auf
+jedem Rechner Windows- und POSIX-Pfade einschließlich `..` und dem
+ähnlich benannten Nachbarordner `spiel-fremd/`.
+
+`pruefe-kopfnotiz.mjs` liest CRLF als einen Zeilenumbruch. Das CR gehört
+weder zum ersten Satz noch zur Zeichenbreite. **6 neue Selbstproben**
+halten LF und CRLF gleich, verlangen weiterhin einen Satz im Kopf und
+unterscheiden weiterhin exakt 100 von 101 Zeichen. Ein einzelnes CR
+innerhalb einer Zeile wird nicht entfernt. Vor der Berichtigung fielen
+**3 dieser Proben** rot aus.
+
+**Gemessen am 07.09.2026 unter Windows:**
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `node werkzeuge/pruefe-kern.mjs` | 221 Behauptungen grün |
+| `node werkzeuge/pruefe-kopfnotiz.mjs` | 820 Behauptungen grün |
+
+In einer temporären Kopie wurden zusätzlich echte Importzeilen nach
+`../runtime/fremd.js` und `../spiel-fremd/fremd.mjs` eingesetzt: **beide
+führten zum erwarteten Exit 1 mit der Meldung zur Kerngrenze**. Nach
+Rücknahme und Umstellung aller **99 Quelldateien auf CRLF** bestanden
+beide Befehle erneut mit denselben 221 und 820 Behauptungen. Die
+integrierte Gesamtkette wird beim Zusammenführen geprüft.
+
+## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
+
+**Auftrag, wörtlich:** *„nach main"* — und der erste Stand, der `main`
+je erreicht hat, machte den Ablauf sofort rot.
+
+### Was gemessen wurde
+
+`.github/workflows/pages.yml` wollte über die Umgebung `github-pages`
+selbst veröffentlichen. Er hat es nie getan und konnte es nicht:
+
+| Lauf | Zweig | Stand | Ergebnis | Dauer |
+| --- | --- | --- | --- | --- |
+| 34142713477 „Seite veröffentlichen" | `main` | 89ec19c | **failure** | **1 s** |
+| 34137617843 „pages build and deployment" | `gh-pages` | ebe3b27 | **success** | 26 s |
+
+Eine Sekunde, **kein einziger ausgeführter Schritt, kein Protokoll** —
+das ist keine fehlgeschlagene Prüfung, das ist eine abgewiesene
+Umgebung. Der Ablageort liefert die Seite aus dem Zweig `gh-pages` aus
+(„Deploy from a branch"). Dann gehört `github-pages` allein dem
+eingebauten Ablauf, und jeder fremde Anforderer wird abgewiesen, bevor
+er beginnt. Die zweite Zeile der Tabelle ist der Gegenbeweis: derselbe
+Weg, auf dem gerade veröffentlicht wurde, lief zur selben Stunde grün.
+
+### Was jetzt dort steht
+
+Der Ablauf heißt `kette.yml` und fährt genau eine Sache:
+`node werkzeuge/pruefe-alles.mjs` auf einem fremden Rechner. Das ist der
+Teil, der etwas beweist — die Kette läuft ohne die Werkstatt, in der der
+Stand entstanden ist. Veröffentlicht wird weiterhin über `gh-pages`, und
+zwar bewusst nicht mit dem ganzen Ordner, sondern mit den **63 Dateien**,
+die ein Browser wirklich anfragt (von 121 im Ablageort).
+
+Zwei Wege ins Netz wären zwei Wahrheiten gewesen.
+
+### Ein zweiter falscher Verweis, derselbe wie in Regel 14
+
+Der Kopf der Datei nannte `werkzeuge/pruefe-verweise.mjs` als den
+Schritt, der Regel 14 („Alle Importpfade sind relativ") absichert — und
+rief sie als eigenen Schritt noch einmal auf. Dieselbe Fehlannahme wie
+in `docs/REGELN.md` 14, heute schon einmal berichtigt: Jene Datei hält
+Markdown-Verweise gegen die Platte und sieht **keinen einzigen**
+Importpfad. Bewiesen wird die Regel von `pruefe-einstieg.mjs` und
+`pruefe-app.mjs`, und beide laufen in der Kette ohnehin mit. Der zweite
+Aufruf prüfte nichts doppelt, er behauptete es nur.
+
+**Kette auf diesem Stand: 43 von 43 grün.**
+
 ## 07.09.2026 — Abgründe in der Landschaft, und wer hineingestoßen wird, stürzt
 
 **Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
