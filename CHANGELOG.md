@@ -3,6 +3,36 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab Dann so das man es sich ansehen kann über github seite"*
+
+`werkzeuge/pruefe-vorlauf.mjs` prüft Merkmal 5 aus Vorgang #9 an den
+wirklichen Canvas-Rechtecken. So kann eine warme Palette allein keine
+kalt gebliebene Zeichnung verdecken. Die Prüfung umfasst die fünf Seiten,
+Alleinspiel und zwei beziehungsweise vier Plätze sowie die Bilder vor
+und nach der Codeerzeugung. Die Codes entstehen im echten Vermittler;
+eine ersetzte Verbindung hält die Prüfung vollständig ohne Netzwerk.
+
+Gemessen mit `node werkzeuge/pruefe-vorlauf.mjs`: **54 Bilder**, verteilt
+auf **9 Zustände und 6 Fenstergrößen** (412 × 915, 915 × 412, 960 × 540,
+1366 × 768, 360 × 640, 1920 × 1080), und **378 Trefferflächen** innerhalb
+des Fensters
+mit mindestens **48 × 48 Punkten**. Schrift und Nebenzeilen haben gegen
+die dunklen und aktiven Flächen mindestens **6,16:1 Kontrast**; verlangt
+werden 4,5:1. Mauszeiger, Tastaturfokus, gewählte Klasse, Eingabefelder
+und Rückmeldungen müssen ihre vereinbarten Farben tatsächlich malen.
+
+**Rotprobe:** Am unveränderten Vorlauf von `28a3f83` fallen **240 von
+1172 Behauptungen**, Rückgabewert 1. Die Vergrößerung bleibt im neuen
+Vorlauf bei 1920 × 1080 höchstens zweifach. Eine
+Gegenprobe entfernt diese Kappung absichtlich: **6 von 1172 Behauptungen**
+fallen, Rückgabewert 1. Nach dem Wiederherstellen bestehen **1172 von
+1172**, Rückgabewert 0. Die Kopfnotizenprüfung besteht mit
+**830 Behauptungen**, die Sprachprüfung mit **0 Fehlern**. Die vollständige
+Prüfkette und die Veröffentlichung werden nach der Integration geprüft.
+
 ## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
 
 **Auftrag, wörtlich:** *„nach main"* — und der erste Stand, der `main`
