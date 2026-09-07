@@ -23,7 +23,15 @@
    · **Acht Stufen.** Gezählt werden die verschiedenen Werte der
      ganzen Lichtkarte, nicht ein paar Feldmitten. Eine Rundung, die
      versehentlich auf 256 Stufen geht, sieht in einer Stichprobe
-     genauso aus wie eine richtige.
+     genauso aus wie eine richtige. Gezählt wird **zweimal**: einmal
+     die Sprossen je Kanal (höchstens `STUFEN`) und einmal die
+     verschiedenen RGB-Tripel (höchstens `STUFEN³`). Die erste Zahl
+     allein bliebe auch bei einem farblosen Grauverlauf gleich.
+   · **Farbmischung.** Zwei verschieden gefärbte Quellen, die sich
+     überlappen, müssen eine Farbe *zwischen* beiden ergeben. Ein
+     Licht, das die zuletzt gerechnete Quelle einfach obendrauf
+     schreibt, sieht in einem Bildschirmfoto beinahe gleich aus — auf
+     der Warm-Kalt-Achse `r − b` ist der Unterschied eindeutig.
    · **Der warme Zuschlag.** Der hellste Bodenton darf im Kern der
      stärksten Quelle nicht an 255 stoßen — dort verschmölzen zwei
      Böden zu einer Fläche und die Ringe wären weg. Die Prüfung
@@ -171,15 +179,40 @@ abschnitt("2 · Licht und Wand");
     "bei ausgeschalteter Fackel bleibt es dunkel");
 }
 
-/* ── 3 · Acht Stufen, nicht 256 ───────────────────────────────────── */
+/* ── 3 · Acht Stufen, nicht 256 ─────────────────────────────────────
+
+   Janniks erstes Merkmal für die Kerkerstimmung, wörtlich: „Licht in
+   mindestens fünf Stufen, nicht als Schalter." Deshalb steht die
+   Untergrenze hier auf **fünf** und nicht auf einer bequemeren Zahl.
+
+   Gezählt wird zweimal, und die zweite Zählung ist die schärfere:
+
+   1. **Sprossen je Kanal.** Höchstens `STUFEN` = 8, gemessen 7 —
+      Sprosse 0 kommt nie vor, weil `GRUNDHELLE` 0,16 schon auf
+      Sprosse 1 fällt. Ein Licht, das nur an und aus kennt, hätte hier
+      zwei.
+   2. **Verschiedene RGB-Tripel.** Obergrenze ist `STUFEN³` = 512,
+      **nicht** 8 — wer beide Zählungen in dasselbe Set schreibt,
+      macht die Prüfung rot, ohne dass etwas kaputt wäre. Gemessen 82.
+      Diese Zahl allein zeigt, dass die fünf Quellen einander wirklich
+      überlagern: Ein farbloser Grauverlauf hätte genauso viele Tripel
+      wie Sprossen, nämlich 7.
+
+   Fünf Quellen und nicht zwei, weil erst dort genug Summen
+   übereinanderliegen, dass die Stufung mehr ist als ein einzelner
+   abfallender Schein. */
 abschnitt("3 · Acht Stufen");
 let stufenBericht = "";
+let tripelBericht = "";
 {
   const karte = macheKarte(20, 12);
   const werk = macheLichtwerk(karte);
   werk.setzeQuellen([
     { x: 5, y: 5, art: "fackel", staerke: 1 },
-    { x: 14, y: 7, art: "arkan", staerke: 0.8 }
+    { x: 14, y: 7, art: "arkan", staerke: 0.8 },
+    { x: 9, y: 2, art: "schleim", staerke: 0.6 },
+    { x: 3, y: 9, art: "gift", staerke: 0.5 },
+    { x: 17, y: 3, art: "gold", staerke: 0.9 }
   ]);
   werk.rechne(0.5, karte);
   const punkte = werk.lichtpunkte();
@@ -195,17 +228,109 @@ let stufenBericht = "";
       if (Math.abs(sprosse - Math.round(sprosse)) > 1e-5) daneben++;
     }
   }
-  stufenBericht = `${verschieden.size} verschiedene Helligkeitswerte über ` +
-    `${punkte.r.length * 3} Lichtpunkte-Kanäle`;
+  /* Das zweite Set, und **nur** hier: ein Tripel je Lichtpunkt. */
+  const tripel = new Set();
+  for (let i = 0; i < punkte.r.length; i++) {
+    tripel.add(`${punkte.r[i]}|${punkte.g[i]}|${punkte.b[i]}`);
+  }
+
+  const sprossen = [...verschieden].sort((a, b) => a - b).map((w) => w.toFixed(4)).join(" ");
+  stufenBericht = `${verschieden.size} von ${STUFEN} Sprossen je Kanal (${sprossen}) ` +
+    `über ${punkte.r.length * 3} Lichtpunkte-Kanäle, fünf Quellen`;
+  tripelBericht = `${tripel.size} verschiedene RGB-Tripel von höchstens ${STUFEN ** 3} ` +
+    `in derselben Szene — bei farblosem Licht wären es ${verschieden.size}`;
   behaupte(verschieden.size <= STUFEN,
     `höchstens ${STUFEN} verschiedene Werte, gezählt ${verschieden.size}`);
-  behaupte(verschieden.size >= 4,
-    `es sind wirklich Stufen und nicht eine Fläche (${verschieden.size} Werte)`);
+  behaupte(verschieden.size >= 5,
+    `Licht in mindestens fünf Stufen, nicht als Schalter (${verschieden.size} Sprossen)`);
   gleich(daneben, 0, "jeder Wert liegt genau auf einer der acht Sprossen");
+
+  behaupte(tripel.size <= STUFEN ** 3,
+    `höchstens ${STUFEN ** 3} verschiedene RGB-Tripel, gezählt ${tripel.size}`);
+  behaupte(tripel.size > verschieden.size,
+    `es sind mehr Farben als Helligkeitsstufen — das Licht ist bunt, nicht grau ` +
+    `(${tripel.size} Tripel gegen ${verschieden.size} Sprossen)`);
+  behaupte(tripel.size >= 40,
+    `die fünf Quellen überlagern einander wirklich (${tripel.size} Tripel, gemessen 82)`);
 }
 
-/* ── 4 · Das Flackern ist eine Funktion der Zeit ──────────────────── */
-abschnitt("4 · Flackern");
+/* ── 4 · Farbiges Licht mischt sich ─────────────────────────────────
+
+   Janniks zweites Merkmal, wörtlich: „Farbiges Licht mischt sich."
+   Gemessen wird auf der Warm-Kalt-Achse `r − b`: Die Fackel (#ff9438)
+   ist warm, r liegt über b; das Arkanlicht (#5c8cff) ist kalt, b liegt
+   über r. Wo beide hinreichen, muss die Summe **echt zwischen** beiden
+   liegen. Ein Licht, das die zuletzt gerechnete Quelle einfach
+   obendrauf schreibt, gäbe genau eine der beiden Einzelfarben zurück —
+   und im Bildschirmfoto sähe man den Unterschied kaum.
+
+   ── Warum genau diese drei Koordinaten ─────────────────────────────
+
+   Die Geometrie ist empfindlich, weil das Licht quadratisch abfällt.
+   Gemessen mit `node werkzeuge/pruefe-bild.mjs`, jeweils auf (8,6):
+
+     Abstand 4 (hier gewählt): nur Fackel r−b = +0,5714, nur Arkan
+       −0,2857, beide +0,2857 — echt dazwischen, und alle drei Farben
+       verschieden.
+     Abstand 5: das Arkanlicht reicht nicht mehr bis zur Mitte
+       (r−b = 0,0000); die „Mischung" ist die reine Fackel, und die
+       Prüfung wäre grün, ohne etwas zu zeigen.
+     Abstand 3: alle drei Kanäle stoßen an 1,0000 — die Mischung ist
+       reines Weiß und hat gar keinen Ton mehr.
+
+   Wer diese Zahlen verschiebt, prüft etwas anderes. Sie stehen
+   deshalb hier und nicht als nackte Konstanten im Code. */
+abschnitt("4 · Farbmischung");
+let mischBericht = "";
+{
+  const messe = (quellen) => {
+    const karte = macheKarte(20, 13);
+    const werk = macheLichtwerk(karte);
+    werk.setzeQuellen(quellen);
+    werk.rechne(0, karte);
+    return werk.helligkeitBei(8, 6);
+  };
+  const warm = (f) => f.r - f.b;
+  const wort = (f) => `${f.r.toFixed(4)}|${f.g.toFixed(4)}|${f.b.toFixed(4)}`;
+  const zeig = (f) => `r ${f.r.toFixed(4)} g ${f.g.toFixed(4)} b ${f.b.toFixed(4)}`;
+
+  const nurFackel = messe([{ x: 4, y: 6, art: "fackel", staerke: 1 }]);
+  const nurArkan = messe([{ x: 12, y: 6, art: "arkan", staerke: 1 }]);
+  const beide = messe([
+    { x: 4, y: 6, art: "fackel", staerke: 1 },
+    { x: 12, y: 6, art: "arkan", staerke: 1 }
+  ]);
+
+  /* (a) Die beiden Quellen haben überhaupt verschiedene Farbtöne.
+     Ohne diese Behauptung bestünde alles Weitere auch bei zwei
+     gleichfarbigen Lampen — und „mischt sich" wäre nichts gesagt. */
+  behaupte(warm(nurFackel) > 0,
+    `die Fackel allein ist warm: r − b = ${warm(nurFackel).toFixed(4)} > 0 (${zeig(nurFackel)})`);
+  behaupte(warm(nurArkan) < 0,
+    `das Arkanlicht allein ist kalt: r − b = ${warm(nurArkan).toFixed(4)} < 0 ` +
+    `(${zeig(nurArkan)})`);
+
+  /* (b) Die Mischung liegt auf der Achse r−b echt zwischen beiden. */
+  behaupte(warm(beide) < warm(nurFackel) && warm(beide) > warm(nurArkan),
+    `die Mischung liegt echt zwischen beiden: ${warm(nurArkan).toFixed(4)} < ` +
+    `${warm(beide).toFixed(4)} < ${warm(nurFackel).toFixed(4)}`);
+
+  /* (c) Und sie ist mit keiner der Einzelfarben identisch — auch
+     nicht mit einem farblosen Weiß, in dem beide Töne untergingen. */
+  behaupte(wort(beide) !== wort(nurFackel),
+    `die Mischung ist nicht die reine Fackel (${zeig(beide)})`);
+  behaupte(wort(beide) !== wort(nurArkan),
+    `die Mischung ist nicht das reine Arkanlicht (${zeig(beide)})`);
+  behaupte(!(beide.r === beide.g && beide.g === beide.b),
+    `die Mischung hat noch einen Ton und ist kein farbloses Weiß (${zeig(beide)})`);
+
+  mischBericht = `Fackel (4,6) und Arkan (12,6), gemessen auf (8,6): r−b ` +
+    `${warm(nurFackel).toFixed(4)} · ${warm(beide).toFixed(4)} · ` +
+    `${warm(nurArkan).toFixed(4)} — die Mischung ${zeig(beide)}`;
+}
+
+/* ── 5 · Das Flackern ist eine Funktion der Zeit ──────────────────── */
+abschnitt("5 · Flackern");
 {
   gleich(flackerFaktor(1.5, 0, 12), 1, "ohne Flackern bleibt der Faktor 1");
   gleich(flackerFaktor(1.5, 0.2, 12), flackerFaktor(1.5, 0.2, 12),
@@ -239,8 +364,8 @@ abschnitt("4 · Flackern");
   behaupte(gleichLang(a.lichtpunkte().r, pb.r), "ein zweiter Lauf im selben Werk gibt dasselbe");
 }
 
-/* ── 5 · Der warme Zuschlag klippt keinen Boden ───────────────────── */
-abschnitt("5 · Warmer Zuschlag");
+/* ── 6 · Der warme Zuschlag klippt keinen Boden ───────────────────── */
+abschnitt("6 · Warmer Zuschlag");
 let zuschlagBericht = "";
 {
   let hellster = 0;
@@ -270,8 +395,8 @@ let zuschlagBericht = "";
     `der Zuschlag ist gemessen und nicht vorsichtshalber klein (Rest ${rest})`);
 }
 
-/* ── 6 · Das Licht auf dem Zeichenblatt ───────────────────────────── */
-abschnitt("6 · Licht zeichnen");
+/* ── 7 · Das Licht auf dem Zeichenblatt ───────────────────────────── */
+abschnitt("7 · Licht zeichnen");
 let lichtBericht = "";
 {
   const karte = macheKarte(32, 24);
@@ -338,8 +463,8 @@ let lichtBericht = "";
   gleich(werk.zeichneAuf(null, {}), 0, "ohne Zeichenblatt wird nichts gezeichnet");
 }
 
-/* ── 7 · Der Vorrat der Teilchen ──────────────────────────────────── */
-abschnitt("7 · Vorrat");
+/* ── 8 · Der Vorrat der Teilchen ──────────────────────────────────── */
+abschnitt("8 · Vorrat");
 let vorratBericht = "";
 {
   gleich(Object.keys(AUSSTOSS).length, 8, "acht Ausstoßarten");
@@ -374,8 +499,8 @@ let vorratBericht = "";
   gleich(werk.stosseAus("funken", NaN, 1), 0, "ein Ausstoß ohne Ort wirft nichts aus");
 }
 
-/* ── 8 · Teilchen auf ganzen Bildpunkten ──────────────────────────── */
-abschnitt("8 · Teilchen zeichnen");
+/* ── 9 · Teilchen auf ganzen Bildpunkten ──────────────────────────── */
+abschnitt("9 · Teilchen zeichnen");
 {
   const werk = machePartikelwerk(200);
   /* Krumme Startwerte mit Absicht: 100,5 und 40,25 sind genau die
@@ -400,8 +525,8 @@ abschnitt("8 · Teilchen zeichnen");
   gleich(werk.zeichne(null, {}), 0, "ohne Zeichenblatt wird nichts gezeichnet");
 }
 
-/* ── 9 · Ein Teilchen fällt nicht durch eine Wand ─────────────────── */
-abschnitt("9 · Teilchen und Wand");
+/* ── 10 · Ein Teilchen fällt nicht durch eine Wand ────────────────── */
+abschnitt("10 · Teilchen und Wand");
 let wandBericht = "";
 {
   const karte = macheKarte(12, 6);
@@ -468,8 +593,8 @@ let wandBericht = "";
     `ohne Wand kommt dasselbe Teilchen über x = ${5 * KACHEL} (${flieger.x.toFixed(1)})`);
 }
 
-/* ── 10 · Leuchtende Teilchen tragen ins Licht ein ────────────────── */
-abschnitt("10 · Leuchtende Teilchen");
+/* ── 11 · Leuchtende Teilchen tragen ins Licht ein ────────────────── */
+abschnitt("11 · Leuchtende Teilchen");
 {
   const karte = macheKarte(12, 8);
   const teile = machePartikelwerk(50);
@@ -495,8 +620,8 @@ abschnitt("10 · Leuchtende Teilchen");
     "drei Felder weiter reicht ein Funke nicht mehr");
 }
 
-/* ── 11 · Zweimal derselbe Ausstoß gibt dasselbe Bild ─────────────── */
-abschnitt("11 · Wiederholbarkeit");
+/* ── 12 · Zweimal derselbe Ausstoß gibt dasselbe Bild ─────────────── */
+abschnitt("12 · Wiederholbarkeit");
 {
   const bau = () => {
     const werk = machePartikelwerk(120, 4711);
@@ -513,8 +638,8 @@ abschnitt("11 · Wiederholbarkeit");
   behaupte(einer !== undefined, "auch mit anderer Saat wird ausgestoßen");
 }
 
-/* ── 12 · Keine Uhr, kein ungesäter Würfel ────────────────────────── */
-abschnitt("12 · Keine Uhr");
+/* ── 13 · Keine Uhr, kein ungesäter Würfel ────────────────────────── */
+abschnitt("13 · Keine Uhr");
 {
   /* Das Flackern und der Ausstoß dürfen nur aus der gereichten Zeit
      und der gereichten Saat kommen. Eine einzige `Date.now()` im
@@ -546,13 +671,13 @@ abschnitt("12 · Keine Uhr");
   gleich(LICHT_ARTEN.fackel.weite, 6.5, "die Fackelreichweite kommt aus der Palette");
 }
 
-/* ── 13 · Was ein Bild kostet ─────────────────────────────────────
+/* ── 14 · Was ein Bild kostet ─────────────────────────────────────
    Keine Behauptung, sondern eine Messung: Eine Zeitschranke in der
    Prüfkette wäre auf einem anderen Rechner mal rot und mal grün, und
    eine Prüfung, die manchmal grundlos anschlägt, wird abgeschaltet.
    Gedruckt wird sie trotzdem — damit auffällt, wenn aus einer
    Millisekunde dreißig werden. */
-abschnitt("13 · Aufwand");
+abschnitt("14 · Aufwand");
 let aufwandBericht = "";
 {
   const karte = macheKarte(44, 32);
@@ -576,6 +701,8 @@ let aufwandBericht = "";
 }
 
 console.log(`      · ${stufenBericht}`);
+console.log(`      · ${tripelBericht}`);
+console.log(`      · ${mischBericht}`);
 console.log(`      · ${zuschlagBericht}`);
 console.log(`      · ${lichtBericht}`);
 console.log(`      · ${vorratBericht}`);
