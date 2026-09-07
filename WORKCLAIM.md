@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Der Torwächter liegt auf `flaeche/torwaechter` und wartet auf Janniks Ja; niemand schreibt. | 07.09.2026 |
+| frei | frei | Torwächter, Kamera-Zoom und der warme Vorlauf sind zusammengeführt; niemand schreibt. | 07.09.2026 |
 
 ## Format
 

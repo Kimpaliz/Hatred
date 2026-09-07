@@ -38,6 +38,15 @@
    Das ist keine Regel, die hier entschieden wird: Die Sichtweite steht
    im Kern, diese Datei liest sie nur.
 
+   ── Warum ein Nutzerzoom diesen Ausschnitt überschreiben darf ─────
+
+   Wer ausdrücklich näher heranzoomt, möchte Details ansehen. Die
+   Sichtweite der Figur bleibt dabei gleich; nur der Bildausschnitt
+   wird kleiner. Ohne Eingriff gilt weiter die bisherige Automatik.
+   Ein manueller Wunsch ist eine absolute Pixelstufe und übersteht
+   Resize und Vollbild. Reset folgt wieder dem automatischen Maß.
+   Zoom verschiebt weder das weiche Kamerazentrum noch den Rütteltakt.
+
    ── Warum das Rütteln nicht an den Kartenrand geklemmt wird ────────
 
    Die Lage wird auf die Karte begrenzt, der Rüttelversatz kommt
@@ -57,7 +66,8 @@
    `vergroesserung`), `runtime/eingabe.js` (`bildNachFeld` für den
    Mauszeiger), `runtime/schrift.js` (bekommt `vergroesserung` als
    `gross`) und `werkzeuge/pruefe-schrift.mjs`, das jede Zahl hier
-   nachrechnet. Entscheidet selbst keine Regel. */
+   nachrechnet. `werkzeuge/pruefe-kamera-zoom.mjs` prüft den Nutzerzoom.
+   Entscheidet selbst keine Regel. */
 
 import { KACHEL } from "./licht.js";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
@@ -118,6 +128,7 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
   let ruettelStaerke = 0;
   let versatzX = 0;
   let versatzY = 0;
+  let manuelleStufe = null;
 
   /* Wie viele Weltpunkte das Fenster breit ist. `ceil`, weil eine halb
      angeschnittene Spalte am Rand trotzdem gezeichnet werden muss —
@@ -128,9 +139,44 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
   function setzeFenster(breite, hoehe) {
     kamera.fensterBreite = Math.max(1, Math.round(breite));
     kamera.fensterHoehe = Math.max(1, Math.round(hoehe));
-    kamera.vergroesserung = vergroesserungFuer(kamera.fensterBreite, kamera.fensterHoehe);
+    kamera.standardVergroesserung = vergroesserungFuer(kamera.fensterBreite, kamera.fensterHoehe);
+    return wendeZoomAn();
+  }
+
+  function zoomMaximum() {
+    return Math.max(12, kamera.standardVergroesserung);
+  }
+
+  /* Ein extrem großes Fenster kann automatisch mehr als zwölf Stufen
+     tragen. Beim Verkleinern gilt das neue Maximum; der absolute Wunsch
+     bleibt gespeichert und kehrt mit dem größeren Fenster zurück. */
+  function wendeZoomAn() {
+    kamera.vergroesserung = manuelleStufe === null
+      ? kamera.standardVergroesserung
+      : Math.min(manuelleStufe, zoomMaximum());
     lege();
     return kamera.vergroesserung;
+  }
+
+  function setzeZoom(stufe) {
+    if (!Number.isFinite(stufe)) return kamera.vergroesserung;
+    manuelleStufe = Math.min(zoomMaximum(), Math.max(1, Math.floor(stufe)));
+    return wendeZoomAn();
+  }
+
+  function zoome(schritte) {
+    if (!Number.isFinite(schritte) || Math.trunc(schritte) === 0) return kamera.vergroesserung;
+    return setzeZoom(kamera.vergroesserung + Math.trunc(schritte));
+  }
+
+  function zoomZurueck() {
+    manuelleStufe = null;
+    return wendeZoomAn();
+  }
+
+  function zoomStand() {
+    return { stufe: kamera.vergroesserung, min: 1, max: zoomMaximum(),
+      automatisch: manuelleStufe === null };
   }
 
   /* Der Kameraschritt eines Bildes. `x`/`y` sind **Felder**, gern mit
@@ -261,10 +307,12 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
     weltHoehe: karte.hoehe * KACHEL,
     fensterBreite: 1,
     fensterHoehe: 1,
+    standardVergroesserung: 1,
     vergroesserung: 1,
     eckeX: 0,
     eckeY: 0,
     sichtBreite, sichtHoehe, setzeFenster, folge, ruettle,
+    zoome, setzeZoom, zoomZurueck, zoomStand,
     feldNachBild, bildNachFeld, sichtbareFelder
   };
 

@@ -61,6 +61,9 @@ export const FARBEN = {
   steinRiss: "#121019",
   steinKante: "#5a5270",   /* die Oberkante einer Stufe, zum Licht hin */
   steinFuge: "#0d0b14",
+  felsSpalt: "#211b2c",
+  felsAder: "#95839f",
+  stufenStein: "#a59eae",
 
   /* ── Platten, Kacheln, Holz, Knochenboden ─────────────────────── */
   platte0: "#2a2735",
@@ -168,6 +171,22 @@ export const FARBEN = {
    Hinweis. Wer die Zahl anhebt, macht Ebene 3 weiß.
    `node werkzeuge/pruefe-palette.mjs` rechnet beide Schwellen nach. */
 export const EBENEN_TON = [0.55, 1.00, 1.45, 2.00];
+
+/* Der Vorlauf greift den warmen Titel und die ruhigen Zeilen aus
+   Scotophobias Menü auf. Ein eigener Satz, damit die lesbaren Farben
+   im Kerker und die Höhenabstände unverändert bleiben. */
+export const VORLAUF = {
+  grund: "#08090b",
+  flaeche: "#111113",
+  aktiv: "#24201a",
+  linie: "#504638",
+  schrift: "#e9deca",
+  titel: "#f6f2ea",
+  matt: "#ab9e89",
+  akzent: "#e6b878",
+  gut: "#adc49a",
+  warn: "#efb879"
+};
 
 /* Wie hoch eine Stufe im Bild aufträgt. Rein zeichnerisch: Bei „exakt
    von oben" gibt es keine Perspektive, also wird die Höhe durch einen

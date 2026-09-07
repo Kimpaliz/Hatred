@@ -28,7 +28,7 @@
    · Eine Ebenenkante muss einen **schwarzen Balken der richtigen
      Höhe** erzeugen. Ohne ihn ist die Höhe im Bild unsichtbar, und
      das ganze Höhensystem des Spiels wäre umsonst.
-   · Eine Rampe muss drei Querstriche bekommen, die zur
+   · Eine Rampe muss drei Stufenkanten bekommen, die zur
      Aufstiegsseite hin **heller** werden. Eine Rampe ohne Richtung
      im Bild läuft man von der falschen Seite an.
    · Ein nie gesehenes Feld darf **kein** Wesen zeigen. Der Fehler
@@ -55,18 +55,18 @@ import { fileURLToPath } from "node:url";
 
 import { abschnitt, behaupte, gleich, wirft, ende } from "./helfer.mjs";
 import {
-  BODEN, FLUESSIG, HINDERNIS, RAMPE, macheKarte, nachbarn
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, macheKarte, nachbarn, richtungen
 } from "../spiel/gitter.mjs";
 import {
-  ERINNERT_HELLE, FARBEN, KOERNUNG_SPANNE, STUFEN_SCHATTEN,
+  ERINNERT_HELLE, EBENEN_TON, FARBEN, KOERNUNG_SPANNE, STUFEN_SCHATTEN,
   abdunkeln, bodenTon, helligkeit, mische
 } from "../runtime/palette.js";
 import { KACHEL, LICHTPUNKT, macheLichtwerk } from "../runtime/licht.js";
 import { machePartikelwerk } from "../runtime/partikel.js";
 import { MINDEST_KANTE, macheKamera, vergroesserungFuer } from "../runtime/kamera.js";
 import {
-  DING_NAMEN, GLUT_TAKT, RAMPEN_STRICHE, RISS_ANTEIL, STRICH_HELLE, STRICH_LAENGE,
-  STRICH_LAGEN, WAND_FLANKE, WAND_STUFEN, hoeheBei, macheZeichner, wandTon
+  DING_NAMEN, GLUT_TAKT, RAMPEN_STRICHE, RISS_ANTEIL, STRICH_HELLE,
+  WAND_FLANKE, WAND_STUFEN, hoeheBei, macheZeichner, wandTon
 } from "../runtime/zeichnen.js";
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -488,8 +488,14 @@ abschnitt("5 · Wand");
   const ausFamilie = (grund) => (a) =>
     Math.abs(helligkeit(a[5]) - helligkeit(grund)) <= fensterWeite;
   const imFeld = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6);
-  const oberseite = imFeld.filter(ausFamilie(oben));
-  const seite = imFeld.filter(ausFamilie(flanke));
+  /* Facetten und Risse dürfen denselben Ton tragen. Gemeint sind die
+     beiden Grundflächen, deshalb zählt auch ihre vollständige Geometrie. */
+  const oberseite = imFeld.filter((a) => ausFamilie(oben)(a) && a[1] === ecke.x
+    && a[2] === ecke.y && a[3] === KACHEL * gross
+    && a[4] === (KACHEL - WAND_FLANKE) * gross);
+  const seite = imFeld.filter((a) => ausFamilie(flanke)(a) && a[1] === ecke.x
+    && a[2] === ecke.y + (KACHEL - WAND_FLANKE) * gross
+    && a[3] === KACHEL * gross && a[4] === WAND_FLANKE * gross);
   gleich(oberseite.length, 1, "die Wand hat eine Oberseite aus der Wandfamilie");
   gleich(seite.length, 1, "die Wand hat eine Südflanke aus der Wandfamilie");
   if (oberseite.length === 1) {
@@ -533,75 +539,48 @@ abschnitt("5 · Wand");
 }
 
 /* ── 6 · Die Rampe zeigt, wohin sie führt ───────────────────────────
-   In allen **sechs** Richtungen, und jedes Mal muss der Strich auf der
-   Aufstiegsseite der hellste sein. Eine Rampe mit gleich hellen
-   Strichen sähe genauso aus wie eine verkehrt herum gemalte.
+   Drei helle Kanten bleiben das lesbare Zeichen für drei Tritte.
+   Seit dem 07.09.2026 bestehen auch schräge Kanten aus Pixelstreifen,
+   nicht aus einem senkrechten Ersatzstrich. Ihr Schwerpunkt muss mit
+   wachsender Helligkeit weiter aufwärts liegen. Der Aufstiegsvektor
+   wird für beide Zeilenparitäten aus dem Regelgitter gelesen.
 
-   Seit dem 07.09.2026 sind es sechs statt vier (Vorgang #7), und ein
-   „nord" gibt es nicht mehr — senkrecht nach oben liegt beim Sechseck
-   kein Feld, sondern eine Kante. Geprüft wird auf Zeile 6, also einer
-   **geraden** Zeile; dort liegen Nordost und Südwest senkrecht über
-   und unter dem Feld, die vier anderen schräg oder seitlich.
-
-   Ob eine Rampe senkrechte oder waagerechte Striche bekommt, hängt am
-   Vorzeichen ihres Schritts — das ist grob und für die schrägen
-   Richtungen noch nicht schön. Es steht hier als Messung, nicht als
-   Lob: Der Bodenmaler für Sechsecke ist eigene Arbeit (Vorgang #7,
-   Zweig `bild/sechseck`). */
+   Die breiten Tritte, Nebeldämpfung und Feldgrenzen prüft zusätzlich
+   `werkzeuge/pruefe-gelaende-bild.mjs` am fertig übermalten Pixelbild. */
 abschnitt("6 · Rampe");
 {
-  const faelle = [
-    { rampe: RAMPE.nordost, name: "nordost", senkrecht: true, hellOben: true },
-    { rampe: RAMPE.suedost, name: "südost", senkrecht: true, hellOben: false },
-    { rampe: RAMPE.west, name: "west", senkrecht: false, hellOben: true },
-    { rampe: RAMPE.ost, name: "ost", senkrecht: false, hellOben: false },
-    { rampe: RAMPE.nordwest, name: "nordwest", senkrecht: false, hellOben: true },
-    { rampe: RAMPE.suedwest, name: "südwest", senkrecht: false, hellOben: false }
-  ];
-  for (const fall of faelle) {
-    const karte = macheProbeKarte();
-    karte.setze(6, 6, { rampe: fall.rampe });
-    const stand = macheStand(karte);
-    stand.zeichner.setzeFenster(320, 180);
-    stand.kamera.folge(6, 6, true);
-    stand.zeichner.zeichneWelt(karte, null, null, 0);
-    const gross = stand.kamera.vergroesserung;
-
-    const lang = STRICH_LAENGE * gross;
-    const striche = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6).filter((a) =>
-      (fall.senkrecht ? (a[3] === lang && a[4] === gross) : (a[4] === lang && a[3] === gross)));
-    gleich(striche.length, RAMPEN_STRICHE, `Rampe ${fall.name}: drei Querstriche`);
-    if (striche.length !== RAMPEN_STRICHE) continue;
-
-    /* Nach Lage sortieren, dann die Helligkeit vergleichen: Der
-       Strich, der der Aufstiegsseite am nächsten liegt, gewinnt. */
-    const nachLage = striche.slice().sort((a, b) =>
-      fall.senkrecht ? a[2] - b[2] : a[1] - b[1]);
-    const helle = nachLage.map((a) => helligkeit(a[5]));
-    const steigend = fall.hellOben
-      ? helle[0] > helle[1] && helle[1] > helle[2]
-      : helle[2] > helle[1] && helle[1] > helle[0];
-    behaupte(steigend,
-      `Rampe ${fall.name}: der Strich auf der Aufstiegsseite ist der hellste `
-      + `(${helle.map((h) => h.toFixed(1)).join(" · ")})`);
-
-    /* Und die Striche stehen wirklich auf den drei vorgesehenen
-       Lagen — nicht dreimal übereinander. */
-    const lagen = nachLage.map((a) => (fall.senkrecht
-      ? (a[2] - stand.kamera.feldNachBild(6, 6).y) / gross
-      : (a[1] - stand.kamera.feldNachBild(6, 6).x) / gross));
-    gleich(lagen.join(","), STRICH_LAGEN.join(","), `Rampe ${fall.name}: die drei Lagen`);
-  }
-
-  /* Die hellste Mischung muss sich von der dunkelsten wirklich
-     unterscheiden — sonst sind drei Striche drei graue Striche. */
   const grund = bodenTon(BODEN.stein, 1, false);
-  const hellster = mische(grund, FARBEN.steinKante, STRICH_HELLE[0]);
-  const dunkelster = mische(grund, FARBEN.steinKante, STRICH_HELLE[STRICH_HELLE.length - 1]);
+  const stein = abdunkeln(FARBEN.stufenStein, EBENEN_TON[1]);
+  const farben = STRICH_HELLE.map((v) => mische(grund, stein, v));
+  for (const y of [6, 7]) {
+    for (const fall of richtungen(y)) {
+      const karte = macheProbeKarte();
+      karte.setze(6, y, { rampe: fall.rampe });
+      const stand = macheStand(karte);
+      stand.zeichner.setzeFenster(320, 180);
+      stand.kamera.folge(6, y, true);
+      stand.zeichner.zeichneWelt(karte, null, null, 0);
+      const aufrufe = rechteckeImFeld(stand.ctx, stand.kamera, 6, y);
+      const kanten = farben.map((farbe) => aufrufe.filter((a) => a[5] === farbe));
+      const name = `${fall.name} auf Zeile ${y}`;
+      gleich(kanten.filter((k) => k.length > 0).length, RAMPEN_STRICHE,
+        `Rampe ${name}: drei sichtbare Stufenkanten`);
+      if (kanten.some((k) => k.length === 0)) continue;
+      const lagen = kanten.map((kante) => {
+        const flaeche = kante.reduce((summe, a) => summe + a[3] * a[4], 0);
+        return kante.reduce((summe, a) => summe + a[3] * a[4]
+          * ((a[1] + a[3] / 2) * fall.dx + (a[2] + a[4] / 2) * fall.dy), 0) / flaeche;
+      });
+      behaupte(lagen[0] > lagen[1] && lagen[1] > lagen[2],
+        `Rampe ${name}: die hellste Kante liegt am weitesten aufwärts`);
+    }
+  }
+  const hellster = farben[0];
+  const dunkelster = farben[farben.length - 1];
   const abstand = helligkeit(hellster) - helligkeit(dunkelster);
   behaupte(abstand >= 14,
-    `hellster und dunkelster Rampenstrich trennen ${abstand.toFixed(1)} von 255`);
-  console.log(`      · Rampe: Striche ${helligkeit(dunkelster).toFixed(1)} bis `
+    `hellste und dunkelste Stufenkante trennen ${abstand.toFixed(1)} von 255`);
+  console.log(`      · Rampe: Kanten ${helligkeit(dunkelster).toFixed(1)} bis `
     + `${helligkeit(hellster).toFixed(1)} von 255 auf Boden ${helligkeit(grund).toFixed(1)}`);
 }
 

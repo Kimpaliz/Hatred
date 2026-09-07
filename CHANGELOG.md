@@ -155,6 +155,289 @@ sie gar keinen Vorlauf mehr. Das ist die übliche Ausnahme zu Regel 2
 **Kette auf diesem Stand: 44 von 44 grün in 86,9 s** (vorher 43 in 66,0 s;
 die neue Prüfung braucht 23,3 s, davon 22,3 s für den Wörterbuchangriff
 auf das eigene Tor).
+## 07.09.2026 — Gesten-Hörer von der Spieleingabe unterscheiden
+
+Die bestehende Touch-Prüfung zählt Vorlauf-Hörer gezielt am Canvas und
+beim Spielstart genau einen neu hinzukommenden Eingabehörer. Der schon
+vorher registrierte Gestenwächter ist keine zweite Spieleingabe. Vor
+dieser Präzisierung fielen **3 von 283 Behauptungen**; danach bestehen
+**283 von 283**. Eine Gegenprobe fügt beim Spielstart einen zusätzlichen
+Eingabehörer ein: Die Prüfung fällt mit **1 von 283**, Rückgabewert 1.
+Der zusätzliche Hörer wird anschließend wieder entfernt. Die Grenze
+gegen doppelte Läufe bleibt damit ausdrücklich geprüft.
+
+**Integration am 07.09.2026:** Alle **47 Prüfungen** der vollständigen
+Kette bestehen in **34,0 Sekunden** auf dem zusammengeführten Stand.
+
+## 07.09.2026 — Zoomgesten und Toolbar unabhängig am Ereignisweg prüfen
+
+`werkzeuge/pruefe-ansicht.mjs` liefert eine kleine DOM-Bühne mit echter
+Capture- und Bubble-Reihenfolge. Die Kamera ist echt; eine mitschreibende
+Spieleingabe erkennt jeden durchgelassenen Tipp. Einzeltipps müssen bis
+zum Loslassen warten, Mehrfingergesten dürfen bis zum letzten Finger
+weder einen Kartentipp noch den Ausgang für Pause oder Abstieg aufrufen.
+
+Die Prüfung deckt beide Loslassreihenfolgen, Abbruch, Fokusverlust,
+Sichtbarkeits- und Sitzungswechsel sowie überlappende Kontakte auf dem
+Vorlauf und der Toolbar ab. Sie misst zusätzlich Canvas-Koordinaten,
+Zoomgrenzen, Knöpfe, drei Mausrad-Einheiten, Reset, Tastatur, Vollbild-
+Weitergabe und das vollständige Abmelden der eigenen Hörer. Enter und
+Leertaste behalten auf Knöpfen ihre native Bedienung; F und Plus bleiben
+Ansichtsaktionen. Eingabefelder werden nicht von Zoomkürzeln abgefangen.
+
+**Gemessen am 07.09.2026:** `node werkzeuge/pruefe-ansicht.mjs` besteht
+mit **94 Behauptungen**. Ein echtes versetztes Loslassen ohne vorherige
+Bewegungsmeldung fiel im ersten Controllerstand rot aus und nach dessen
+Berichtigung grün. Zwei absichtliche Fehler beweisen die neue Prüfung:
+Touch bereits auf `pointerdown` weitergereicht ergibt **27 von 94 rot**;
+die Mehrfinger-Sperre entfernt ergibt **7 von 94 rot**. Beide Gegenproben
+enden mit Exit 1, nach Wiederherstellung endet die Prüfung mit Exit 0.
+`node werkzeuge/pruefe-kopfnotiz.mjs` besteht auf den zusammengelegten
+Prüfkopien mit **868 Behauptungen**. Echtes Browser-Vollbild und die
+Gesamtkette werden beim Zusammenführen separat geprüft.
+
+## 07.09.2026 — Manueller Zoom ohne Verlust der Kameraautomatik
+
+`runtime/kamera.js` erhält `zoome`, `setzeZoom`, `zoomZurueck` und
+`zoomStand`. Ohne Eingriff bleibt die bisherige automatische Stufe
+unverändert. Ein manueller Wunsch ist eine absolute ganze Zahl, bleibt
+bei Fensterwechseln erhalten und lässt sich auf die Automatik zurücksetzen.
+`standardVergroesserung` gibt der Oberfläche unabhängig vom Nutzerzoom
+das automatische Maß; es wird nur bei einer Fensteränderung neu bestimmt.
+
+Die Stufen reichen von **1 bis mindestens 12**, auf sehr großen Fenstern
+bis zur höheren automatischen Stufe. Ein Wunsch oberhalb eines später
+kleineren Maximums bleibt gespeichert und kehrt beim Vergrößern zurück.
+Weiches Kamerazentrum und Rüttelversatz werden durch Zoomen nicht versetzt.
+Der Zoom verändert keine Spielfeldwerte und fügt keinen Zeichenlauf hinzu.
+
+`node werkzeuge/pruefe-kamera-zoom.mjs` besteht mit **955 Behauptungen**,
+über **12 Stufen**, **5 Fenstergrößen** und **240 Feld-Bild-Umkehrungen**.
+Die alte Kamera fällt an **4 fehlenden Methoden**. Ein absichtlich beim
+Resize gelöschter Nutzerwunsch lässt **17 Behauptungen** fallen; eine
+fehlende Standardstufe für das HUD **10**. Nach Rücknahme bestehen alle
+Behauptungen. `node werkzeuge/pruefe-schrift.mjs` besteht vor und nach
+der Änderung mit **102 Behauptungen**, die Kopfnotizenprüfung mit **860**.
+
+## 07.09.2026 — Sichtbarer Zoom und Vollbild im Spiel
+
+**Auftrag, wörtlich:** *„Aber zoombar bitte und vollbild.“*
+
+Die kleine Ansichtsleiste bietet Herauszoomen, Standardzoom,
+Hineinzoomen und Vollbild. Mausrad, Plus/Minus und Zwei-Finger-Gesten
+ändern denselben ganzzahligen Kamerazoom; 0 oder die angezeigte
+Zoomzahl stellt den Standard wieder her. F schaltet weiterhin Vollbild,
+auch bei einem fokussierten Ansichtsbutton. Im Vollbild wird die ganze
+Seite einschließlich der Knöpfe angezeigt. Die Aktionsleiste behält
+ihre automatische Fenstergröße, während die Welt näher heranrückt.
+
+`runtime/ansicht.js` trennt die Ansichtseingabe vom Spielkommando.
+Ein einzelner Touch wird erst beim Loslassen zum Tipp. Sobald mehrere
+Finger beteiligt waren, kann die gesamte Geste keine Aktion auslösen.
+Auch überlappende Kontakte aus dem Vorlauf oder auf der Ansichtsleiste,
+abgebrochene Gesten und Sitzungswechsel werden berücksichtigt. Ein
+bestätigter Tipp behält die Wege für Pause und den Abstieg nach Sieg.
+
+**Gemessen am 07.09.2026:** Im echten Chrome wurden die Knöpfe,
+Mausrad, Tastatur, Vollbild mit sichtbarer Leiste und Zwei-Finger-Zoom
+geprüft. Bei den Zoomgesten bleibt die Spiel-Prüfzahl unverändert.
+Vier Ansichtsbuttons haben mindestens **48 × 48 CSS-Pixel**; bei
+1280 × 800, 915 × 412 und 412 × 915 bleiben sie im Fenster.
+Die manuelle Stufe bleibt beim Wechsel der Fenstergröße erhalten.
+Es entstehen **0 Skriptfehler**. Die vorhandene Spielprüfung besteht
+mit **95 Behauptungen**, die Einzeldateiprüfung mit **22**.
+
+Die Leiste aktualisiert sich bei Bedienung und Fensterwechsel; es
+entsteht keine zusätzliche Zeichenschleife. Die Kamera begrenzt den
+Weltzeichner weiterhin auf den sichtbaren Ausschnitt. Herauszoomen
+zeigt mehr Felder und kann entsprechend mehr Zeichenarbeit benötigen.
+
+## 07.09.2026 — Abgrund-Innenkanten und verdeckte Rampenflags prüfen
+
+Die Geländeprüfung vergleicht jetzt das fertige Pixelbild bei verbliebenen
+Rampenflags auf Löchern oder Wänden: Das Bild und die Randlippen daneben
+müssen gleich bleiben. Auch eine offene Bodenrampe darf keine Wandlippe
+öffnen. Zusammenhängende Löcher erhalten auf allen vier Seiten eine
+dunkle Innennaht, während ihre Außenlippen sichtbar bleiben. Jeder Fall
+wird sichtbar und im Erinnerungsnebel geprüft.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **480 von 480
+Behauptungen** bestehen auf **131 Feldbildern**. Ohne die Restflag-Sperren
+fallen **8 entsprechende Behauptungen**. Mit dem Helferstand `d28b64c`
+fallen **2 von 480** an der offenen Bodenrampe gegen eine Wand. Wird die
+Abgrund-Nordkante wieder bedingungslos gezeichnet, fallen **2 von 480**
+an der inneren Trennlinie. Jede Gegenprobe endet mit Rückgabewert 1;
+nach Wiederherstellen von `cf44d58` endet die Prüfung mit 0.
+
+
+**Integration:** Die vollständige Kette besteht mit **45 von 45 Prüfungen**
+auf dem zusammengeführten Stand in **33,3 Sekunden**. Der echte Browser
+lädt das neue Geländemodul auch unter aktivem Service Worker und speichert
+es erfolgreich; dabei entstehen **0 Skriptfehler**.
+
+## 07.09.2026 — Fels, Stufen und Ebenenränder werden am Bild geprüft
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!"*
+
+`werkzeuge/pruefe-gelaende-bild.mjs` zeichnet jeweils genau ein Feld mit
+dem echten Weltzeichner. Es prüft Felsfacetten, die vier Seitenlippen bei
+drei Höhenunterschieden, offene Rampeneintritte und den Kartenrand. Für
+Treppen werden sechs Richtungen auf beiden Zeilenparitäten bei einfacher
+und dreifacher Vergrößerung gemalt. Die hellen Kanten müssen im echten
+Aufstiegsvektor liegen; breite Tritte werden an ihren fertigen Pixeln
+gemessen. Alle Details müssen im eigenen Feld bleiben und im Nebel
+gemeinsam gedämpft werden. Die Kartensumme bleibt unverändert.
+
+Gemessen mit `node werkzeuge/pruefe-gelaende-bild.mjs`: **97 Feldbilder**,
+höchstens **91 Rechtecke je Feld**, **39 je Felsfeld**, **3 Felsmuster**
+über drei Saaten. Die Obergrenzen von 64 Rechtecken für Fels und 140 für
+Treppen verhindern eine Auflösung ganzer Felder in einzelne Pixelaufrufe.
+**Rotprobe:** Der alte Zeichner fällt mit **127 von 446 Behauptungen**,
+Rückgabewert 1; der neue besteht mit **446 von 446**, Rückgabewert 0.
+
+In `werkzeuge/pruefe-zeichnen.mjs` werden Wandgrundflächen zusätzlich über
+ihre Form erkannt: Facetten derselben Farbfamilie dürfen nicht als zehn
+Flanken gezählt werden. Der alte Rampentest verlangt jetzt drei echte
+Stufenkanten statt drei einteiliger Querstriche. Damit besteht diese
+Prüfung mit **154 Behauptungen**; vorher fielen genau **7 Behauptungen**
+an den geänderten Darstellungsformen. Die Kopfnotizenprüfung besteht
+mit **852 Behauptungen**, die Sprachprüfung mit **0 Fehlern**.
+
+## 07.09.2026 — Felswände, breite Treppen und gebrochene Ebenenränder
+
+**Auftrag, wörtlich:** *„Auf jedenfall wand grafiken. Bessere srufen
+grafiken und ränder von ebenen!“*
+
+Wände tragen jetzt große Felsfacetten, dunkle Brüche und helle Adern.
+Acht orts- und saatenfeste Muster verhindern eine einheitliche glatte
+Fläche. Helle Säume entstehen nur zur offenen Nachbarfläche. Die
+vorhandene Körnung und die beiden Wandgrundflächen bleiben erhalten.
+
+Treppen haben drei breite Trittflächen, dunkle Setzstufen und hellere
+Vorderkanten in Aufstiegsrichtung. Ihr Pixelraster folgt auch bei
+diagonalen Übergängen dem wirklichen Richtungsvektor der jeweiligen
+Zeile. Höhere Flächen bekommen an allen vier sichtbaren Seiten
+gebrochene Felslippen; direkte Rampenanschlüsse bleiben offen. Abgründe
+haben ein dunkles Inneres und Ränder nur zu angrenzendem festen Boden,
+ohne helle Trennlinien zwischen zusammenhängenden Abgrundfeldern.
+Alte Rampenmerkmale unter Wänden oder Abgründen malen weder Treppen
+noch offene Randanschlüsse: Die Kartenerzeugung kann solche Merkmale
+beim späteren Graben belassen. Entscheidend ist die aktuelle Oberfläche.
+
+**Aufbau:** `runtime/gelaende-bild.js` kapselt die zusätzlichen
+Geländeformen; `runtime/zeichnen.js` bestimmt weiter die Zeichenfolge.
+Drei neue Farben stehen in `runtime/palette.js`. Regeln, Wegsuche,
+Kamera, Oberfläche und Kartenerzeugung ändern sich nicht.
+
+**Gemessen im echten Chrome am 07.09.2026:** Die feste Szene mit 672
+Feldern benötigt 3675 statt 1076 Rechtecke je Bild. Über 100 Zeichenläufe
+beträgt die mittlere Aufrufzeit rund 0,77 statt 0,26 ms auf diesem Rechner;
+das misst ausschließlich den Weltzeichner, keine vollständige Bildrate.
+Felsmuster, Richtungsraster und Farbsätze werden wiederverwendet. Die
+Treppenraster fassen gleichfarbige Pixel zu Zeilen zusammen. Ein späterer
+Leistungsbedarf lässt sich durch zwischengespeicherte Geländebilder
+reduzieren, ohne die Spielregeln anzufassen.
+
+Im Browser wurden die Vergleichsszene, der Spielstart und das Spielfeld
+bei 1920 × 1080 und 915 × 412 geprüft: keine Skriptfehler und keine
+fehlenden Dateien. Die Körnungsprüfung bleibt mit 58 Behauptungen grün.
+
+## 07.09.2026 — Der warme Vorlauf wird am gezeichneten Bild geprüft
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab Dann so das man es sich ansehen kann über github seite"*
+
+`werkzeuge/pruefe-vorlauf.mjs` prüft Merkmal 5 aus Vorgang #9 an den
+wirklichen Canvas-Rechtecken. So kann eine warme Palette allein keine
+kalt gebliebene Zeichnung verdecken. Die Prüfung umfasst die fünf Seiten,
+Alleinspiel und zwei beziehungsweise vier Plätze sowie die Bilder vor
+und nach der Codeerzeugung. Die Codes entstehen im echten Vermittler;
+eine ersetzte Verbindung hält die Prüfung vollständig ohne Netzwerk.
+
+Gemessen mit `node werkzeuge/pruefe-vorlauf.mjs`: **54 Bilder**, verteilt
+auf **9 Zustände und 6 Fenstergrößen** (412 × 915, 915 × 412, 960 × 540,
+1366 × 768, 360 × 640, 1920 × 1080), und **378 Trefferflächen** innerhalb
+des Fensters
+mit mindestens **48 × 48 Punkten**. Schrift und Nebenzeilen haben gegen
+die dunklen und aktiven Flächen mindestens **6,16:1 Kontrast**; verlangt
+werden 4,5:1. Mauszeiger, Tastaturfokus, gewählte Klasse, Eingabefelder
+und Rückmeldungen müssen ihre vereinbarten Farben tatsächlich malen.
+
+**Rotprobe:** Am unveränderten Vorlauf von `28a3f83` fallen **240 von
+1172 Behauptungen**, Rückgabewert 1. Die Vergrößerung bleibt im neuen
+Vorlauf bei 1920 × 1080 höchstens zweifach. Eine
+Gegenprobe entfernt diese Kappung absichtlich: **6 von 1172 Behauptungen**
+fallen, Rückgabewert 1. Nach dem Wiederherstellen bestehen **1172 von
+1172**, Rückgabewert 0. Die Kopfnotizenprüfung besteht mit
+**830 Behauptungen**, die Sprachprüfung mit **0 Fehlern**. Die vollständige
+Prüfkette und die Veröffentlichung werden nach der Integration geprüft.
+
+## 07.09.2026 — Vorlauf im Scotophobia-Ton (Vorgang #9, Merkmal 5)
+
+**Auftrag, wörtlich:** *„Schau mal ins github hatred und arbeite mal den
+nächsten optik schritt ab. Dann so das man es sich ansehen kann über
+ github seite“*.
+
+Der Vorlauf übernimmt Scotophobias warmes Creme auf fast Schwarz.
+Titel und Unterzeilen beginnen links; dünne Linien ersetzen die Kästen.
+Eine Seitenmarke zeigt Tastaturfokus und Mauszeiger, eine warme Fläche
+kennzeichnet die gewählte Klasse oder das aktive Eingabefeld. Auf großen
+Schirmen ist die Vergrößerung auf 2 begrenzt: bei 1920 × 1080 ist die
+Menüspalte damit 640 statt 1280 Bildpunkte breit. Alle Vergrößerungen
+bleiben ganzzahlig, die Pixelschrift bleibt ungeglättet.
+
+**Aufbau:** `runtime/lobby.js` legt Seiten und Trefferflächen wie zuvor;
+`runtime/lobby-bild.js` malt ausschließlich diesen Zustand. Die Farben
+stehen als eigener Satz `VORLAUF` in `runtime/palette.js`. Der Zugriff
+auf diese Bilddatei ist für diesen Oberflächen-Schritt nötig; die bisherigen
+Farben des Kerkers und alle Regeln unter `spiel/` bleiben unverändert.
+
+**Gemessen am 07.09.2026:** `node werkzeuge/pruefe-einstieg.mjs` zählt
+10 statt 21 Flächen auf der Titelseite bei 640 × 360. Der Vorlauf fügt
+keine Animation oder Lichtberechnung hinzu. Einstieg: 183 Behauptungen
+grün; `node werkzeuge/pruefe-einzeldatei.mjs`: 22 grün. Im echten
+Chrome-Browser: Titel, Heldenwahl und Spielstart bei 1920 × 1080 und
+915 × 412; keine Skriptfehler oder fehlenden Dateien. Auf dem Handy
+sind die gemessenen Trefferflächen mindestens 105 × 48 Bildpunkte groß.
+Screenshots des ursprünglichen Vorlaufs, der neuen Fassung und des
+Scotophobia-Menüs wurden zum visuellen Vergleich aufgenommen.
+
+Die zusätzliche Stilprüfung und die Windows-Berichtigung der bestehenden
+Prüfwerkzeuge werden auf eigenen Prüfzweigen geführt. Veröffentlichung
+über den vorhandenen `gh-pages`-Zweig; Rückkehr zur vorigen Fassung durch
+das Zurücknehmen des jeweiligen Veröffentlichungscommits.
+
+## 07.09.2026 — Pfadgrenzen und Kopfnotizen auch unter Windows prüfen
+
+`pruefe-kern.mjs` verglich den von Node zusammengesetzten Dateipfad mit
+einem fest eingetragenen `/`. Unter Windows entstehen dort `\`:
+**71 von 211 Behauptungen** lehnten deshalb gültige interne Einfuhren
+ab. Der Vergleich verwendet jetzt den Plattformtrenner, weiterhin mit
+einer vollständigen Ordnergrenze. **10 neue Selbstproben** prüfen auf
+jedem Rechner Windows- und POSIX-Pfade einschließlich `..` und dem
+ähnlich benannten Nachbarordner `spiel-fremd/`.
+
+`pruefe-kopfnotiz.mjs` liest CRLF als einen Zeilenumbruch. Das CR gehört
+weder zum ersten Satz noch zur Zeichenbreite. **6 neue Selbstproben**
+halten LF und CRLF gleich, verlangen weiterhin einen Satz im Kopf und
+unterscheiden weiterhin exakt 100 von 101 Zeichen. Ein einzelnes CR
+innerhalb einer Zeile wird nicht entfernt. Vor der Berichtigung fielen
+**3 dieser Proben** rot aus.
+
+**Gemessen am 07.09.2026 unter Windows:**
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `node werkzeuge/pruefe-kern.mjs` | 221 Behauptungen grün |
+| `node werkzeuge/pruefe-kopfnotiz.mjs` | 820 Behauptungen grün |
+
+In einer temporären Kopie wurden zusätzlich echte Importzeilen nach
+`../runtime/fremd.js` und `../spiel-fremd/fremd.mjs` eingesetzt: **beide
+führten zum erwarteten Exit 1 mit der Meldung zur Kerngrenze**. Nach
+Rücknahme und Umstellung aller **99 Quelldateien auf CRLF** bestanden
+beide Befehle erneut mit denselben 221 und 820 Behauptungen. Die
+integrierte Gesamtkette wird beim Zusammenführen geprüft.
 
 ## 07.09.2026 — Der Ablauf auf `main` prüft, statt zu veröffentlichen
 
