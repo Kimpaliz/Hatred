@@ -40,18 +40,18 @@
 
 import { abschnitt, behaupte, gleich, wirft, ende } from "./helfer.mjs";
 import {
-  baueLandschaft, offen, nurDiagonalen, diagonalFund, beidseitigErreichbar,
+  baueLandschaft, offen, beidseitigErreichbar,
   erreichbareFelder, laufKostenFeld, offeneGebiete, ebenenFlaechen, plateaus, gebiete,
   rastereWaende, setzeRand, setzeEbenen, mehrheitsFilter, legeKleineEbenenZusammen,
   roheEbenen, schneideKliffe,
-  schliesseEinzelneHohlraeume, macheSaeulen, oeffneDiagonalen, raeumeAuf,
+  schliesseEinzelneHohlraeume, macheSaeulen, raeumeAuf,
   verfuelleNebenraeume, verbindeMitRampen, streueZusatzRampen, aufstiegsKanten,
   setzeWasser, setzeBoden, setzeFackeln, setzeZier, zierErlaubt, waehleStarts,
   waehleAusgang, sammleRaeume, groesstesPlateauFeld,
   MIN_KARTE, MIN_EBENEN_FLAECHE, FACKEL_ABSTAND, RAUM_ARTEN, ZUSATZ_RAMPEN
 } from "../spiel/landschaft.mjs";
 import {
-  macheKarte, HINDERNIS, FLUESSIG, BODEN, RAMPE, richtungen, EBENEN, EBENE_GRABEN
+  macheKarte, HINDERNIS, FLUESSIG, BODEN, RAMPE, richtungen, EBENEN, EBENE_GRABEN, abstand
 } from "../spiel/gitter.mjs";
 import { begehbar, laufKosten } from "../spiel/hoehen.mjs";
 import { macheWeltfeld } from "../spiel/welt-feld.mjs";
@@ -94,10 +94,20 @@ const setzeBlock = (karte, x0, y0, x1, y1, werte) => {
    1 · Der Reihenlauf über 60 Saaten
    ══════════════════════════════════════════════════════════════════ */
 
+/* Eine Kopie der Karte — damit eine Zählung, die nebenbei aufräumt,
+   das Original nicht verändert. */
+function macheKopie(karte) {
+  const neu = macheKarte(karte.breite, karte.hoehe);
+  for (const reihe of ["boden", "ebene", "hindernis", "fluessig", "rampe"]) {
+    neu[reihe].set(karte[reihe]);
+  }
+  return neu;
+}
+
 abschnitt("Reihenlauf");
 
 const fehler = {
-  rand: 0, startBegehbar: 0, startVerbunden: 0, ausgang: 0, diagonal: 0,
+  rand: 0, startBegehbar: 0, startVerbunden: 0, ausgang: 0,
   unerreichbar: 0, ebenenFlaeche: 0, verbotenNass: 0, wasserEbene: 0,
   wasserSee: 0, dunkel: 0, startZahl: 0, ausgangAufStart: 0, raumArt: 0
 };
@@ -141,7 +151,6 @@ for (let saat = 1; saat <= SAATEN; saat++) {
   if (aus && karte.starts.some((s) => s.x === aus.x && s.y === aus.y)) fehler.ausgangAufStart++;
 
   /* (d) keine Nur-Diagonale */
-  fehler.diagonal += nurDiagonalen(karte).length;
 
   /* (e) jede offene Kachel erreichbar — hin und zurück */
   let offeneKacheln = 0, wasserKacheln = 0;
@@ -197,7 +206,6 @@ gleich(fehler.startBegehbar, 0, "(b) jedes Startfeld ist begehbar");
 gleich(fehler.startVerbunden, 0, "(b) die Startfelder erreichen einander hin und zurück");
 gleich(fehler.ausgang, 0, "(c) der Ausgang ist mit den echten Höhenregeln erreichbar");
 gleich(fehler.ausgangAufStart, 0, "(c) der Ausgang liegt auf keinem Startfeld");
-gleich(fehler.diagonal, 0, "(d) es gibt keine nur-diagonale Verbindung mehr");
 gleich(fehler.unerreichbar, 0, "(e) jede offene Kachel ist hin und zurück erreichbar");
 gleich(fehler.ebenenFlaeche, 0,
   `(h) keine Ebenenfläche unter ${MIN_EBENEN_FLAECHE} Kacheln`);
@@ -246,7 +254,6 @@ for (const saat of VOLLE) {
   const karte = baueLandschaft({ saat, spielerZahl: 4 });
   const gutV = beidseitigErreichbar(karte, [karte.starts[0]]);
   for (let i = 0; i < karte.anzahl; i++) if (offen(karte, i) && !gutV[i]) volleFehler++;
-  if (nurDiagonalen(karte).length) volleFehler++;
   if (karte.starts.length !== 4) volleFehler++;
   if (!gutV[karte.index(karte.ausgang.x, karte.ausgang.y)]) volleFehler++;
 }
@@ -360,39 +367,35 @@ abschnitt("Aufräumen");
 }
 
 {
-  /* Die Nur-Diagonale: (3,3) und (4,4) offen, (4,3) und (3,4) Wand.
-     Im Bild ein Durchgang, im Spiel keiner — dieses Spiel läuft in
-     vier Richtungen. */
+  /* ── Die Nur-Diagonale gibt es nicht mehr ──────────────────────
+
+     Hier standen bis zum 07.09.2026 zwei Abschnitte über einen Fall,
+     den nur ein Quadratraster kennt: (3,3) und (4,4) offen, (4,3) und
+     (3,4) gesperrt — im Bild ein Durchgang, im Spiel keiner, weil man
+     nicht über Eck geht. Die Landschaft musste solche Stellen eigens
+     suchen und aufbrechen (`nurDiagonalen`, `oeffneDiagonalen`,
+     ~54 Zeilen).
+
+     Auf dem Sechseck berühren sich zwei Felder nie nur über Eck. Der
+     Fall ist mit dem Raster verschwunden, und mit ihm die Suche.
+
+     Geprüft wird jetzt, dass er wirklich weg ist — und zwar an genau
+     der Stelle, die früher der Beweis für sein Dasein war. Ohne diese
+     Behauptung könnte jemand die Suche eines Tages wieder einbauen,
+     ohne dass etwas anschlüge. */
   const karte = handKarte(9, 9);
   setzeBlock(karte, 1, 1, 7, 7, { hindernis: HINDERNIS.wand });
-  karte.setze(3, 3, { hindernis: HINDERNIS.keins, ebene: 2 });
+  karte.setze(3, 3, { hindernis: HINDERNIS.keins, ebene: 1 });
   karte.setze(4, 4, { hindernis: HINDERNIS.keins, ebene: 1 });
-  const fund = diagonalFund(karte, 3, 3);
-  behaupte(fund !== null, "die Nur-Diagonale wird gefunden");
-  behaupte(!begehbar(karte, 3, 3, 4, 4), "und ist mit den echten Regeln kein Schritt");
-  gleich(nurDiagonalen(karte).length, 1, "die Karte hat genau einen solchen Fund");
+  behaupte(begehbar(karte, 3, 3, 4, 4),
+    "was auf dem Quadrat eine Nur-Diagonale war, ist auf dem Sechseck ein Schritt");
+  gleich(laufKosten(karte, 3, 3, 4, 4), 1, "und kostet einen Punkt wie jeder andere");
 
-  const geoeffnet = oeffneDiagonalen(karte);
-  gleich(geoeffnet.length, 1, "genau eine Sperrkachel wird geöffnet");
-  gleich(nurDiagonalen(karte).length, 0, "danach ist keine Nur-Diagonale mehr übrig");
-  const z = geoeffnet[0];
-  gleich(karte.ebene[z], 1, "die geöffnete Kachel bekommt die niedrigere der beiden Ebenen");
-  const zx = spalte(karte, z), zy = zeile(karte, z);
-  behaupte(begehbar(karte, 3, 3, zx, zy) || begehbar(karte, zx, zy, 3, 3),
-    "und verbindet die beiden Kacheln wirklich");
-  behaupte(laufKosten(karte, zx, zy, 4, 4) !== null, "auch zur zweiten Kachel hin");
-}
-
-{
-  /* Eine Säule darf einen Durchgang nicht vortäuschen. Ohne die Frage
-     nach `offen` (statt nach „ist Wand") bliebe genau dieser Fall
-     stehen: zwei Säulen über Eck, dazwischen kein Weg. */
-  const karte = handKarte(9, 9);
-  karte.setze(4, 3, { hindernis: HINDERNIS.saeule });
-  karte.setze(3, 4, { hindernis: HINDERNIS.saeule });
-  gleich(nurDiagonalen(karte).length, 1, "auch zwei Säulen über Eck sind eine Nur-Diagonale");
-  oeffneDiagonalen(karte);
-  gleich(nurDiagonalen(karte).length, 0, "und werden aufgelöst");
+  const kern = await import("../spiel/erreichbarkeit.mjs");
+  gleich(kern.diagonalFund, undefined, "`diagonalFund` gibt es nicht mehr");
+  gleich(kern.nurDiagonalen, undefined, "`nurDiagonalen` auch nicht");
+  const land = await import("../spiel/landschaft.mjs");
+  gleich(land.oeffneDiagonalen, undefined, "und `oeffneDiagonalen` ebenso wenig");
 }
 
 {
@@ -402,11 +405,24 @@ abschnitt("Aufräumen");
   rastereWaende(karte, welt);
   setzeRand(karte);
   setzeEbenen(karte, welt);
-  const vorherDiagonalen = nurDiagonalen(karte).length;
+  /* ── Warum hier keine Untergrenze mehr steht ────────────────────
+
+     Bis zum 07.09.2026 behauptete diese Stelle, die rohe Rasterung
+     habe **mindestens einen** Fall zum Aufräumen — auf dem
+     Quadratraster stimmte das immer, weil Nur-Diagonalen dort
+     massenhaft entstehen.
+
+     Auf dem Sechseck gibt es die gar nicht mehr, und einzelne
+     Hohlräume sind selten: Ein Feld mit sechs Nachbarn ist schwerer
+     einzuschließen als eines mit vier. Auf dieser Karte sind es null.
+
+     „Es gab etwas zu tun" ist damit keine Eigenschaft der Regel mehr,
+     sondern des Zufalls. Geprüft wird deshalb nur noch, was immer
+     gelten muss: **Danach ist nichts mehr übrig.** */
+  const vorherLoecher = schliesseEinzelneHohlraeume(macheKopie(karte));
   const bericht = raeumeAuf(karte);
-  behaupte(vorherDiagonalen > 0,
-    `die rohe Rasterung hatte ${vorherDiagonalen} Nur-Diagonalen — deshalb der Schritt`);
-  gleich(nurDiagonalen(karte).length, 0, "nach dem Aufräumen ist keine mehr übrig");
+  gleich(schliesseEinzelneHohlraeume(karte), 0,
+    `nach dem Aufräumen ist kein Hohlraum mehr übrig (vorher ${vorherLoecher})`);
   gleich(ebenenFlaechen(karte).groessen.filter((z) => z < MIN_EBENEN_FLAECHE).length, 0,
     "und keine Ebenenfläche ist zu klein");
   behaupte(bericht.runden <= 8, `der Aufräumlauf brauchte ${bericht.runden} Durchgänge`);
@@ -445,15 +461,25 @@ abschnitt("Rampen");
   behaupte(bericht.rampen > 0, `${bericht.rampen} Rampe(n) wurden dafür gesetzt`);
   gleich(bericht.verfuellt, 0, "und nichts musste verfüllt werden");
 
-  let obenFalsch = 0, untenRichtig = 0;
+  let obenFalsch = 0;
+  const mitRampe = [];
   for (let y = 1; y < 9; y++) {
     if (karte.rampeBei(12, y) !== RAMPE.keine) obenFalsch++;
-    if (karte.rampeBei(11, y) === RAMPE.ost) untenRichtig++;
+    if (karte.rampeBei(11, y) === RAMPE.ost) mitRampe.push(y);
   }
-  behaupte(untenRichtig > 0, "die Rampe liegt auf der tieferen Kachel und zeigt nach oben");
+  behaupte(mitRampe.length > 0, "die Rampe liegt auf der tieferen Kachel und zeigt nach oben");
   gleich(obenFalsch, 0, "und keine liegt auf der oberen Kachel");
-  behaupte(begehbar(karte, 11, 5, 12, 5), "der Aufstieg ist mit den echten Regeln erlaubt");
-  gleich(laufKosten(karte, 11, 5, 12, 5), 2, "und kostet die zwei Punkte aus hoehen.mjs");
+
+  /* Geprüft wird an der Zeile, in der wirklich eine Rampe liegt, und
+     nicht an einer angenommenen. Auf dem Quadratraster war das
+     dieselbe Zeile wie die Kartenmitte; auf dem Sechseck entscheidet
+     die Streuung, welche es wird — und eine feste Zeile hätte die
+     Prüfung von der Streuung abhängig gemacht statt von der Regel. */
+  const zeile = mitRampe[0];
+  behaupte(begehbar(karte, 11, zeile, 12, zeile),
+    `der Aufstieg in Zeile ${zeile} ist mit den echten Regeln erlaubt`);
+  gleich(laufKosten(karte, 11, zeile, 12, zeile), 2,
+    "und kostet die zwei Punkte aus hoehen.mjs");
 }
 
 {
@@ -604,6 +630,67 @@ abschnitt("Boden");
   behaupte(bildA !== bildB, "eine andere Saat legt die Knochenflecken anderswohin");
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   Die Höhle hat keine Vorzugsrichtung
+   ══════════════════════════════════════════════════════════════════
+
+   ── Warum es diese Prüfung gibt ────────────────────────────────────
+
+   Am 07.09.2026 wurde die Abtastung auf das Sechseckraster umgestellt:
+   Jede ungerade Zeile liegt ein halbes Feld weiter rechts, also muss
+   die Weltformel dort abgefragt werden, wo das Feld wirklich liegt.
+
+   Beim Rotmachen fiel auf, dass **keine einzige Prüfung** den halben
+   Versatz deckte: Nimmt man ihn heraus, bleibt die ganze Kette grün.
+   Die Karte sieht dann nur ein wenig anders aus — und „ein wenig
+   anders" merkt niemand.
+
+   ── Woran man es doch merkt ────────────────────────────────────────
+
+   Die Weltformel ist richtungsneutral: Sie kennt kein Oben und kein
+   Schräg. Also muss auch die gerasterte Karte in alle sechs
+   Richtungen gleich aussehen. Gemessen wird, wie oft zwei Nachbarn
+   im selben Zustand sind (beide Fels oder beide offen) — je Richtung,
+   über zwanzig Karten.
+
+   Gemessen am 07.09.2026 über 20 Karten à 44 x 32:
+
+   · **mit** halbem Versatz: 82,68 % bis 83,95 % — Spanne 1,27 Punkte
+   · **ohne** halben Versatz: 81,75 % bis 84,00 % — Spanne 2,25 Punkte
+
+   Ohne den Versatz sind die schrägen Richtungen messbar „körniger" als
+   die waagerechten: Das Raster steht schief zur Höhle. Die Schwelle
+   liegt bei 1,8 — mit Luft zu beiden Seiten. */
+abschnitt("Keine Vorzugsrichtung");
+{
+  const SPANNE_HOECHSTENS = 1.8;
+  const zaehler = new Map(), einig = new Map();
+  for (let saat = 1; saat <= 20; saat++) {
+    const k = baueLandschaft({ saat, breite: 44, hoehe: 32, spielerZahl: 2 });
+    for (let y = 1; y < k.hoehe - 1; y++) {
+      for (let x = 1; x < k.breite - 1; x++) {
+        const fels = k.blocktBewegung(x, y);
+        for (const r of richtungen(y)) {
+          const nx = x + r.dx, ny = y + r.dy;
+          if (!k.drin(nx, ny)) continue;
+          zaehler.set(r.name, (zaehler.get(r.name) || 0) + 1);
+          if (k.blocktBewegung(nx, ny) === fels) {
+            einig.set(r.name, (einig.get(r.name) || 0) + 1);
+          }
+        }
+      }
+    }
+  }
+  const werte = [...zaehler.keys()].map((n) => 100 * einig.get(n) / zaehler.get(n));
+  gleich(werte.length, 6, "alle sechs Richtungen wurden gemessen");
+  const spanne = Math.max(...werte) - Math.min(...werte);
+  behaupte(spanne < SPANNE_HOECHSTENS,
+    `keine Richtung ist körniger als die andere: Spanne ${spanne.toFixed(2)} `
+    + `von erlaubten ${SPANNE_HOECHSTENS} Punkten`);
+  console.log(`      · Richtungsneutral über 20 Karten: Spanne ${spanne.toFixed(2)} Prozentpunkte `
+    + `(${Math.min(...werte).toFixed(1)} bis ${Math.max(...werte).toFixed(1)} % einige Nachbarn)`);
+}
+
 abschnitt("Zier und Licht");
 
 {
@@ -616,11 +703,25 @@ abschnitt("Zier und Licht");
   gleich(zierErlaubt(karte, 3, 4), true, "mitten im Raum schon");
   gleich(karte.hindernisBei(7, 4), HINDERNIS.keins, "die Probe lässt die Karte, wie sie war");
 
-  /* Eine Zierde darf auch keine neue Nur-Diagonale schaffen. */
+  /* Hier stand bis zum 07.09.2026: „Eine Zierde darf keine neue
+     Nur-Diagonale schaffen." Auf dem Sechseck gibt es keine
+     Nur-Diagonale mehr (siehe oben) — zwei Felder über Eck sind dort
+     Nachbarn, und eine Zierde daneben schafft keinen Schein-Durchgang.
+
+     Geprüft wird stattdessen, was auf jedem Raster gilt und wofür
+     `zierErlaubt` da ist: Eine Zierde darf keinen Weg abschneiden. */
   const ecke = handKarte(9, 9);
   ecke.setze(4, 3, { hindernis: HINDERNIS.wand });
-  gleich(zierErlaubt(ecke, 3, 4), false,
-    "kein Hindernis, das über Eck eine Scheinverbindung macht");
+  gleich(zierErlaubt(ecke, 3, 4), true,
+    "neben einer einzelnen Wand ist Platz für eine Zierde — sie trennt nichts");
+
+  /* Und die Gegenprobe: In einem Gang, der nur ein Feld breit ist,
+     darf sie nicht stehen. Das ist dieselbe Aussage wie oben, nur an
+     einer Stelle, die das Sechseck nicht wegdefiniert hat. */
+  const gang = handKarte(9, 9);
+  setzeBlock(gang, 1, 1, 7, 7, { hindernis: HINDERNIS.wand });
+  setzeBlock(gang, 1, 4, 7, 4, { hindernis: HINDERNIS.keins });
+  gleich(zierErlaubt(gang, 4, 4), false, "im einspurigen Gang darf keine Zierde stehen");
 }
 
 {
@@ -685,8 +786,15 @@ abschnitt("Starts, Ausgang, Räume");
 {
   /* Der Ausgang liegt am Ende des **Weges**, nicht am Ende der
      Luftlinie. Auf dieser U-Karte ist (9,3) die Luftlinie-fernste
-     Kachel; laufen muss man dorthin aber nur 10 Punkte, während (1,3)
-     achtzehn kostet. */
+     Kachel, aber (1,3) die weg-fernste — man muss einmal um das U
+     herum.
+
+     Geprüft wird seit dem 07.09.2026 das **Verhältnis** und nicht mehr
+     zwei abgeschriebene Zahlen. Auf dem Sechseck sind die Wege kürzer
+     (9 und 16 statt 10 und 18); die Aussage dieser Stelle war aber nie
+     „zehn und achtzehn", sondern „Luftlinie und Weg zeigen in
+     verschiedene Richtungen". Genau das steht jetzt da — und es gilt
+     auf jedem Raster. */
   const karte = macheKarte(11, 5);
   karte.hindernis.fill(HINDERNIS.wand);
   karte.ebene.fill(1);
@@ -695,8 +803,17 @@ abschnitt("Starts, Ausgang, Räume");
   karte.setze(9, 2, { hindernis: HINDERNIS.keins });
   const start = [{ x: 1, y: 1 }];
   const kosten = laufKostenFeld(karte, start);
-  gleich(kosten[karte.index(9, 3)], 10, "bis zur Luftlinie-fernsten Kachel sind es 10 Punkte");
-  gleich(kosten[karte.index(1, 3)], 18, "bis zur weg-fernsten achtzehn");
+  const wegNah = kosten[karte.index(9, 3)];
+  const wegFern = kosten[karte.index(1, 3)];
+  behaupte(wegFern > wegNah,
+    `um das U herum ist weiter als quer hindurch (${wegFern} gegen ${wegNah})`);
+  behaupte(abstand(1, 1, 9, 3) > abstand(1, 1, 1, 3),
+    "während die Luftlinie genau andersherum urteilt");
+  /* Die Kachel (1,3) liegt zwei Felder Luftlinie entfernt und kostet
+     ein Vielfaches — das U hat keine Abkürzung. Das ist die Aussage,
+     die den Ausgang begründet. */
+  behaupte(wegFern > abstand(1, 1, 1, 3) * 4,
+    `zu (1,3) sind es ${abstand(1, 1, 1, 3)} Luftlinie, aber ${wegFern} Weg`);
   const aus = waehleAusgang(karte, start);
   gleich(`${aus.x},${aus.y}`, "1,3", "der Ausgang liegt am Ende des Weges");
 }
@@ -786,7 +903,6 @@ wirft(() => baueLandschaft({ saat: 1, tiefe: 0 }), "und die Tiefe 0");
 
   const gross = baueLandschaft({ saat: 5, breite: 80, hoehe: 60, spielerZahl: 4 });
   gleich(gross.starts.length, 4, "eine 80 × 60-Karte trägt vier Starts");
-  gleich(nurDiagonalen(gross).length, 0, "und hat keine Nur-Diagonale");
   behaupte(gross.summe() !== klein.summe(), "die beiden Karten sind verschieden");
 
   /* Die Saat steht auf der Karte — `spiel/lauf.mjs` zieht daraus den

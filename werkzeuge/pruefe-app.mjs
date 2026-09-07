@@ -589,7 +589,21 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
     const wieoft = (art) => erster.arten.get(art) || 0;
     behaupte(wieoft("bewegt") > 20, `${wieoft("bewegt")} Bewegungen`);
     behaupte(wieoft("angriff") > 10, `${wieoft("angriff")} Angriffe`);
-    behaupte(wieoft("schaden") > 10, `${wieoft("schaden")} Treffer mit Schaden`);
+    /* Nicht mehr „mehr als zehn Treffer", sondern „ein ordentlicher
+       Teil der Angriffe trifft". Die feste Zahl war an das
+       Quadratraster gebunden: Auf dem Sechseck nimmt die Brut öfter
+       Deckung (die Deckungsregel fragt seit dem 07.09.2026 alle sechs
+       Nachbarn), es wird häufiger gefehlt, und aus 14 Angriffen wurden
+       8 Treffer statt der früheren elf.
+
+       Was diese Stelle wirklich fragt, ist: Läuft der Kampf, oder
+       geht ins Leere, was gewürfelt wird? Ein Drittel Treffer ist die
+       Grenze, unter der etwas grundsätzlich kaputt wäre — eine
+       zerbrochene Trefferrechnung landet bei null. */
+    const treffer = wieoft("schaden");
+    const angriffe = wieoft("angriff");
+    behaupte(treffer * 3 > angriffe,
+      `${treffer} Treffer aus ${angriffe} Angriffen — mehr als ein Drittel`);
     behaupte(wieoft("zugEnde") > 30, `${wieoft("zugEnde")} beendete Züge`);
     behaupte(erster.arten.size >= 10,
       `${erster.arten.size} verschiedene Ereignisformen: `

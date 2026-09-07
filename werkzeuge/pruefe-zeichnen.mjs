@@ -50,7 +50,7 @@ import { fileURLToPath } from "node:url";
 
 import { abschnitt, behaupte, gleich, wirft, ende } from "./helfer.mjs";
 import {
-  BODEN, FLUESSIG, HINDERNIS, RAMPE, macheKarte
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, macheKarte, nachbarn
 } from "../spiel/gitter.mjs";
 import {
   ERINNERT_HELLE, FARBEN, STUFEN_SCHATTEN, abdunkeln, bodenTon, helligkeit, mische
@@ -392,16 +392,30 @@ abschnitt("5 · Wand");
 }
 
 /* ── 6 · Die Rampe zeigt, wohin sie führt ───────────────────────────
-   In allen vier Richtungen, und jedes Mal muss der Strich auf der
+   In allen **sechs** Richtungen, und jedes Mal muss der Strich auf der
    Aufstiegsseite der hellste sein. Eine Rampe mit gleich hellen
-   Strichen sähe genauso aus wie eine verkehrt herum gemalte. */
+   Strichen sähe genauso aus wie eine verkehrt herum gemalte.
+
+   Seit dem 07.09.2026 sind es sechs statt vier (Vorgang #7), und ein
+   „nord" gibt es nicht mehr — senkrecht nach oben liegt beim Sechseck
+   kein Feld, sondern eine Kante. Geprüft wird auf Zeile 6, also einer
+   **geraden** Zeile; dort liegen Nordost und Südwest senkrecht über
+   und unter dem Feld, die vier anderen schräg oder seitlich.
+
+   Ob eine Rampe senkrechte oder waagerechte Striche bekommt, hängt am
+   Vorzeichen ihres Schritts — das ist grob und für die schrägen
+   Richtungen noch nicht schön. Es steht hier als Messung, nicht als
+   Lob: Der Bodenmaler für Sechsecke ist eigene Arbeit (Vorgang #7,
+   Zweig `bild/sechseck`). */
 abschnitt("6 · Rampe");
 {
   const faelle = [
-    { rampe: RAMPE.nord, name: "nord", senkrecht: true, hellOben: true },
-    { rampe: RAMPE.sued, name: "süd", senkrecht: true, hellOben: false },
+    { rampe: RAMPE.nordost, name: "nordost", senkrecht: true, hellOben: true },
+    { rampe: RAMPE.suedost, name: "südost", senkrecht: true, hellOben: false },
     { rampe: RAMPE.west, name: "west", senkrecht: false, hellOben: true },
-    { rampe: RAMPE.ost, name: "ost", senkrecht: false, hellOben: false }
+    { rampe: RAMPE.ost, name: "ost", senkrecht: false, hellOben: false },
+    { rampe: RAMPE.nordwest, name: "nordwest", senkrecht: false, hellOben: true },
+    { rampe: RAMPE.suedwest, name: "südwest", senkrecht: false, hellOben: false }
   ];
   for (const fall of faelle) {
     const karte = macheProbeKarte();
@@ -619,7 +633,16 @@ abschnitt("10 · Merker");
   const ecke = stand.kamera.feldNachBild(6, 6);
   const kanten = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6)
     .filter((z) => z[5] === FARBEN.apVoll);
-  gleich(kanten.length, 3, "das linke Feld bekommt drei Kanten, nicht vier");
+  /* Wie viele Kanten es sein müssen, wird nicht abgeschrieben, sondern
+     gezählt: alle Nachbarn, die **nicht** zur Reichweite gehören. Auf
+     dem Quadrat waren das drei von vier, auf dem Sechseck sind es fünf
+     von sechs — die Aussage („zwischen zwei Reichweitenfeldern steht
+     keine Linie") ist dieselbe geblieben. */
+  const reichSatz = new Set([karte.index(6, 6), karte.index(7, 6)]);
+  const sollKanten = nachbarn(karte, 6, 6)
+    .filter((n) => !reichSatz.has(karte.index(n.x, n.y))).length;
+  gleich(kanten.length, sollKanten,
+    `das linke Feld bekommt ${sollKanten} Kanten — eine je Nachbar außerhalb der Reichweite`);
   behaupte(!kanten.some((z) => z[1] === ecke.x + (KACHEL - 1) * gross),
     "zur Nachbarin hin bleibt der Umriss offen");
 

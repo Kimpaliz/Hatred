@@ -3,87 +3,151 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
-## 07.09.2026 — Der Kern läuft auf Sechsecken (Arbeitsstand, Kette rot)
+## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 
-**Auftrag, wörtlich:** *„okay weiter"* — nach *„ja hexagon. raster form."*
+**Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*
 
-> ⚠️ **Dieser Stand ist nicht fertig.** 33 von 40 Prüfungen sind grün,
-> **7 sind rot**. Er steht hier als Zwischenstand auf dem Zweig
-> `kern/sechseck`, damit die Arbeit nicht verlorengeht und der nächste
-> Schritt auf etwas Nachlesbarem aufsetzt. **Nicht nach `main`.**
+Schritt 2 von #7 ist durch. Aus dem Arbeitsstand mit sieben roten
+Prüfungen sind **40 von 40 grün** geworden, **12.302 Behauptungen**.
 
 ## Was jetzt auf Sechsecken rechnet
 
-Die Umstellung selbst ist durch. `RICHTUNGEN` mit vier Einträgen gibt es
-nicht mehr, `schussweite` auch nicht.
+`RICHTUNGEN` mit vier Einträgen gibt es nicht mehr, `schussweite` auch
+nicht.
 
 | Stelle | vorher | jetzt |
 | --- | --- | --- |
 | `nachbarn()` | vier feste Richtungen | sechs, je nach Zeilenparität |
 | `abstand()` | Manhattan | Sechseck-Entfernung |
 | `schussweite()` | Schachbrett | **entfallen** — `abstand` ist beides |
-| `RAMPE` | nord/ost/sued/west | ost/suedost/suedwest/west/nordwest/nordost |
-| Sichtlinie | Bresenham (Quadrat) | Würfelkoordinaten (Sechseck) |
-| `hatDeckung` | Sonderregel „über Eck" | jeder Nachbar, der näher am Angreifer liegt |
+| `RAMPE` | nord/ost/sued/west | sechs Sechseck-Richtungen |
+| Sichtlinie | Bresenham (Quadrat) | Würfelkoordinaten, ganzzahlig |
+| `hatDeckung` | Sonderregel „über Eck" | jeder näher liegende Nachbar |
+| `umkreis` | Manhattan-Raute | `abstand` |
+| Abtastung der Welt | Quadratgitter | Versatzzeilen, √3/2 Zeilenabstand |
+| Pfeiltasten | vier Richtungen | vier plus Umschalt = alle sechs |
 
-**Zwanzig Schleifen** in `spiel/`, `runtime/` und den Prüfungen haben ihre
-Zeile bekommen — auf dem Sechseck hängt die Richtungstabelle daran.
+**Ersatzlos gelöscht:** `diagonalFund`, `nurDiagonalen` (erreichbarkeit,
+zusammen 44 Zeilen) und `oeffneDiagonalen` (landschaft). Sechsecke
+berühren sich nie nur über Eck — den Fall gibt es nicht mehr, und mit
+ihm nicht die Suche danach.
 
-## Drei Funde, die den Umbau wert waren
+## Fünf Fehler, die der Umbau ans Licht geholt hat
 
-**1. Die Sichtlinie war die zweite Geometrie im Spiel.** `spiel/sicht.mjs`
-lief auf Bresenham, also auf Quadraten. Wäre das so geblieben, ginge man
-über Sechsecke und sähe über Quadrate: Felder, die man sieht und nicht
-erreicht, und umgekehrt. Sie läuft jetzt in Würfelkoordinaten — und
-**ohne eine einzige Kommazahl**, weil zwei Browser sonst auseinanderlaufen.
-Gemessen: 0 einseitige Sichtpaare über 7544 sichtbare.
+Jeder einzelne war schon vorher da oder entstand beim Umstellen, und
+jeder wurde von einer Prüfung gefunden, nicht von mir:
+
+**1. Die Sichtlinie war die zweite Geometrie im Spiel.** Sie lief auf
+Bresenham, also auf Quadraten — man wäre über Sechsecke gelaufen und
+über Quadrate gesehen. Jetzt Würfelkoordinaten, und **ohne eine einzige
+Kommazahl**: Zwei Browser dürfen hier nicht auseinanderlaufen. Rotprobe:
+Linie verbogen → **8 von 128** Behauptungen fielen, darunter „hinter der
+Wand kommt kein Licht an: ist 0,787, soll 0".
 
 **2. Die Deckungsregel zeigte ins Leere.** `hatDeckung` rechnete mit
-`Math.sign(dx)` auf Versatzzeilen — sie fand Deckung hinter Dingen, die
-nicht im Weg standen, und übersah welche, die es waren. Jetzt: *jeder
-Nachbar des Ziels, der näher am Angreifer liegt*. Die Sonderregel „steht
-er exakt über Eck, zählen beide Felder" ist **ersatzlos entfallen** —
-sie war der Preis des Quadratrasters.
+`Math.sign` auf Versatzzeilen und fand Deckung hinter Dingen, die nicht
+im Weg standen. Jetzt: jeder Nachbar des Ziels, der näher am Angreifer
+liegt. Die Sonderregel „steht er exakt über Eck, zählen beide Felder"
+ist **ersatzlos entfallen** — sie war der Preis des Quadratrasters. Die
+Prüfung deckt dafür jetzt alle sechs Richtungen systematisch ab statt
+vier von Hand: **127 → 149** Behauptungen.
 
-Das hat die Prüfung sofort belohnt: Sie deckt jetzt alle sechs
-Richtungen systematisch ab statt vier per Hand (127 → 149 Behauptungen).
+**3. Die Sturzwarnung stand an falschen Feldern.** `runtime/eingabe.js`
+suchte den Nachbarn über `x - r.dx` — die Gegenrichtung als Vorzeichen.
+Auf Versatzzeilen landet das auf einem Feld, das gar kein Nachbar ist.
+Gemessen: **vier Felder wichen ab**, zwei warnten zu Unrecht, zwei
+schwiegen zu Unrecht.
 
-**3. Die Gegenrichtung nahm die falsche Zeile.** Mein erster Anlauf
-schrieb `richtungen(y + 1)` — „die andere Parität". Für die vier schrägen
-Richtungen stimmt das, für **Ost und West nicht**: Dort bleibt man in
-derselben Zeile. Gemessen von der Landschaftsprüfung: Von 35 möglichen
-Aufstiegen bekamen nur 18 ihre Rampe.
+**4. Die Gegenrichtung nahm die falsche Zeile.** Mein erster Anlauf
+schrieb `richtungen(y + 1)`. Für die vier schrägen Richtungen stimmt
+das, für **Ost und West nicht** — dort bleibt man in derselben Zeile.
+Von 35 möglichen Aufstiegen bekamen nur **18** ihre Rampe.
+
+**5. Der Startplatz wurde in einer Raute gesucht.** `umkreis` maß
+`|dx| + |dy|` — die Manhattan-Raute des Quadratrasters, die schräg über
+den Sechsecken liegt. Auf einer engen Karte fand `waehleStarts` nur noch
+**ein einziges** Startfeld statt zweier.
+
+## Eine Messung, die eine Fehlentscheidung verhindert hat
+
+Der Zeilenabstand eines Sechseckrasters ist √3/2 der Feldbreite, nicht
+die Breite selbst. Der erste Blick darauf war **eine einzelne Karte**
+(Saat 5, 44 x 32): 6,5 % offene Kacheln gegen 22,4 % ohne den engeren
+Abstand. Das sah nach einem klaren Rückschritt aus, und beinahe wäre
+`y * P` stehengeblieben — mit einer schriftlichen Begründung, die falsch
+gewesen wäre.
+
+Über **60 Saaten** gemessen: **35,8 %** mit dem Sechseck-Abstand gegen
+**36,5 %** ohne, und in beiden Fällen bauen alle 60 Karten fehlerfrei.
+Saat 5 war eine dünne Karte, kein Beleg.
+
+*Eine Zahl aus einem Lauf ist keine Messung.* Steht jetzt so im Code.
+
+## Eine Lücke, die beim Rotmachen auffiel
+
+Der **halbe Versatz der ungeraden Zeilen** in der Abtastung war von
+keiner einzigen Prüfung gedeckt: Nimmt man ihn heraus, bleibt die ganze
+Kette grün. Die Karte sieht dann nur ein wenig anders aus — und „ein
+wenig anders" merkt niemand.
+
+**Neu deshalb: „Keine Vorzugsrichtung".** Die Weltformel kennt kein Oben
+und kein Schräg, also muss die gerasterte Karte in alle sechs Richtungen
+gleich aussehen. Gemessen wird über zwanzig Karten, wie oft zwei
+Nachbarn im selben Zustand sind — je Richtung:
+
+| | Spanne über die sechs Richtungen |
+| --- | --- |
+| mit halbem Versatz | **1,27** Prozentpunkte (82,7 – 84,0 %) |
+| ohne halben Versatz | **2,25** Prozentpunkte (81,7 – 84,0 %) |
+
+Schwelle 1,8, mit Luft nach beiden Seiten. Rotprobe: Versatz entfernt →
+„Spanne 2,25 von erlaubten 1,8 Punkten".
 
 ## Was der Umbau von selbst besser gemacht hat
 
-- **Ein Maßband statt zwei.** `abstand` ist Laufweg und Schussweite.
-- **`oeffneDiagonalen` entfällt** (19 Zeilen) — Sechsecke berühren sich
-  nie nur über Eck.
-- **Ein Gegner nimmt jetzt Deckung**, wo er vorher weitergelaufen wäre.
-  Die KI-Prüfung hat das gefunden: Er bleibt drei Felder vor dem Jäger
-  hinter einer Wand stehen. Auf dem Quadrat hätte dieselbe Wand nicht
-  gedeckt. Das ist kein Fehler, das ist die neue Regel bei der Arbeit.
+- **Ein Maßband statt zwei.**
+- **Ein Gegner nimmt jetzt Deckung**, wo er vorher weitergelaufen wäre —
+  drei Felder vor dem Jäger hinter einer Wand. Auf dem Quadrat hätte
+  dieselbe Wand nicht gedeckt. Ich hielt es erst für einen Fehler.
+- **Sechs Richtungen auf vier Pfeiltasten**: Links und Rechts waagerecht,
+  Hoch und Runter schräg, mit Umschalt die andere schräge Seite. Der
+  Feldzeiger erreicht damit wieder **320 von 320** Feldern — ohne die
+  Umschalttaste waren es 32.
 
-## Was noch rot ist — und warum
+## Prüfungen, die dabei besser geworden sind
 
-| Prüfung | woran es liegt |
-| --- | --- |
-| **zeichnen** | Rampen werden noch als Nord/Süd-Striche gemalt. Gehört zum System **Bild** und damit auf den Zweig `bild/sechseck` (Regel 2). |
-| **tippen** | Vier Pfeiltasten für sechs Richtungen. Gehört zum System **Oberfläche**, Zweig `flaeche/sechseck`. |
-| **app** | Folgefehler aus beiden. |
-| **eingabe** | Sturzwarnung: 19 statt 17 Felder. Die Zahl ist auf dem Sechseck eine andere — nachzurechnen, nicht nachzuziehen. |
-| **landschaft** | Zwei Entfernungen (9 statt 10, 16 statt 18) und eine Rampenregel. |
-| **ki** | Der Schütze steigt nicht mehr aufs Podest, seit die Deckungsregel anders rechnet. Braucht eine Aufstellung, die die Frage wieder stellt. |
-| **arbeitsweise** | Nur die Buchhaltung — grün, sobald dieser Eintrag steht. |
+Statt Zahlen nachzuziehen, wurden sechs Behauptungen **umgestellt** auf
+das, was sie eigentlich fragen:
 
-*Warum das kein Versehen ist:* Zwei der sieben gehören ausdrücklich
-**nicht** auf diesen Zweig. Ein Sechseck im Kern und ein Sechseck im Bild
-sind zwei Systeme, und Regel 2 will sie getrennt. Dass die Prüfkette
-trotzdem alles auf einmal laufen lässt, macht einen Zwischenstand
-zwangsläufig rot — das ist die Bauart der Kette, nicht ein Fehler dieser
-Arbeit.
+- Der Gleichstand in der Wegfindung wird nicht mehr gegen einen
+  abgeschriebenen Pfad geprüft, sondern gegen **sich selbst**: zweimal
+  gebaut, zweimal derselbe Weg — und jeder Schritt ein Nachbarschritt.
+- Die Reichweite wird gegen die **Formel** der Sechseck-Scheibe geprüft
+  (1 + 3n(n+1)), nicht gegen eine gezählte 25.
+- Die Sturzwarnung wird gegen die **Regel** geprüft, nicht gegen eine
+  Liste von Hand.
+- Die Gegneranzeige bekommt drei Aufstellungen statt einer: „setzt diese
+  Art ihre Fähigkeit ein" statt „setzt sie sie **hier** ein".
+- Die Trefferzahl im Vollspiel wird an den Angriffen gemessen, nicht an
+  einer festen Zehn.
+- Die Rampenzahl zählt **tiefe Felder**, nicht Kanten — ein Feld trägt
+  höchstens eine Rampe, und auf dem Sechseck grenzt dasselbe tiefe Feld
+  öfter an mehrere höhere.
 
-**Stand:** 33 von 40 grün, **11.348 Behauptungen** in den grünen.
+## Eine Beobachtung zu Regel 2
+
+Ein Rasterwechsel ist **eine** Änderung, aber er berührt alle drei
+Systeme: Regelkern, Bild und Oberfläche. Regel 2 will je System einen
+Zweig; die Prüfkette läuft dagegen immer ganz. Beides zusammen heißt:
+Ein Rasterwechsel kann nur auf **einem** Zweig grün werden.
+
+Dieser Zweig heißt `kern/sechseck` und trägt deshalb auch die
+Bildstellen (Rampenstriche, Umriss der Reichweite) und die
+Oberflächenstellen (Pfeiltasten, Sturzwarnung). Das ist kein Verstoß aus
+Bequemlichkeit, sondern die Grenze der Regel — sie steht hier, damit sie
+beim nächsten Mal nicht neu entdeckt werden muss.
+
+**Kette: 40 von 40 grün, 12.302 Behauptungen, 66,1 s.**
 
 ---
 

@@ -115,38 +115,6 @@ export function offeneGebiete(karte) {
   return gebiete(karte, (i) => offen(karte, i), alleDabei);
 }
 
-/* (c) Die Nur-Diagonale in **einem** Zweierblock: (x,y) und (x+1,y+1)
-   offen, (x+1,y) und (x,y+1) gesperrt — oder über die andere
-   Diagonale. Im Bild ein Durchgang, im Spiel keiner, denn hier wird in
-   vier Richtungen gegangen. Gefragt wird nach `offen` und nicht nach
-   „ist Wand": Säule und Fass sperren genauso. Mehr als ein Fund je
-   Block ist unmöglich — die zweite Diagonale bräuchte offen, was die
-   erste gesperrt verlangt. */
-export function diagonalFund(karte, x, y) {
-  if (x < 0 || y < 0 || x + 1 >= karte.breite || y + 1 >= karte.hoehe) return null;
-  const a = y * karte.breite + x, b = a + 1, c = a + karte.breite, d = c + 1;
-  for (const [p, q, w1, w2] of [[a, d, b, c], [b, c, a, d]]) {
-    if (!offen(karte, p) || !offen(karte, q)) continue;
-    if (offen(karte, w1) || offen(karte, w2)) continue;
-    return { p, q, w1, w2 };
-  }
-  return null;
-}
-
-/* Alle Nur-Diagonalen der Karte, in fester Reihenfolge. Die Prüfung
-   behauptet über dieselbe Liste, die der Erzeuger abarbeitet — sonst
-   gäbe es zwei Auslegungen desselben Begriffs. */
-export function nurDiagonalen(karte) {
-  const funde = [];
-  for (let y = 0; y < karte.hoehe - 1; y++) {
-    for (let x = 0; x < karte.breite - 1; x++) {
-      const fund = diagonalFund(karte, x, y);
-      if (fund) funde.push(fund);
-    }
-  }
-  return funde;
-}
-
 /* Das größte Plateau — von dort wird geflutet. Die erste offene Kachel
    liegt am oberen Rand, oft in einer Nische; dann hinge die ganze
    Rampensetzung an einer Ecke der Karte. */

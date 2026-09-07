@@ -79,7 +79,7 @@ import {
 
 import {
   laufKostenFeld, erreichbareFelder, beidseitigErreichbar, offeneGebiete,
-  diagonalFund, nurDiagonalen, groesstesPlateauFeld, kachelMitte
+  groesstesPlateauFeld, kachelMitte
 } from "./erreichbarkeit.mjs";
 
 /* ── Die Zahlen dieser Brücke ───────────────────────────────────────
@@ -133,15 +133,50 @@ const P = PIXEL_JE_FELD;
    Kachelmitte; ihr Wert wird zurückgegeben, weil der Boden ihn noch
    braucht (Geröll am Wandfuß) und ein zweiter Durchlauf durch
    `feldBei` das Teuerste wäre, was man hier tun kann. */
+/* Der Zeilenabstand eines Sechseckrasters, in Feldbreiten. */
+export const ZEILEN_ABSTAND = Math.sqrt(3) / 2;
+
 export function rastereWaende(karte, welt) {
   const wandNaehe = new Float32Array(karte.anzahl);
   const schritt = P / UEBERABTASTUNG;
   for (let y = 0; y < karte.hoehe; y++) {
+    /* ── Der halbe Versatz der ungeraden Zeilen ──────────────────────
+
+       Seit dem 07.09.2026 ist das Raster ein Sechseckraster in
+       Versatzzeilen: Jede ungerade Zeile liegt ein halbes Feld weiter
+       rechts. Die Weltformel muss **dort** abgetastet werden, wo das
+       Feld wirklich liegt — sonst beschreibt das Bild eine andere
+       Höhle als die, durch die man läuft.
+
+       Was passiert, wenn man es vergisst: Die Wände stehen um ein
+       halbes Feld versetzt zur Nachbarschaft. Gänge, die im Bild offen
+       aussehen, sind es nicht, und die Karte zerfällt in Taschen.
+       Gemessen: `waehleStarts` fand auf einer engen Karte nur noch ein
+       einziges Startfeld statt zweier. */
+    const versatz = (y & 1) === 1 ? P / 2 : 0;
+    /* Und die Zeilen stehen enger, als sie breit sind: Beim Sechseck
+       ist der Zeilenabstand √3/2 der Feldbreite. Die Zahl ist nicht
+       gewählt, sondern Geometrie — zwei Zeilen greifen ineinander.
+
+       ── Eine Messung, die eine Fehlentscheidung verhindert hat ─────
+
+       Der erste Blick darauf war eine **einzelne** Karte (Saat 5,
+       44 x 32): 6,5 % offene Kacheln gegen 22,4 % ohne den engeren
+       Abstand. Das sah nach einem klaren Rückschritt aus, und beinahe
+       wäre hier `y * P` stehengeblieben mit einer Notiz, die das
+       begründet.
+
+       Über **60 Saaten** gemessen sieht es anders aus: 35,8 % mit dem
+       Sechseck-Abstand gegen 36,5 % ohne, und in beiden Fällen bauen
+       alle 60 Karten fehlerfrei. Saat 5 war eine dünne Karte, kein
+       Beleg. Eine Zahl aus einem Lauf ist keine Messung. */
+    const zeileOben = y * P * ZEILEN_ABSTAND;
     for (let x = 0; x < karte.breite; x++) {
       let fels = 0, mitte = 0;
       for (let b = 0; b < UEBERABTASTUNG; b++) {
         for (let a = 0; a < UEBERABTASTUNG; a++) {
-          const wert = welt.feldBei(x * P + (a + 0.5) * schritt, y * P + (b + 0.5) * schritt);
+          const wert = welt.feldBei(
+            x * P + versatz + (a + 0.5) * schritt, zeileOben + (b + 0.5) * schritt);
           if (wert > 0) fels++;
           if (a === 1 && b === 1) mitte = wert;
         }
@@ -394,30 +429,6 @@ function felsRingsum(karte, x, y) {
 
 
 
-/* Ein Durchgang: Jede Nur-Diagonale wird geöffnet, und zwar die
-   **dünnere** der beiden Sperrkacheln — unter gleich dicken die Wand
-   vor der Säule, denn die Säule ist Deckung und damit Spielwert.
-
-   Die geöffnete Kachel bekommt die **niedrigere** der beiden Ebenen,
-   sonst stünde in der neuen Verbindung eine unbesteigbare Stufe. Weil
-   sie an beide Partner orthogonal grenzt, verschmilzt sie mit der
-   Fläche des tieferen und bildet keine neue Kleinstfläche. */
-export function oeffneDiagonalen(karte) {
-  const geoeffnet = [];
-  for (const fund of nurDiagonalen(karte)) {
-    /* Ein früherer Fund desselben Durchgangs kann diesen schon erledigt
-       haben; dann steht hier keine Sperre mehr. */
-    if (offen(karte, fund.w1) || offen(karte, fund.w2)) continue;
-    const wert = (i) => felsRingsum(karte, spalte(karte, i), zeile(karte, i)) * 2 +
-      (karte.hindernis[i] === HINDERNIS.saeule ? 1 : 0);
-    const ziel = wert(fund.w1) <= wert(fund.w2) ? fund.w1 : fund.w2;
-    karte.hindernis[ziel] = HINDERNIS.keins;
-    karte.ebene[ziel] = Math.min(karte.ebene[fund.p], karte.ebene[fund.q]);
-    geoeffnet.push(ziel);
-  }
-  return geoeffnet;
-}
-
 /* Die Aufräumschritte, bis sich nichts mehr rührt: Ein geschlossenes
    Loch kann eine neue Nur-Diagonale bilden, eine geöffnete Diagonale
    ein neues Loch. Deshalb im Kreis, mit Obergrenze — ein Schaukeln
@@ -429,10 +440,8 @@ export function raeumeAuf(karte) {
   let geschlossen = 0, geoeffnet = 0, runden = 0;
   for (;;) {
     const zu = schliesseEinzelneHohlraeume(karte);
-    const auf = oeffneDiagonalen(karte).length;
     geschlossen += zu;
-    geoeffnet += auf;
-    if (zu === 0 && auf === 0) break;
+    if (zu === 0) break;
     if (++runden > AUFRAEUM_RUNDEN) throw new Error("raeumeAuf: läuft nicht zusammen");
   }
   const saeulen = macheSaeulen(karte);
@@ -623,5 +632,5 @@ export { offen, gebiete, spalte, zeile };
 export {
   FACKEL_ABSTAND, SPIESS_HAEUFIGKEIT, START_NAEHE, ZIER_ARTEN, ZIER_FENSTER,
   plateaus, erreichbareFelder, beidseitigErreichbar, offeneGebiete,
-  nurDiagonalen, diagonalFund, groesstesPlateauFeld, laufKostenFeld,
+  groesstesPlateauFeld, laufKostenFeld,
   kachelMitte };

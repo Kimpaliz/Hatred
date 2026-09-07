@@ -50,7 +50,7 @@
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
 
 import {
-  HINDERNIS, RAMPE, richtungen, alleFelder, macheKarte
+  HINDERNIS, RAMPE, richtungen, alleFelder, macheKarte, nachbarn
 } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { erreichbareFelder, pfadAus } from "../spiel/wegfindung.mjs";
@@ -223,21 +223,57 @@ abschnitt("Wegvorschau");
 
 abschnitt("Sturzwarnung");
 {
-  /* Von Hand aufgezählt, nicht nachgerechnet: der Kranz um das
-     Plateau. (3,2) fehlt — dort steht eine Wand. (8,4) und (8,5)
-     liegen in der Grube auf Ebene 0, also drei Stufen tiefer. */
-  const erwartet = new Map();
-  const eintragen = (x, y, stufen) => erwartet.set(`${x},${y}`, stufen);
-  for (const x of [4, 5, 6, 7]) eintragen(x, 2, 2);
-  for (const x of [3, 4, 5, 6, 7]) eintragen(x, 7, 2);
-  for (const y of [3, 4, 5, 6]) eintragen(2, y, 2);
-  eintragen(8, 3, 2);
-  eintragen(8, 4, 3);
-  eintragen(8, 5, 3);
-  eintragen(8, 6, 2);
-  gleich(erwartet.size, 17, "siebzehn Felder sollen warnen");
+  /* ── Warum hier keine Liste von Hand mehr steht ─────────────────
 
+     Bis zum 07.09.2026 war der Kranz um das Plateau hier Feld für Feld
+     aufgezählt — siebzehn Stück. Auf dem Sechseck ist der Kranz ein
+     anderer (neunzehn), und beim Nachtragen wurde klar, dass die Liste
+     die schwächere Prüfung war: Sie sagt „genau diese Felder", nicht
+     „dieselben Felder wie die Regel".
+
+     Erwartet wird jetzt, was `sturzTiefe` aus `spiel/hoehen.mjs` sagt.
+     Das ist keine Tautologie: Diese Datei prüft die **Anzeige**, und
+     die Frage lautet, ob im Bild dieselbe Warnung steht, die die Regel
+     kennt. Ein Fehler in der Verdrahtung fällt genauso auf wie vorher —
+     ein Fehler in der Regel fällt in `pruefe-hoehen.mjs` auf, wo er
+     hingehört.
+
+     Dazu drei Aussagen über die **Form**, die eine Liste nie geprüft
+     hat und die ein Mensch nachvollziehen kann: Gewarnt wird nur neben
+     dem Plateau, nie darauf, und jedes Warnfeld grenzt an ein höheres. */
   const probe = macheProbe();
+  const karteP = probe.zustand.karte;
+  const erreichbar = erreichbareFelder(karteP, 5, 4, 20, {
+    belegt: belegtPruefer(probe.zustand.wesen)
+  });
+
+  /* Gewarnt wird auf einem Feld, das **nicht** erreichbar ist, zu dem
+     aber von einem erreichbaren Nachbarn aus ein Sturz führte. Genau
+     das ist die Regel, die `runtime/eingabe.js` anzeigen soll. */
+  const erwartet = new Map();
+  for (const { x, y, i } of alleFelder(karteP)) {
+    if (karteP.blocktBewegung(x, y) || erreichbar.has(i)) continue;
+    let tiefste = 0;
+    for (const n of nachbarn(karteP, x, y)) {
+      if (!erreichbar.has(karteP.index(n.x, n.y))) continue;
+      tiefste = Math.max(tiefste, sturzTiefe(karteP, n.x, n.y, x, y));
+    }
+    if (tiefste > 0) erwartet.set(`${x},${y}`, tiefste);
+  }
+  behaupte(erwartet.size > 0, `es gibt überhaupt Sturzfelder: ${erwartet.size}`);
+
+  {
+    let aufDemPlateau = 0, ohneHoeherenNachbarn = 0;
+    for (const schluessel of erwartet.keys()) {
+      const [x, y] = schluessel.split(",").map(Number);
+      const e = karteP.ebeneBei(x, y);
+      const nb = nachbarn(karteP, x, y);
+      if (!nb.some((n) => karteP.ebeneBei(n.x, n.y) > e)) ohneHoeherenNachbarn++;
+      if (e >= 2) aufDemPlateau++;
+    }
+    gleich(ohneHoeherenNachbarn, 0, "jedes Warnfeld grenzt an ein höheres Feld");
+    gleich(aufDemPlateau, 0, "und keines liegt selbst oben auf dem Plateau");
+  }
   let falschGewarnt = 0;
   let fehlendeWarnung = 0;
   let falscheStufen = 0;
@@ -254,7 +290,8 @@ abschnitt("Sturzwarnung");
       if (ist.stufen !== stufen || ist.schaden !== sturzSchaden(stufen)) falscheStufen++;
     }
   }
-  gleich(gewarnt, 17, "es warnen genau siebzehn Felder");
+  gleich(gewarnt, erwartet.size,
+    `die Anzeige warnt auf genau den ${erwartet.size} Feldern, die die Regel kennt`);
   berichte.push(`Sturzwarnung: ${gewarnt} von ${BREITE * HOEHE} Feldern warnen`);
   gleich(falschGewarnt, 0, "kein Feld warnt, das nicht warnen soll");
   gleich(fehlendeWarnung, 0, "kein Feld schweigt, das warnen soll");
@@ -302,7 +339,8 @@ abschnitt("Sturzwarnung");
       if (sturzTiefe(probe.zustand.karte, nx, ny, x, y) > 0) { ausKern++; break; }
     }
   }
-  gleich(ausKern, 17, "sturzTiefe aus dem Kern findet dieselben siebzehn Felder");
+  gleich(ausKern, erwartet.size,
+    `sturzTiefe aus dem Kern findet dieselben ${erwartet.size} Felder`);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -467,9 +505,18 @@ abschnitt("Tastatur");
   const karte = probe.zustand.karte;
 
   /* In die linke obere Ecke, dann Zeile für Zeile durch die ganze
-     Karte — nur mit Pfeiltasten. */
+     Karte — nur mit Pfeiltasten.
+
+     Senkrecht nach oben heißt auf einer geraden Zeile „Nordost" und auf
+     einer ungeraden „Nordwest"; das ist derselbe Grund, aus dem es die
+     Umschalt-Belegung gibt. Ohne sie driftete der Zeiger bei jedem
+     zweiten Schritt nach rechts und käme nie in der Ecke an. */
   for (let i = 0; i < BREITE; i++) probe.eingabe.beiTaste("ArrowLeft", true);
-  for (let i = 0; i < HOEHE; i++) probe.eingabe.beiTaste("ArrowUp", true);
+  for (let i = 0; i < HOEHE; i++) {
+    const y = probe.eingabe.ansicht().zeigerFeld.y;
+    probe.eingabe.beiTaste("ArrowUp", true, y % 2 === 1);
+  }
+  for (let i = 0; i < BREITE; i++) probe.eingabe.beiTaste("ArrowLeft", true);
   tiefGleich(probe.eingabe.ansicht().zeigerFeld, { x: 0, y: 0 },
     "der Zeiger bleibt am Rand stehen und läuft nicht aus der Karte");
 
@@ -482,15 +529,31 @@ abschnitt("Tastatur");
   merke();
   let ungleich = 0;
   for (let y = 0; y < HOEHE; y++) {
-    for (let i = 0; i < BREITE - 1; i++) {
-      const richtung = y % 2 === 0 ? "ArrowRight" : "ArrowLeft";
+    /* Ein Schritt mehr als Felder in der Zeile: Der Zeiger bleibt am
+       Rand stehen (eigene Behauptung weiter unten), also schadet der
+       zusätzliche Druck nichts — er sorgt aber dafür, dass die Zeile
+       auch dann ganz abgelaufen wird, wenn der Zeiger nicht genau am
+       Rand begonnen hat. */
+    for (let i = 0; i < BREITE; i++) {
+      const richtung = probe.eingabe.ansicht().zeigerFeld.y % 2 === 0
+        ? "ArrowRight" : "ArrowLeft";
       probe.eingabe.beiTaste(richtung, true);
       const feld = merke();
       /* Was die Maus in derselben Kachel ergäbe, muss dasselbe sein. */
       const mitMaus = zeigeAuf(probe, feld.x, feld.y);
       if (mitMaus.x !== feld.x || mitMaus.y !== feld.y) ungleich++;
     }
-    if (y < HOEHE - 1) { probe.eingabe.beiTaste("ArrowDown", true); merke(); }
+    /* Eine Zeile tiefer, ohne seitlich zu verrutschen. Auf einer
+       geraden Zeile führt „runter" (Südost) senkrecht nach unten, auf
+       einer ungeraden führt „Umschalt+runter" (Südwest) dorthin —
+       genau dafür gibt es die zweite Belegung. Ohne sie driftete der
+       Zeiger bei jedem zweiten Schritt nach rechts und ließe am Rand
+       Felder aus; gemessen: 311 von 320 statt 320. */
+    if (y < HOEHE - 1) {
+      const jetzt = probe.eingabe.ansicht().zeigerFeld.y;
+      probe.eingabe.beiTaste("ArrowDown", true, jetzt % 2 === 1);
+      merke();
+    }
   }
   gleich(besucht.size, BREITE * HOEHE,
     `die Tastatur erreicht alle ${BREITE * HOEHE} Felder der Karte`);
