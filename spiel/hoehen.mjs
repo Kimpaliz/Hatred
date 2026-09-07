@@ -57,7 +57,9 @@
    `begehbar` überhaupt hinauf lässt), `runtime/zeichnen.js` (zeigt
    dieselben Kanten, die hier blocken). */
 
-import { abstand, nachbarn, richtungen, RAMPE, FLUESSIG } from "./gitter.mjs";
+import {
+  abstand, nachbarn, richtungen, alsWuerfel, RAMPE, FLUESSIG
+} from "./gitter.mjs";
 
 /* Die Preise. Sie stehen als Zahlen hier und nicht in einer
    Einstellungsdatei, weil jede Änderung daran eine Regeländerung ist:
@@ -235,21 +237,54 @@ export function betretenSchaden(karte, x, y) {
   return { wieviel: LAVA_SCHADEN, art: "feuer" };
 }
 
+/* Welche der sechs Richtungen vom Ziel **weg** vom Angreifer zeigt —
+   `null`, wenn der Angreifer zwischen zwei Richtungen steht oder auf
+   dem Ziel selbst.
+
+   ── Warum in Würfelkoordinaten ─────────────────────────────────────
+
+   Bis zum 07.09.2026 stand hier `Math.abs`/`Math.sign` über die
+   Versatzzeilen — eine Quadratrechnung, die aus der Zeit vor dem
+   Sechseck übrig war. Gemessen über alle sechs Richtungen auf beiden
+   Zeilenparitäten traf sie **4 von 12**: Ost und West stimmen, weil
+   sie in derselben Zeile bleiben; die vier schrägen Richtungen landeten
+   auf dem falschen Feld oder gaben `null`. Wer in Zeile 6 nach Südwest
+   stieß, stieß ins Leere — auf einer geraden Zeile liegt der Südost-
+   Nachbar bei `(0, +1)`, auf einer ungeraden bei `(+1, +1)`, und davon
+   weiß `Math.sign` nichts.
+
+   In Würfelkoordinaten ist „liegt auf derselben Achse" dagegen eine
+   Multiplikation: Der Schritt in Richtung k, `weit` mal genommen, muss
+   genau den Angreifer treffen. Die Gegenrichtung ist `(k + 3) % 6` —
+   dieselbe Vorschrift wie in `kachelhilfe.gegen`.
+
+   Ein Angreifer **mehrere** Felder entfernt zählt mit, solange er auf
+   der Achse steht: Ein Schub über zwei Felder (`hakenkette`) schiebt
+   beim zweiten Schritt von einem Punkt aus, der längst kein Nachbar
+   mehr ist. */
+function stossRichtung(ax, ay, zx, zy) {
+  const weit = abstand(ax, ay, zx, zy);
+  if (weit < 1) return null;                   /* auch: Angreifer auf dem Ziel */
+  const a = alsWuerfel(ax, ay);
+  const z = alsWuerfel(zx, zy);
+  const hier = richtungen(zy);
+  for (let k = 0; k < 6; k++) {
+    const n = alsWuerfel(zx + hier[k].dx, zy + hier[k].dy);
+    if (a.wx - z.wx === (n.wx - z.wx) * weit && a.wz - z.wz === (n.wz - z.wz) * weit) {
+      return hier[(k + 3) % 6];
+    }
+  }
+  return null;
+}
+
 /* Das Feld, auf das ein Stoß das Ziel schiebt: ein Feld vom Angreifer
    weg. `null`, wenn dort nichts hingeht — Wand, Kartenrand oder eine
    Kante, die man nicht hinaufgeschoben werden kann. Hinab geht immer;
-   dass das ein Sturz wird, beantwortet `sturzTiefe`.
-   Steht der Angreifer exakt über Eck, gibt es keine eindeutige der vier
-   Richtungen — dann wird nicht gestoßen, statt eine zu erraten. */
+   dass das ein Sturz wird, beantwortet `sturzTiefe`. */
 export function stossZiel(karte, ax, ay, zx, zy) {
-  const dx = zx - ax;
-  const dy = zy - ay;
-  const waagerecht = Math.abs(dx);
-  const senkrecht = Math.abs(dy);
-  if (waagerecht === senkrecht) return null;   /* auch: Angreifer auf dem Ziel */
-
-  const nx = zx + (waagerecht > senkrecht ? Math.sign(dx) : 0);
-  const ny = zy + (waagerecht > senkrecht ? 0 : Math.sign(dy));
+  const weiter = stossRichtung(ax, ay, zx, zy);
+  if (!weiter) return null;
+  const nx = zx + weiter.dx, ny = zy + weiter.dy;
   if (!begehbar(karte, zx, zy, nx, ny)) return null;
   return { x: nx, y: ny };
 }

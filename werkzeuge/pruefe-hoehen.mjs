@@ -35,7 +35,8 @@
 
 import { abschnitt, behaupte, gleich, nahe, tiefGleich, ende } from "./helfer.mjs";
 import {
-  macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE, abstand, nachbarn, richtungen
+  macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE,
+  abstand, nachbarn, richtungen, gespiegelt
 } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import {
@@ -388,13 +389,79 @@ abschnitt("Deckung");
 /* ── Stoß ───────────────────────────────────────────────────────── */
 
 abschnitt("Stoß");
+
+/* Alle sechs Richtungen auf **beiden** Zeilenparitäten — der Fall, den
+   das Quadratraster nicht bestehen kann.
+
+   Wer neben dem Ziel steht, stößt es auf das Feld in der Gegenrichtung:
+   `richtungen(zy)[(k + 3) % 6]`, vom Ziel aus gerechnet. Zwölf Fälle,
+   und keiner davon ist geschenkt: Auf einer geraden Zeile liegt der
+   Nachbar nach Südost bei `(0, +1)`, auf einer ungeraden bei
+   `(+1, +1)`. Eine Rechnung aus `Math.abs`/`Math.sign` kennt diesen
+   Versatz nicht und trifft nur die waagerechten Richtungen. Geprüft
+   wird auf ebener Karte, damit allein die Geometrie antwortet und nicht
+   Wand oder Kante. */
+{
+  const eben = flach(16, 16);
+  for (const zy of [6, 7]) {
+    const zx = 8;
+    const hier = richtungen(zy);
+    for (let k = 0; k < 6; k++) {
+      const von = hier[k];
+      const gegen = hier[(k + 3) % 6];
+      tiefGleich(
+        stossZiel(eben, zx + von.dx, zy + von.dy, zx, zy),
+        { x: zx + gegen.dx, y: zy + gegen.dy },
+        `Zeile ${zy}: von ${von.name} gestoßen fliegt man nach ${gegen.name}`
+      );
+    }
+  }
+}
+
+/* Dieselben zwölf Lagen von hinten: Gezogen wird nach derselben
+   Vorschrift wie gestoßen, nur vom **gespiegelten** Punkt aus. Geprüft
+   wird deshalb genau die Verkettung, die `spiel/aktionen.mjs` und
+   `spiel/gegner-ki.mjs` bauen — `gespiegelt` und dann `stossZiel` —
+   und nicht die Spiegelung für sich allein: Falsch wird es erst im
+   Zusammenspiel. Wer gezogen wird, landet auf dem Feld **zum Angreifer
+   hin**, also auf dessen eigenem Nachbarn zum Ziel. Mit der alten
+   Quadratspiegelung `2 * ziel - aus` stimmt das nur für Ost und West. */
+{
+  const eben = flach(16, 16);
+  for (const zy of [6, 7]) {
+    const zx = 8;
+    const hier = richtungen(zy);
+    for (let k = 0; k < 6; k++) {
+      const hin = hier[k];
+      const angreifer = { x: zx + hin.dx, y: zy + hin.dy };
+      const hinter = gespiegelt(angreifer.x, angreifer.y, zx, zy);
+      tiefGleich(
+        stossZiel(eben, hinter.x, hinter.y, zx, zy),
+        angreifer,
+        `Zeile ${zy}: nach ${hin.name} gezogen landet man beim Angreifer`
+      );
+    }
+  }
+}
+
 {
   const k = flach();
   tiefGleich(stossZiel(k, 4, 5, 5, 5), { x: 6, y: 5 }, "von Westen gestoßen fliegt man nach Osten");
   tiefGleich(stossZiel(k, 6, 5, 5, 5), { x: 4, y: 5 }, "und umgekehrt");
-  tiefGleich(stossZiel(k, 5, 6, 5, 5), { x: 5, y: 4 }, "von Süden nach Norden");
-  tiefGleich(stossZiel(k, 5, 1, 5, 5), { x: 5, y: 6 }, "von Norden nach Süden");
-  gleich(stossZiel(k, 4, 4, 5, 5), null, "genau über Eck gibt es keine eindeutige Richtung");
+  /* (5,6) ist von (5,5) aus der Nachbar nach Südwest — Zeile 5 ist
+     ungerade, dort liegt Südwest bei (0, +1). Gestoßen wird also nach
+     Nordost, und das ist (6,4) und nicht (5,4). Bis zum 07.09.2026
+     stand hier die Quadratantwort. */
+  tiefGleich(stossZiel(k, 5, 6, 5, 5), { x: 6, y: 4 },
+    "von Südwest gestoßen fliegt man nach Nordost");
+  /* Zwei Felder entfernt auf derselben Achse stößt genauso: Ein Schub
+     über mehrere Felder rechnet ab dem zweiten Schritt von einem Punkt
+     aus, der kein Nachbar mehr ist. */
+  tiefGleich(stossZiel(k, 3, 5, 5, 5), { x: 6, y: 5 }, "auch zwei Felder entfernt auf der Achse");
+  /* (5,1) liegt von (5,5) aus auf **keiner** der sechs Achsen — im
+     Quadratraster war es „vier Felder genau nördlich". */
+  gleich(stossZiel(k, 5, 1, 5, 5), null, "abseits der Achse gibt es keine Richtung");
+  gleich(stossZiel(k, 4, 4, 5, 5), null, "zwischen zwei Richtungen wird nicht gestoßen");
   gleich(stossZiel(k, 5, 5, 5, 5), null, "auf dem eigenen Feld auch nicht");
 
   k.setze(6, 5, { hindernis: HINDERNIS.wand });

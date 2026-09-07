@@ -588,7 +588,26 @@ function spieleZuViert(saat, welt, { runden = RUNDEN, spielerZahl = 4 } = {}) {
        herauskommen. */
     const wieoft = (art) => erster.arten.get(art) || 0;
     behaupte(wieoft("bewegt") > 20, `${wieoft("bewegt")} Bewegungen`);
-    behaupte(wieoft("angriff") > 10, `${wieoft("angriff")} Angriffe`);
+    /* Die Schranke stand bis zum 07.09.2026 bei 10 — gemessen an einer
+       Brut, die gar nicht stoßen konnte: `stossZiel` rechnete noch im
+       Quadratraster und gab auf vier der sechs Sechseckrichtungen das
+       falsche Feld und auf zwei weiteren `null`. Damit war
+       `schubGewinn` fast überall 0, die Brut sah keinen Stoßplatz und
+       lief stattdessen in den Nahkampf. Seit `stossZiel` auf dem
+       Sechseck rechnet, ist ein Feld an der Kante wieder mehr wert als
+       ein Schlag — und aus 14 Angriffen auf Saat 7 wurden 7.
+
+       Nachzurechnen mit `node werkzeuge/pruefe-app.mjs`, Messzeile
+       „30 Runden zu viert auf Saat 7". Im vollen Lauf
+       (`node werkzeuge/pruefe-lauf.mjs`) hob dieselbe Umstellung die
+       Stöße von 8 auf 12 und die Angriffe von 82 auf 88.
+
+       Auch diese Zahl ist kein Balancewert. Sie fragt: Trifft die Brut
+       überhaupt auf die Jäger, oder stehen dreißig Runden lang alle
+       nebeneinander herum? Deshalb liegt sie deutlich unter dem
+       Gemessenen — sie soll den leeren Lauf fangen, nicht die Laune
+       der Gegner-KI einfrieren. */
+    behaupte(wieoft("angriff") > 3, `${wieoft("angriff")} Angriffe`);
     /* Nicht mehr „mehr als zehn Treffer", sondern „ein ordentlicher
        Teil der Angriffe trifft". Die feste Zahl war an das
        Quadratraster gebunden: Auf dem Sechseck nimmt die Brut öfter

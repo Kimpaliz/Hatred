@@ -3,6 +3,92 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der Stoß rechnet endlich auch auf dem Sechseck
+
+**Auftrag, wörtlich:** *„unterschiedliche ebenen und auf jeder ebene
+kann es wasserbecken oder sbruende [Abgründe] geben"* — Vorgang #8,
+Schritt 1 von vier. Reine Fehlerbehebung, kein Inhalt: Ohne einen
+Stoß, der auf dem Sechseck stimmt, kann die Abnahme *„eine Figur, die
+in einen Abgrund gestoßen wird, nimmt Sturzschaden"* gar nicht
+funktionieren.
+
+### Was falsch war
+
+`stossZiel` (`spiel/hoehen.mjs`) war beim Sechseck-Umbau am selben Tag
+**übersehen** worden und rechnete als einzige Funktion des Kerns noch
+mit `Math.abs`/`Math.sign` auf Versatzzeilen — also im Quadratraster.
+
+**Gemessen über alle sechs Richtungen auf beiden Zeilenparitäten —
+12 Fälle, vorher 4 richtig, jetzt 12.** Die vier Fehlschläge landeten
+auf einem um eine Richtung versetzten Feld, vier weitere gaben `null`,
+stießen also gar nicht. Richtig waren nur Ost und West: Sie bleiben in
+derselben Zeile, und nur dort kennt `Math.sign` den Versatz nicht
+falsch. Befehl: `node werkzeuge/pruefe-hoehen.mjs`.
+
+Dazu zwei Folgefehler derselben Herkunft:
+
+- **Der gespiegelte Punkt.** `spiel/aktionen.mjs` und
+  `spiel/gegner-ki.mjs` spiegelten für das *Ziehen* mit `2 * ziel - aus`.
+  Das stimmt auf dem Sechseck nur, wenn beide Zeilen dieselbe Parität
+  haben: Von (5,5) aus liegt der Südost-Nachbar bei (6,6), gespiegelt
+  ergäbe das (4,4) — und (4,4) ist von (5,5) aus gar kein Nachbar. Neu
+  ist `gespiegelt()` in `spiel/gitter.mjs`, das in Würfelkoordinaten
+  rechnet; alle drei Stellen benutzen jetzt dieselbe.
+- **Eine Klammer ohne Funktion.** In `spiel/gegner-ki.mjs` stand
+  `if (schub > 0 &&(x, y, ziel.x, ziel.y) === 1)`. Beim Umbau war der
+  Name `schussweite` entfallen, die Klammer blieb stehen — übrig war
+  eine Kommaliste, die `ziel.y` liefert. Die Gegner-KI verglich also
+  die **Zeile des Ziels** mit 1. Gemessen an einer Karte mit
+  identischer Geometrie: derselbe Stoßplatz war in Zeile 1 **970** wert,
+  in den Zeilen 3, 5 und 7 nur **270**. Jetzt `abstand(...) === 1`.
+
+### Was das im Spiel ändert
+
+Die Brut sieht die Kante wieder. Voller Lauf,
+`node werkzeuge/pruefe-lauf.mjs`:
+
+| | vorher | jetzt |
+| --- | --- | --- |
+| Stöße | 8 | **12** |
+| Angriffe | 82 | **88** |
+| Schaden | 198 | 183 |
+| Gefallene | 6 | 5 |
+
+Dreißig Runden zu viert auf Saat 7 (`node werkzeuge/pruefe-app.mjs`):
+**764 → 757 Aktionen, 14 → 7 Angriffe**. Die Brut läuft nicht mehr
+blind in den Nahkampf, sondern stellt sich an die Kante. Dreißig
+Runden im Netz auf Saat 5 (`node werkzeuge/pruefe-netz.mjs`):
+**3 → 4 Stöße, 36 → 38 Angriffe.**
+
+### Zwei Prüfungen in fremden Systemen (Ausnahme zu Regel 2)
+
+Beide liegen in `pruef/`, mussten aber mit auf diesen Zweig, weil die
+Kette sonst als Ganzes rot bliebe:
+
+- **`werkzeuge/pruefe-hoehen.mjs`** trägt zwei neue Prüfungen, jede über
+  alle sechs Richtungen auf beiden Zeilenparitäten.
+  - *Der Stoß.* **Rot gemacht ohne Kunstgriff** — sie war beim ersten
+    Lauf gegen den unveränderten Code rot, 8 von 12 Lagen fielen, und
+    meldete *„Stoß → Zeile 6: von suedost gestoßen fliegt man nach
+    nordwest: ist {"x":8,"y":5} soll {"x":7,"y":5}"*.
+  - *Der Zug.* Prüft die Verkettung `gespiegelt` + `stossZiel`, also
+    genau das, was `aktionen.mjs` baut. **Rot gemacht**, indem
+    `gespiegelt` wieder auf `2 * ziel - aus` gesetzt wurde: 8 von 12
+    Lagen fielen, gemeldet *„Zeile 7: nach suedwest gezogen landet man
+    beim Angreifer: ist {"x":9,"y":8} soll {"x":8,"y":8}"*.
+
+  Drei alte Behauptungen schrieben die Quadratantwort fest und wurden
+  auf die gemessene Sechseckwirklichkeit umgeschrieben (aus „von Süden
+  nach Norden" wurde „von Südwest nach Nordost"). **149 → 174
+  Behauptungen.**
+- **`werkzeuge/pruefe-app.mjs`** verlangte über dreißig Runden mehr als
+  10 Angriffe — eine Zahl, die an der Brut gemessen war, die nicht
+  stoßen konnte. Sie steht jetzt bei 3, mit der Begründung im Kommentar:
+  Sie soll den leeren Lauf fangen, nicht die Laune der Gegner-KI
+  einfrieren. Gemessen sind es 7.
+
+**Kette: `node werkzeuge/pruefe-alles.mjs` — 40 von 40 grün.**
+
 ## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 
 **Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*

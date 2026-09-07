@@ -72,7 +72,7 @@
    (schickt Aktionen, nicht Ereignisse), `runtime/zeichnen.js` (spielt
    die Ereignisse ab), `werkzeuge/pruefe-zug.mjs`. */
 
-import { HINDERNIS, richtungen, abstand } from "./gitter.mjs";
+import { HINDERNIS, richtungen, abstand, gespiegelt } from "./gitter.mjs";
 import { sturzTiefe, sturzSchaden, stossZiel, betretenSchaden } from "./hoehen.mjs";
 import { sichtlinie } from "./sicht.mjs";
 import { helligkeitsfeld, istVerborgen, SICHT_IM_DUNKELN } from "./licht.mjs";
@@ -353,12 +353,18 @@ function pruefeSchub(lage, ausX, ausY, ziel, weg) {
 
 /* Ein Feld weg vom Punkt (ausX, ausY) — oder auf ihn zu. Das Ziehen
    benutzt dieselbe Regel wie das Stoßen, nur vom gespiegelten Punkt
-   aus: So gibt es genau **eine** Vorschrift dafür, welche der vier
-   Richtungen bei einem schrägen Stand gilt, und der Fall „genau über
-   Eck" fällt in beiden Richtungen gleich aus. */
+   aus: So gibt es genau **eine** Vorschrift dafür, welche der sechs
+   Richtungen gilt, und ein Angreifer zwischen zwei Richtungen fällt in
+   beiden Fällen gleich heraus.
+
+   Gespiegelt wird über `gespiegelt` aus `gitter.mjs` und nicht mehr mit
+   `2 * ziel - aus`: Auf dem Sechseckraster liegt der gespiegelte Punkt
+   sonst neben der Achse, sobald die beiden Zeilen verschiedene Parität
+   haben — und dann zog die Hakenkette niemanden mehr. */
 function schubFeld(karte, ausX, ausY, ziel, weg) {
   if (weg) return stossZiel(karte, ausX, ausY, ziel.x, ziel.y);
-  return stossZiel(karte, 2 * ziel.x - ausX, 2 * ziel.y - ausY, ziel.x, ziel.y);
+  const hinter = gespiegelt(ausX, ausY, ziel.x, ziel.y);
+  return stossZiel(karte, hinter.x, hinter.y, ziel.x, ziel.y);
 }
 
 function pruefeFaehigkeit(lage, aktion, wesen) {

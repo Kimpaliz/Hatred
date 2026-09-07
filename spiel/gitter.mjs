@@ -292,6 +292,21 @@ export function alsWuerfel(x, y) {
 /* Zurück aus den Würfelkoordinaten in Versatzzeilen. */
 export const vonWuerfel = (wx, wz) => ({ x: wx + ((wz - (wz & 1)) >> 1), y: wz });
 
+/* Der an (mx,my) gespiegelte Punkt zu (ax,ay): gleich weit entfernt,
+   genau auf der anderen Seite.
+
+   Das Ziehen braucht ihn, damit es dieselbe Vorschrift benutzen kann
+   wie das Stoßen — nur eben von hinten (`spiel/aktionen.mjs`,
+   `spiel/gegner-ki.mjs`). In Versatzzeilen ist `2*m - a` **falsch**,
+   sobald die beiden Zeilen verschiedene Parität haben: Von (5,5) aus
+   liegt der Nachbar nach Südost bei (6,6), gespiegelt ergäbe das
+   (4,4) — und (4,4) ist von (5,5) aus gar kein Nachbar. In
+   Würfelkoordinaten stimmt die Spiegelung immer. */
+export function gespiegelt(ax, ay, mx, my) {
+  const a = alsWuerfel(ax, ay), m = alsWuerfel(mx, my);
+  return vonWuerfel(2 * m.wx - a.wx, 2 * m.wz - a.wz);
+}
+
 /* Die Entfernung in Schritten — zugleich Laufweg und Schussweite. */
 export function abstand(ax, ay, bx, by) {
   const a = alsWuerfel(ax, ay), b = alsWuerfel(bx, by);
