@@ -53,7 +53,8 @@ import {
   BODEN, FLUESSIG, HINDERNIS, RAMPE, macheKarte, nachbarn
 } from "../spiel/gitter.mjs";
 import {
-  ERINNERT_HELLE, FARBEN, STUFEN_SCHATTEN, abdunkeln, bodenTon, helligkeit, mische
+  ERINNERT_HELLE, FARBEN, KOERNUNG_SPANNE, STUFEN_SCHATTEN,
+  abdunkeln, bodenTon, helligkeit, mische
 } from "../runtime/palette.js";
 import { KACHEL, LICHTPUNKT, macheLichtwerk } from "../runtime/licht.js";
 import { machePartikelwerk } from "../runtime/partikel.js";
@@ -356,7 +357,18 @@ abschnitt("4 · Höhenkante");
   gleich(hoeheBei(mitWand, -1, 5), -1, "außerhalb der Karte wirft nichts Schatten");
 }
 
-/* ── 5 · Die Wand: Oberseite und Südflanke ──────────────────────────*/
+/* ── 5 · Die Wand: Oberseite und Südflanke ──────────────────────────
+   Seit dem 07.09.2026 (Vorgang #9) trägt jedes Wandfeld eine
+   Körnungsstufe, und zwei Nachbarn tragen nie dieselbe. Auf **einen**
+   Farbwert lässt sich hier deshalb nicht mehr prüfen. Gefragt wird
+   stattdessen nach der **Familie**: ein Rec.-709-Fenster von einer
+   halben `KOERNUNG_SPANNE` um den Grundton, also um `wandTon` ohne
+   Stufe. Dass das Fenster nicht einfach alles einfängt, steht als
+   Gegenprobe darunter — auf einem Feld ohne Wand findet es nichts,
+   obwohl dort Boden, Riss und Schachbrett gezeichnet sind.
+
+   Die Körnung selbst — „kein Nachbarpaar trägt denselben Farbwert" —
+   misst `werkzeuge/pruefe-koernung.mjs`. */
 abschnitt("5 · Wand");
 {
   const karte = macheProbeKarte();
@@ -370,10 +382,17 @@ abschnitt("5 · Wand");
   const ecke = stand.kamera.feldNachBild(6, 6);
   const oben = wandTon(1, false);
   const flanke = wandTon(1, true);
-  const oberseite = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6).filter((a) => a[5] === oben);
-  const seite = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6).filter((a) => a[5] === flanke);
-  gleich(oberseite.length, 1, "die Wand hat eine Oberseite");
-  gleich(seite.length, 1, "die Wand hat eine Südflanke");
+  /* Ein Punkt Zugabe auf die halbe Spanne: Die Körnung rechnet in
+     Rec. 709, gezeichnet wird in ganzen Kanalwerten, und das Runden
+     darf die äußerste Stufe nicht aus dem Fenster schieben. */
+  const fensterWeite = KOERNUNG_SPANNE / 2 + 1;
+  const ausFamilie = (grund) => (a) =>
+    Math.abs(helligkeit(a[5]) - helligkeit(grund)) <= fensterWeite;
+  const imFeld = rechteckeImFeld(stand.ctx, stand.kamera, 6, 6);
+  const oberseite = imFeld.filter(ausFamilie(oben));
+  const seite = imFeld.filter(ausFamilie(flanke));
+  gleich(oberseite.length, 1, "die Wand hat eine Oberseite aus der Wandfamilie");
+  gleich(seite.length, 1, "die Wand hat eine Südflanke aus der Wandfamilie");
   if (oberseite.length === 1) {
     gleich(oberseite[0][4], (KACHEL - WAND_FLANKE) * gross, "die Oberseite lässt die Flanke frei");
   }
@@ -382,13 +401,36 @@ abschnitt("5 · Wand");
     gleich(seite[0][4], WAND_FLANKE * gross, "die Flanke ist WAND_FLANKE hoch");
   }
 
+  /* Die Gegenprobe: Ohne Wand darf die Familie nichts finden. Ohne sie
+     hätte man die vier Behauptungen oben nicht umgestellt, sondern
+     kaputtgemacht — ein Fenster, das jede Farbe schluckt, ist grün,
+     auch wenn gar keine Wand gezeichnet wird. */
+  const ohneWand = macheProbeKarte();
+  const leer = macheStand(ohneWand);
+  leer.zeichner.setzeFenster(320, 180);
+  leer.kamera.folge(6, 6, true);
+  leer.zeichner.zeichneWelt(ohneWand, null, null, 0);
+  const leerImFeld = rechteckeImFeld(leer.ctx, leer.kamera, 6, 6);
+  behaupte(leerImFeld.length > 0,
+    `auf dem Feld ohne Wand wird trotzdem gezeichnet (${leerImFeld.length} Rechtecke)`);
+  gleich(leerImFeld.filter(ausFamilie(oben)).length, 0,
+    "ohne Wand findet das Fenster keine Oberseite");
+  gleich(leerImFeld.filter(ausFamilie(flanke)).length, 0,
+    "ohne Wand findet das Fenster keine Flanke");
+
   /* Fehlerbuch D3: Zwei Töne in **einem** Ding brauchen 24 von 255
-     wahrgenommener Helligkeit, sonst verschmelzen sie verkleinert. */
-  const abstand = Math.abs(helligkeit(oben) - helligkeit(flanke));
-  behaupte(abstand >= 24,
-    `Oberseite und Flanke trennen ${abstand.toFixed(1)} von 255 (verlangt sind 24)`);
-  console.log(`      · Wand: Oberseite ${helligkeit(oben).toFixed(1)}, `
-    + `Flanke ${helligkeit(flanke).toFixed(1)}, Abstand ${abstand.toFixed(1)} von 255`);
+     wahrgenommener Helligkeit, sonst verschmelzen sie verkleinert.
+     Gemessen an den **gezeichneten** Tönen, nicht an den Grundtönen —
+     sonst bliebe offen, ob die Körnung den Abstand auffrisst. */
+  if (oberseite.length === 1 && seite.length === 1) {
+    const hellOben = helligkeit(oberseite[0][5]);
+    const hellFlanke = helligkeit(seite[0][5]);
+    const abstand = Math.abs(hellOben - hellFlanke);
+    behaupte(abstand >= 24,
+      `Oberseite und Flanke trennen ${abstand.toFixed(1)} von 255 (verlangt sind 24)`);
+    console.log(`      · Wand gezeichnet: Oberseite ${hellOben.toFixed(1)}, `
+      + `Flanke ${hellFlanke.toFixed(1)}, Abstand ${abstand.toFixed(1)} von 255`);
+  }
 }
 
 /* ── 6 · Die Rampe zeigt, wohin sie führt ───────────────────────────

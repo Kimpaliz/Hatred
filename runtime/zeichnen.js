@@ -26,13 +26,24 @@
    hin heller werden: Eine Rampe, der man nicht ansieht, wohin sie
    führt, ist die eine Auskunft, ohne die man nicht planen kann.
 
+   ── Warum der Fels körnt ───────────────────────────────────────────
+
+   Ein vierter Punkt, der keine Regel trägt, sondern das Auge: Bis zum
+   07.09.2026 trugen **alle** 2.608 benachbarten Wandpaare gleicher
+   Ebene exakt denselben Farbwert. Eine Wand war eine lackierte Fläche.
+   `koernungsStufe` gibt jedem Wandfeld eine von sechs Stufen, und weil
+   die Dreifärbung des Sechseckgitters darin steckt, ist „nie gleich
+   wie der Nachbar" **garantiert** und nicht gewürfelt. Der Boden
+   bekommt bewusst keine — er trägt schon das Schachbrett, und daran
+   sieht man beim Laufen die eigene Bewegung.
+
    ── Warum hier nichts zufällig ist ─────────────────────────────────
 
-   Kein `Math.random`. Die Risse im Boden kommen aus `ganzHash` über
-   Feldlage und `karte.saat`, die Wellen der Flüssigkeiten aus der
-   **gereichten** Zeit. Wer den Boden je Bild neu auswürfelt, bekommt
-   einen Kerker, der flimmert — und einen Bildschirmfoto-Bericht, den
-   niemand nachstellen kann. Zweimal dieselbe Zeit gibt dieselbe
+   Kein `Math.random`. Die Risse im Boden und die Körnung im Fels
+   kommen aus `ganzHash` über Feldlage und `karte.saat`, die Wellen der
+   Flüssigkeiten aus der **gereichten** Zeit. Wer den Boden je Bild neu
+   auswürfelt, bekommt einen Kerker, der flimmert — und einen
+   Bildschirmfoto-Bericht, den niemand nachstellen kann. Zweimal dieselbe Zeit gibt dieselbe
    Aufrufliste, und genau das prüft die Prüfdatei.
 
    ── Warum jedes Rechteck ganzzahlig ist ────────────────────────────
@@ -56,26 +67,31 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/palette.js` (jede Farbe, `bodenTon`, `STUFEN_SCHATTEN`,
-   `ERINNERT_HELLE`), `runtime/licht.js` (`KACHEL`, `LICHTPUNKT`, und
-   das Lichtwerk, das über die fertige Welt gelegt wird),
-   `runtime/partikel.js` (Glut aus Lava, Tropfen aus Schleim),
+   `runtime/palette.js` (jede Farbe, `bodenTon`, `koernungsTon`,
+   `STUFEN_SCHATTEN`, `ERINNERT_HELLE`), `runtime/licht.js` (`KACHEL`,
+   `LICHTPUNKT`, und das Lichtwerk, das über die fertige Welt gelegt
+   wird), `runtime/partikel.js` (Glut aus Lava, Tropfen aus Schleim),
    `runtime/sprites.js` und `runtime/sprite-daten.js` (Figuren, Dinge,
    Zeichen), `runtime/kamera.js` (Ecke, Vergrößerung, sichtbarer
-   Ausschnitt), `spiel/gitter.mjs` (die Feldwerte), `spiel/hoehen.mjs`
-   (`rampeZeigtNach`), `spiel/rauschen.mjs` (`ganzHash` für die Risse)
-   und `werkzeuge/pruefe-zeichnen.mjs`, das jeden Aufruf mitschreibt
-   und nachmisst. */
+   Ausschnitt), `spiel/gitter.mjs` (die Feldwerte und `alsWuerfel` für
+   die Dreifärbung), `spiel/hoehen.mjs` (`rampeZeigtNach`),
+   `spiel/rauschen.mjs` (`ganzHash` für Risse und Körnung) und
+   `werkzeuge/pruefe-zeichnen.mjs` samt
+   `werkzeuge/pruefe-koernung.mjs`, die jeden Aufruf mitschreiben und
+   nachmessen. */
 
 import {
   FARBEN, BODEN_FARBEN, FLUESSIG_FARBEN, EBENEN_TON, STUFEN_SCHATTEN,
-  ERINNERT_HELLE, abdunkeln, bodenTon, mische
+  ERINNERT_HELLE, KOERNUNG_BAENDER, KOERNUNG_STUFEN, KOERNUNG_ZWISCHEN,
+  abdunkeln, bodenTon, koernungsTon, mische
 } from "./palette.js";
 import { KACHEL, LICHTPUNKT } from "./licht.js";
 import { SCHLEIM_RAMPE } from "./partikel.js";
 import { DINGE, GEGNER_BILDER, HELDEN_BILDER, SPIELER_FARBEN, ZEICHEN } from "./sprite-daten.js";
 import { RICHTUNG_NORD, bildAnzahl, macheSpriteBild } from "./sprites.js";
-import { BLOCKT_SICHT, FLUESSIG, HINDERNIS, RAMPE, richtungen } from "../spiel/gitter.mjs";
+import {
+  BLOCKT_SICHT, FLUESSIG, HINDERNIS, RAMPE, alsWuerfel, richtungen
+} from "../spiel/gitter.mjs";
 import { rampeZeigtNach } from "../spiel/hoehen.mjs";
 import { ganzHash } from "../spiel/rauschen.mjs";
 
@@ -104,6 +120,20 @@ export const WAND_STUFEN = 1;
    fünfte Feld eine Zeichnung — genug, dass die Fläche lebt, zu wenig,
    als dass sie unruhig würde. */
 export const RISS_ANTEIL = 18;
+
+/* Um wie viel der Hash für das Körnungszittern nach rechts geschoben
+   wird. Genommen werden die **oberen acht** Bits, und zwar weil
+   `zeichneRisse` sie als einzige nicht anfasst: Dort entscheiden der
+   Rest modulo 100 (ob ein Riss steht) und die Bits ab 7, 13, 19 und 23
+   (Lage, Länge, Richtung). Zwei Zeichnungen aus denselben Bits wären
+   aneinander gekoppelt, und ein Riss säße dann bevorzugt auf einer
+   bestimmten Körnungsstufe — im Bild eine Regelmäßigkeit, die niemand
+   gewollt hat. Gemessen auf 200 × 200 Feldern mit Saat 4711 ist der
+   Unterschied zwischen Feldern mit und ohne Riss hier 0,4
+   Prozentpunkte; `node werkzeuge/pruefe-koernung.mjs` rechnet ihn
+   nach. Verlassen wird sich darauf nicht — die Trennung der Bits ist
+   der Grund, die kleine Zahl nur die Bestätigung. */
+export const KOERNUNG_BITS = 24;
 
 /* Die drei Querstriche einer Rampe: Lage auf der Aufstiegsachse,
    Länge und Rand quer dazu, und die drei Mischanteile zur hellen
@@ -181,13 +211,19 @@ function bodenFarbe(bodenArt, ebene, zweit) {
 
 /* Ein beliebiger Ton auf einer Ebene — für Risse, Wände und
    Flüssigkeiten, die `bodenTon` nicht abdeckt. Dieselbe Rampe, damit
-   ein Riss nicht auf Ebene 3 dunkler wirkt als der Boden daneben. */
-function ebenenTon(hex, ebene) {
+   ein Riss nicht auf Ebene 3 dunkler wirkt als der Boden daneben.
+
+   `koernung` ist die Körnungsstufe oder `null` für „ohne". Sie steht im
+   Schlüssel, **nicht** die Feldlage: So bleibt die Karte bei vier
+   Ebenen mal zwei Wandtönen mal sechs Stufen bei 48 Einträgen, statt
+   mit jedem gezeichneten Feld zu wachsen. */
+function ebenenTon(hex, ebene, koernung = null) {
   const stufe = Math.max(0, Math.min(EBENEN_TON.length - 1, ebene));
-  const schluessel = `${hex}|${stufe}`;
+  const schluessel = `${hex}|${stufe}|${koernung === null ? "-" : koernung}`;
   let wert = ebenenSpeicher.get(schluessel);
   if (wert === undefined) {
-    wert = abdunkeln(hex, EBENEN_TON[stufe]);
+    const grund = abdunkeln(hex, EBENEN_TON[stufe]);
+    wert = koernung === null ? grund : koernungsTon(grund, koernung);
     ebenenSpeicher.set(schluessel, wert);
   }
   return wert;
@@ -274,9 +310,51 @@ export function hoeheBei(karte, x, y) {
 /* Oberseite und Südflanke einer Wand. Beide aus der Steinreihe der
    Palette, beide auf der Ebenenrampe — die Flanke ist der dunkelste
    Stein, die Oberseite der hellste. Der Abstand zwischen beiden ist
-   gemessen: `node werkzeuge/pruefe-zeichnen.mjs` druckt ihn. */
-export function wandTon(ebene, flanke) {
-  return ebenenTon(flanke ? FARBEN.stein0 : FARBEN.stein3, ebene);
+   gemessen: `node werkzeuge/pruefe-zeichnen.mjs` druckt ihn.
+
+   Ohne `koernung` kommt der **Grundton** der Familie heraus, also der
+   Ton, um den die sechs Körnungsstufen liegen. Genau den braucht eine
+   Prüfung, die nach „einer Wand" fragt, ohne die Stufe zu kennen.
+
+   Gemerkt wird flach und nicht über den Zeichenketten-Schlüssel von
+   `ebenenTon`: Die Zeichenschleife fragt je Wandfeld **zwei** Töne,
+   und beim Fels sind es immer dieselben 4 × 2 × 6 = 48. Gerechnet
+   wird trotzdem nur in `ebenenTon` — die Reihe ist ein Merkzettel,
+   keine zweite Formel. */
+const wandSpeicher = new Array(EBENEN_TON.length * 2 * KOERNUNG_STUFEN).fill(null);
+
+export function wandTon(ebene, flanke, koernung = null) {
+  const roh = flanke ? FARBEN.stein0 : FARBEN.stein3;
+  if (koernung === null) return ebenenTon(roh, ebene, null);
+  const stufe = Math.max(0, Math.min(EBENEN_TON.length - 1, ebene));
+  const platz = (stufe * 2 + (flanke ? 1 : 0)) * KOERNUNG_STUFEN + koernung;
+  let wert = wandSpeicher[platz];
+  if (wert === null) {
+    wert = ebenenTon(roh, stufe, koernung);
+    wandSpeicher[platz] = wert;
+  }
+  return wert;
+}
+
+/* Welche Körnungsstufe ein Wandfeld trägt.
+
+   Der **Band**-Anteil ist die Dreifärbung des Sechseckgitters:
+   `(wx − wz)` modulo 3 über die Würfelkoordinaten aus
+   `spiel/gitter.mjs`. Zwei benachbarte Sechsecke liegen nie im selben
+   Band — gemessen 0 von 238.402 Nachbarschaften auf 200 × 200 Feldern.
+   Das ist der Unterschied zwischen garantiert und gehofft: Mit einem
+   freien Wurf über sechs Stufen sind es gemessen 39.346 von 238.402
+   Nachbarschaften, also jedes sechste Paar.
+
+   Das **Zittern** darüber kommt aus dem Kartenhash und bricht das
+   Dreiermuster auf. Es hängt an Saat und Feldlage, nicht an der Zeit —
+   eine Wand, die je Bild neu körnt, flimmert. */
+export function koernungsStufe(karte, x, y) {
+  const wuerfel = alsWuerfel(x, y);
+  const band = (((wuerfel.wx - wuerfel.wz) % KOERNUNG_BAENDER) + KOERNUNG_BAENDER)
+    % KOERNUNG_BAENDER;
+  const zitter = (ganzHash(karte.saat >>> 0, x, y) >>> KOERNUNG_BITS) % KOERNUNG_ZWISCHEN;
+  return band * KOERNUNG_ZWISCHEN + zitter;
 }
 
 /* Eine Menge sichtbarer Felder darf ein `Set` von Feldnummern sein
@@ -467,12 +545,16 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
 
   /* ── Wände und Höhenkanten ───────────────────────────────────────*/
 
-  function zeichneWand(ebene, ecke, gedaempft) {
+  /* Oberseite und Flanke bekommen **dieselbe** Stufe: Ein Wandblock
+     ist ein Stück Fels, kein Stapel aus zwei. Würden beide getrennt
+     würfeln, sähe die Flanke aus wie ein aufgeklebter Sockel. */
+  function zeichneWand(karte, x, y, ebene, ecke, gedaempft) {
     const ebeneSicher = Math.max(0, Math.min(EBENEN_TON.length - 1, ebene));
+    const stufe = koernungsStufe(karte, x, y);
     kasten(ecke.x, ecke.y, 0, 0, KACHEL, KACHEL - WAND_FLANKE,
-      ton(wandTon(ebeneSicher, false), gedaempft));
+      ton(wandTon(ebeneSicher, false, stufe), gedaempft));
     kasten(ecke.x, ecke.y, 0, KACHEL - WAND_FLANKE, KACHEL, WAND_FLANKE,
-      ton(wandTon(ebeneSicher, true), gedaempft));
+      ton(wandTon(ebeneSicher, true, stufe), gedaempft));
   }
 
   /* Die beiden Mittel, die die Höhe tragen — und der Grund, warum
@@ -542,7 +624,7 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     if (nass !== FLUESSIG.keine) zeichneFluessig(karte, x, y, nass, ecke, zeit, gedaempft);
     if (karte.rampe[i] !== RAMPE.keine) zeichneRampe(karte, x, y, i, ecke, gedaempft);
     const hindernis = karte.hindernis[i];
-    if (hindernis === HINDERNIS.wand) zeichneWand(karte.ebene[i], ecke, gedaempft);
+    if (hindernis === HINDERNIS.wand) zeichneWand(karte, x, y, karte.ebene[i], ecke, gedaempft);
     /* Der Schatten kommt **nach** der Wand: Eine Wand, die unter einem
        Plateau steht, liegt selbst im Schatten. */
     zeichneHoehe(karte, x, y, ecke, gedaempft);

@@ -3,6 +3,104 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Körnung im Fels: keine zwei Wandfelder mehr gleich
+
+**Auftrag, wörtlich:** *„die welt soll grafisch und engine mäßig schon
+so aussehen und aufgebaut sein wie mein ‚granit höhle' ‚Scotophobia'"* —
+Merkmal 3 der Abnahme von Vorgang #9, wörtlich: *„Körnung im Fels. Zwei
+benachbarte Wandfelder derselben Art sind nie exakt derselbe Farbwert."*
+
+Eine Felswand war bis heute eine lackierte Fläche: **2.608 von 2.608**
+benachbarten Wandpaaren gleicher Ebene trugen exakt denselben Farbwert.
+Jetzt sind es **0 von 2.608**.
+
+### Die Messungen
+
+Alle an derselben Karte (Saat 4711, 56 × 40 Felder) und demselben
+Fenster (1920 × 1080), abgelesen an der **wirklich gezeichneten** Farbe
+über ein mitschreibendes Zeichenblatt:
+
+| Was | vorher | nachher |
+| --- | --- | --- |
+| farbgleiche Nachbarpaare gleicher Ebene | 2.608 von 2.608 = 100,00 % | 0 von 2.608 = 0,00 % |
+| gezeichnete Oberseitentöne im Bild | 4 | 24 |
+| Rechtecke je Weltbild | 4.431 | 4.431 |
+| Zeit je `zeichneWelt()` | 1,028 ms | 0,972 ms |
+| Prüfkette | 40 Prüfungen, 12.302 Behauptungen | 41 Prüfungen, 12.371 Behauptungen |
+
+Die Zeit ist das Kleinste aus zwanzig Runden zu je 500 Bildern — der
+Median wandert mit der Last der Maschine, das Minimum nicht. Dass sie
+**sinkt**, obwohl je Wandfeld eine Stufe dazukommt, liegt an einer
+flachen Merkreihe für die 48 Wandtöne (vier Ebenen × zwei Seiten ×
+sechs Stufen): Sie spart je Wandfeld zwei zusammengesetzte
+Zeichenketten-Schlüssel und zahlt damit die Körnung mehr als zurück.
+
+### Warum sechs Stufen und warum 7 von 255
+
+Die Stufe ist **Dreifärbung mal Zwischenstufen**: `(wx − wz)` modulo 3
+aus den Würfelkoordinaten des Sechseckgitters, dazu ein Zittern aus den
+oberen acht Hashbits. Zwei benachbarte Sechsecke liegen nie im selben
+Drittel — gemessen **0 von 238.402** Nachbarschaften auf 200 × 200
+Feldern. Damit ist „nie gleich wie der Nachbar" garantiert und nicht
+gewürfelt: Ersetzt man die Dreifärbung durch einen freien Wurf über
+sechs Stufen, sind es sofort wieder **292 von 1.847** Wandpaaren im
+Bild, also 15,8 %.
+
+Die Spanne von **7 von 255** steht zwischen zwei gemessenen Schranken.
+Nach oben: Der engste Ebenenabstand im Fels sitzt an der Wand-Flanke
+mit **11,65**; bei 7 bleiben davon 4,65 frei, und an der Oberseite
+(28,43) sogar 21,43 — die Ebenen berühren sich nicht. Nach unten: Die
+multiplizierende Lichtlage frisst Kleines auf, ab Lichtstufe 2/7
+überlebt erst ein Abstand von 2. Deshalb ist der Sprung **zwischen zwei
+Dreifärbungs-Bändern** genau 2,0 groß — und nur der zählt, weil nur er
+zwischen Nachbarn liegt.
+
+Die Zahl ist eine Rec.-709-Zahl. `koernungsTon` verschiebt r, g und b
+um denselben Betrag, und weil sich die drei Rec.-709-Gewichte zu 1
+summieren, ist der Rec.-709-Versatz genau dieser Betrag. Über einen
+einzelnen Kanal wäre man um bis zum Vierzehnfachen daneben: 7 Punkte
+auf Blau (Gewicht 0,0722) sind 0,5 Punkte Rec. 709.
+
+### Wie die neuen Prüfungen rot gemacht wurden
+
+`werkzeuge/pruefe-koernung.mjs` ist neu (58 Behauptungen) und war
+dreimal absichtlich rot:
+
+1. `KOERNUNG_SPANNE = 0` → 13 von 58 gefallen, darunter *„kein
+   Nachbarpaar trägt dieselbe Oberseite — zuerst 0,0 und 1,0 beide
+   #433d54: ist 1847, soll 0"*.
+2. Dreifärbung durch einen freien Wurf ersetzt → 4 gefallen, darunter
+   *„kein Nachbarpaar teilt ein Band — das ist die Garantie: ist 79158,
+   soll 0"*.
+3. `KOERNUNG_SPANNE = 14` → 3 gefallen, darunter *„Flanke: die Körnung
+   (14) bleibt unter dem Ebenenabstand (11.65 von 255)"*.
+
+Die vier farbgenauen Behauptungen in `werkzeuge/pruefe-zeichnen.mjs`
+(„genau ein Rechteck in exakt `wandTon(1, false)`") sind **nicht
+gelöscht**, sondern auf die Wandfamilie umgestellt: ein Rec.-709-Fenster
+von einer halben Spanne um den Grundton. Dass daraus kein Fenster
+geworden ist, das alles schluckt, steht als Gegenprobe daneben — ohne
+Wand findet es nichts. Beides wurde rot gemacht: `zeichneWand`
+abgeschaltet → *„die Wand hat eine Oberseite aus der Wandfamilie: ist 0,
+soll 1"*; Fenster auf 100 geweitet → *„ohne Wand findet das Fenster
+keine Oberseite: ist 1, soll 0"*.
+
+### Was dabei aufgefallen ist — und nicht geändert wurde
+
+Eine Wand auf **Ebene 0** trennt Oberseite und Flanke nur um **20,78**
+von 255; Fehlerbuch D3 verlangt für zwei Töne in einem Ding 24. Das war
+schon vorher so und hat mit der Körnung nichts zu tun — sie verschiebt
+den Abstand um 0,00 Punkte, weil Oberseite und Flanke dieselbe Stufe
+bekommen. `werkzeuge/pruefe-zeichnen.mjs` misst nur Ebene 1 (37,6) und
+war deshalb grün. Hier bleibt es eine Meldung, keine Änderung: Ebene 0
+ist der Graben, und ob dort eine Wand steht, entscheidet die Palette.
+
+Der **Boden bekommt keine Körnung**. Er trägt schon das Schachbrett aus
+Grund- und Zweitton, und daran sieht man beim Laufen die eigene
+Bewegung — von 1.407 benachbarten Bodenpaaren gleicher Art und Ebene
+sind auf derselben Karte nur 437 farbgleich, also 31,1 %. Ob dort
+zusätzlich gekörnt wird, ist eine eigene Entscheidung von Jannik.
+
 ## 07.09.2026 — Der Kern läuft auf Sechsecken, und die Kette ist grün
 
 **Auftrag, wörtlich:** *„weiter"* — nach *„ja hexagon. raster form."*
