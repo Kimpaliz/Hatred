@@ -20,6 +20,15 @@
       sagen kann, dass etwas höher liegt — dazu kommt die harte
       Kantenlinie in `runtime/zeichnen.js`.
 
+   ── Warum der Fels eine Körnung braucht ────────────────────────────
+
+   Gemessen am 07.09.2026: Von 2.608 benachbarten Wandpaaren gleicher
+   Ebene trugen **2.608** exakt denselben Farbwert — 100,00 %. Eine
+   Felswand war damit eine einzige lackierte Fläche, und genau daran
+   sieht man einer Höhle an, dass sie gerechnet ist. `koernungsTon`
+   hebt oder senkt einen Ton um wenige Rec.-709-Punkte; welche Stufe
+   ein Feld bekommt, entscheidet `runtime/zeichnen.js`.
+
    ── Wie die Rampen entstanden sind ─────────────────────────────────
 
    Jede mehrstufige Rampe ist gemessen, nicht gemischt: Zwei Stufen
@@ -247,6 +256,81 @@ export function mische(hexA, hexB, teil) {
 export function abdunkeln(hex, faktor) {
   const { r, g, b } = nachRGB(hex);
   return nachHex({ r: r * faktor, g: g * faktor, b: b * faktor });
+}
+
+/* ── Die Körnung im Fels ────────────────────────────────────────────
+
+   Drei **Bänder** mal zwei **Zwischenstufen**. Die Drei ist keine
+   Geschmackszahl: Die Dreifärbung des Sechseckgitters — `(wx − wz)`
+   modulo 3 aus `alsWuerfel` in `spiel/gitter.mjs` — gibt zwei
+   benachbarten Feldern **immer** verschiedene Bänder. Gemessen auf
+   200 × 200 Feldern (Saat 4711): 0 von 238.402 Nachbarschaften teilen
+   ein Band.
+   Damit ist „nie gleich wie der Nachbar" garantiert und nicht
+   gehofft. Gemessen mit einem freien Wurf über sechs Stufen statt der
+   Dreifärbung: 39.346 von 238.402 Nachbarschaften gleich, also 16,5 %.
+   Die zwei Zwischenstufen brechen die Regelmäßigkeit auf, damit man
+   das Dreiermuster nicht als Muster liest. */
+export const KOERNUNG_BAENDER = 3;
+export const KOERNUNG_ZWISCHEN = 2;
+export const KOERNUNG_STUFEN = KOERNUNG_BAENDER * KOERNUNG_ZWISCHEN;
+
+/* Die ganze Spanne von der dunkelsten zur hellsten Stufe, in Rec.-709-
+   Punkten von 255. Zwischen zwei Schranken eingeklemmt, beide gemessen:
+
+   **Nach oben** darf die Körnung den Höhenabstand nicht auffressen.
+   Der engste Abstand zweier Ebenen im Fels sitzt an der Wand-Flanke:
+   11,65 von 255 (`node werkzeuge/pruefe-koernung.mjs` druckt ihn).
+   Bei 7 bleiben davon 4,65 übrig, und die Oberseiten zweier Ebenen
+   (28,43) überschneiden sich nicht einmal annähernd.
+
+   **Nach unten** frisst die multiplizierende Lichtlage kleine
+   Unterschiede auf. Gemessen am Rotkanal von `stein3` (#433d54): bei
+   Lichtstufe 1/7 überlebt erst ein Abstand von 7, bei 2/7 einer von 2,
+   ab 4/7 schon 1. Der Sprung zwischen zwei **Bändern** ist deshalb
+   2,0 groß — er überlebt ab 2/7. Auf den Sprung kommt es an, denn
+   nur er trennt Nachbarn; die Zwischenstufen liegen 1,0 auseinander
+   und dürfen im Dunkeln verschmelzen.
+
+   Die Zahl ist eine Rec.-709-Zahl und keine RGB-Zahl. Das ist hier
+   dasselbe, aber nur wegen der Bauart von `koernungsTon`: Es
+   verschiebt r, g und b um **denselben** Betrag, und die drei
+   Rec.-709-Gewichte summieren sich zu 1 (0,2126 + 0,7152 + 0,0722).
+   Wer stattdessen einen einzelnen Kanal verschöbe, träfe die Schranke
+   um bis zum Vierzehnfachen daneben — über Blau (0,0722) wären 7
+   Punkte RGB nur 0,5 Punkte Rec. 709. */
+export const KOERNUNG_SPANNE = 7;
+
+/* Der Bandsprung ist doppelt so groß wie der Zwischenschritt. Daraus
+   ergibt sich die Spanne als 3 × 1 + 2 × 2 = 7 Schritte — der Teiler,
+   mit dem `koernungsVersatz` aus der Spanne den Schritt zurückrechnet.
+   So bleibt `KOERNUNG_SPANNE` die eine Zahl, an der gedreht wird. */
+const BANDFAKTOR = 2;
+const KOERNUNG_TEILER =
+  KOERNUNG_BAENDER * (KOERNUNG_ZWISCHEN - 1) + (KOERNUNG_BAENDER - 1) * BANDFAKTOR;
+
+/* Um wie viel eine Stufe den Ton hebt oder senkt, in Rec.-709-Punkten.
+   Symmetrisch um null: Die Körnung soll den mittleren Ton der Wand
+   nicht verschieben, sonst wanderte mit ihr die ganze Ebene. */
+export function koernungsVersatz(stufe) {
+  const s = Math.max(0, Math.min(KOERNUNG_STUFEN - 1, Math.trunc(stufe) || 0));
+  const schritt = KOERNUNG_SPANNE / KOERNUNG_TEILER;
+  const bandsprung = (KOERNUNG_ZWISCHEN - 1 + BANDFAKTOR) * schritt;
+  const band = Math.floor(s / KOERNUNG_ZWISCHEN);
+  return band * bandsprung + (s % KOERNUNG_ZWISCHEN) * schritt - KOERNUNG_SPANNE / 2;
+}
+
+/* Ein Ton in seiner Körnungsstufe. Addiert und multipliziert **nicht**:
+   Ein Faktor gäbe der hellen Oberseite viel und der dunklen Flanke
+   fast nichts. Gemessen: Die 5,5 %, die auf der Oberseite von Ebene 1
+   (63,94) die gewünschten 3,5 Punkte ergäben, sind auf der Flanke von
+   Ebene 0 (14,72) nur 0,8 Punkte — unter jeder Lichtstufe unsichtbar.
+   Der Preis der Addition ist eine Spur weniger Farbigkeit in den
+   hellen Stufen; bei 3,5 von 255 ist das nicht zu sehen. */
+export function koernungsTon(hex, stufe) {
+  const versatz = koernungsVersatz(stufe);
+  const { r, g, b } = nachRGB(hex);
+  return nachHex({ r: r + versatz, g: g + versatz, b: b + versatz });
 }
 
 /* Der Bodenton einer Bodenart auf einer Ebene. Die eine Stelle, an der

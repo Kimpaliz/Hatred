@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Vorgang #8 ist in allen vier Schritten gebaut: Stoß auf dem Sechseck, der Abgrund als Feldart, Wasserbecken auf jeder Ebene, Abgründe in der Landschaft samt Sturz. Der Zweig `kern/abgrund-und-becken` ist nicht nach `main` geführt — das entscheidet der Auftraggeber. | 07.09.2026 |
+| frei | frei | Vorgang #8 (Abgründe und Becken) und #9 Merkmal 1–4 sind auf ihren Zweigen gebaut; niemand schreibt. | 07.09.2026 |
 
 ## Format
 
