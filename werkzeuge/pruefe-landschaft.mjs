@@ -920,8 +920,9 @@ wirft(() => baueLandschaft({ saat: 1, tiefe: 0 }), "und die Tiefe 0");
 
   /* Eine eigene Bauart wird durchgereicht: mehr Fels, weniger offen.
      Ohne diese Probe könnte `bauart` still ignoriert werden. */
-  const eng = baueLandschaft({ saat: 5, breite: 40, hoehe: 28, bauart: { schwelle: 0.80 } });
-  const weit = baueLandschaft({ saat: 5, breite: 40, hoehe: 28, bauart: { schwelle: 0.60 } });
+  const eng = macheKarte(40, 28), weit = macheKarte(40, 28);
+  rastereWaende(eng, macheWeltfeld(5, { schwelle: 0.80 }));
+  rastereWaende(weit, macheWeltfeld(5, { schwelle: 0.60 }));
   let engOffen = 0, weitOffen = 0;
   for (let i = 0; i < eng.anzahl; i++) {
     if (offen(eng, i)) engOffen++;

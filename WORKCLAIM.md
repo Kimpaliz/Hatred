@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Torwächter, Kamera-Zoom und der warme Vorlauf sind zusammengeführt; niemand schreibt. | 07.09.2026 |
+| — | frei | — | — |
 
 ## Format
 

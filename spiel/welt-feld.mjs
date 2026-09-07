@@ -61,8 +61,9 @@ import { BAUART, ENTZERR_RUNDEN } from "./bauart.mjs";
 
    | Fassung | was sich änderte |
    | --- | --- |
-   | 1 | der Ausgangsstand — portiert aus Scotophobia | */
-export const WELTFASSUNG = 1;
+   | 1 | der Ausgangsstand — portiert aus Scotophobia |
+   | 2 | Scotophobia-Formparameter und einheitliche Hexpositionen | */
+export const WELTFASSUNG = 2;
 
 const STUETZEN = 14;      /* Stützpunkte je Gangpfad */
 const INSEL_RAND = 24;    /* Randpunkte, mit denen eine Insel vermessen wird */
@@ -173,10 +174,9 @@ export function macheWeltfeld(saat, bauart) {
       const kurz = fbm(t * 5.0 + marke * 3.7, 0.5, saat + 13 + marke, 3) - 0.5;
       let w = wB * Math.max(0.30, 1 + p.gangSchwankung * (lang * 1.1 + kurz * 0.7));
       if (spitz) w *= 1 - 0.7 * t;
-      /* Untergrenze in Bildpunkten. Sie ist der Grund, warum ein Gang
-         nach dem Rastern nie unter eine Kachel Breite fällt und
-         dadurch verschwindet. */
-      pts[i * 3 + 2] = w < 9 ? 9 : w;
+      /* Quelluntergrenze fünf Bildpunkte. Der Rasteradapter prüft danach
+         die Erreichbarkeit und bereinigt abgetrennte Flächen nach Spielregeln. */
+      pts[i * 3 + 2] = w < 5 ? 5 : w;
     }
     return pts;
   };
@@ -353,7 +353,7 @@ export function macheWeltfeld(saat, bauart) {
       };
       const mitte = [0, 0];
       const radW = inselWeltMass(insel, INSEL_RAND, mitte) * 1.05;
-      const nah = radW + p.inselLuft * 0.5 + 2;
+      const nah = radW + 7.2 + 2;
       if (gangAbstandWelt(mitte[0], mitte[1], nah) < nah) continue;
       l.push(insel);
     }

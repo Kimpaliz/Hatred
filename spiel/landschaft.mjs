@@ -58,6 +58,7 @@ import {
 import { laufKosten, STURZ_AB_STUFEN } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
 import { PIXEL_JE_FELD } from "./bauart.mjs";
+import { feldMitte, ZEILEN_HOEHE } from "./raster.mjs";
 import { hash, fbm } from "./welt-rauschen.mjs";
 
 import {
@@ -135,49 +136,19 @@ const P = PIXEL_JE_FELD;
    braucht (Geröll am Wandfuß) und ein zweiter Durchlauf durch
    `feldBei` das Teuerste wäre, was man hier tun kann. */
 /* Der Zeilenabstand eines Sechseckrasters, in Feldbreiten. */
-export const ZEILEN_ABSTAND = Math.sqrt(3) / 2;
+export const ZEILEN_ABSTAND = ZEILEN_HOEHE / P;
 
 export function rastereWaende(karte, welt) {
   const wandNaehe = new Float32Array(karte.anzahl);
   const schritt = P / UEBERABTASTUNG;
   for (let y = 0; y < karte.hoehe; y++) {
-    /* ── Der halbe Versatz der ungeraden Zeilen ──────────────────────
-
-       Seit dem 07.09.2026 ist das Raster ein Sechseckraster in
-       Versatzzeilen: Jede ungerade Zeile liegt ein halbes Feld weiter
-       rechts. Die Weltformel muss **dort** abgetastet werden, wo das
-       Feld wirklich liegt — sonst beschreibt das Bild eine andere
-       Höhle als die, durch die man läuft.
-
-       Was passiert, wenn man es vergisst: Die Wände stehen um ein
-       halbes Feld versetzt zur Nachbarschaft. Gänge, die im Bild offen
-       aussehen, sind es nicht, und die Karte zerfällt in Taschen.
-       Gemessen: `waehleStarts` fand auf einer engen Karte nur noch ein
-       einziges Startfeld statt zweier. */
-    const versatz = (y & 1) === 1 ? P / 2 : 0;
-    /* Und die Zeilen stehen enger, als sie breit sind: Beim Sechseck
-       ist der Zeilenabstand √3/2 der Feldbreite. Die Zahl ist nicht
-       gewählt, sondern Geometrie — zwei Zeilen greifen ineinander.
-
-       ── Eine Messung, die eine Fehlentscheidung verhindert hat ─────
-
-       Der erste Blick darauf war eine **einzelne** Karte (Saat 5,
-       44 x 32): 6,5 % offene Kacheln gegen 22,4 % ohne den engeren
-       Abstand. Das sah nach einem klaren Rückschritt aus, und beinahe
-       wäre hier `y * P` stehengeblieben mit einer Notiz, die das
-       begründet.
-
-       Über **60 Saaten** gemessen sieht es anders aus: 35,8 % mit dem
-       Sechseck-Abstand gegen 36,5 % ohne, und in beiden Fällen bauen
-       alle 60 Karten fehlerfrei. Saat 5 war eine dünne Karte, kein
-       Beleg. Eine Zahl aus einem Lauf ist keine Messung. */
-    const zeileOben = y * P * ZEILEN_ABSTAND;
     for (let x = 0; x < karte.breite; x++) {
+      const mittePunkt = feldMitte(x, y);
       let fels = 0, mitte = 0;
       for (let b = 0; b < UEBERABTASTUNG; b++) {
         for (let a = 0; a < UEBERABTASTUNG; a++) {
           const wert = welt.feldBei(
-            x * P + versatz + (a + 0.5) * schritt, zeileOben + (b + 0.5) * schritt);
+            mittePunkt.x + (a - 1) * schritt, mittePunkt.y + (b - 1) * schritt);
           if (wert > 0) fels++;
           if (a === 1 && b === 1) mitte = wert;
         }
@@ -213,7 +184,8 @@ export function setzeRand(karte) {
 export function roheEbenen(karte, welt) {
   for (let y = 0; y < karte.hoehe; y++) {
     for (let x = 0; x < karte.breite; x++) {
-      karte.ebene[y * karte.breite + x] = welt.ebeneBei(kachelMitte(x), kachelMitte(y));
+      const mitte = feldMitte(x, y);
+      karte.ebene[y * karte.breite + x] = welt.ebeneBei(mitte.x, mitte.y);
     }
   }
 }
@@ -862,12 +834,26 @@ export function baueLandschaft({
   verfuelleNebenraeume(karte);
   setzeRampen(karte, saat);
   grabeAbgruende(karte, saat);
+  /* Ein kleiner Ausschnitt der echten Höhle kann fast ganz im Becken
+     liegen. Die Gruppe reserviert deshalb ihren trockenen Einstieg,
+     bevor Wasser oder Einrichtungsgegenstände diese Plätze belegen. */
+  const startReserve = waehleStarts(karte, spielerZahl);
   setzeWasser(karte, welt);
+  try {
+    karte.starts = waehleStarts(karte, spielerZahl);
+  } catch {
+    /* Nur wenn kein trockener Einstieg mehr passt, bleibt sein ganzes
+       Becken trocken. Ein bestehender See wird nicht in Flecken geteilt. */
+    karte.starts = startReserve;
+    for (const b of beckenGebiete(karte)) {
+      if (!karte.starts.some((s) => b.boden.includes(karte.index(s.x, s.y)))) continue;
+      for (const i of b.boden) karte.fluessig[i] = FLUESSIG.keine;
+    }
+  }
   setzeBoden(karte, welt, wandNaehe);
   setzeFackeln(karte);
   setzeZier(karte, welt, saat);
 
-  karte.starts = waehleStarts(karte, spielerZahl);
   const ausgang = waehleAusgang(karte, karte.starts);
   karte.ausgang = { x: ausgang.x, y: ausgang.y };
   karte.raeume = sammleRaeume(karte, welt);

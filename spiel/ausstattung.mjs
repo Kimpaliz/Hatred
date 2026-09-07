@@ -33,6 +33,7 @@ import {
 import { laufKosten } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
 import { PIXEL_JE_FELD } from "./bauart.mjs";
+import { feldMitte, weltNachFeld, weltMasse } from "./raster.mjs";
 import { hash, fbm } from "./welt-rauschen.mjs";
 
 import {
@@ -110,6 +111,7 @@ export function setzeWasser(karte, welt) {
   let nass = 0, gross = 0;
   for (const b of becken) {
     if (b.boden.length < mindest) continue;
+    if (karte.starts.some((s) => b.boden.includes(karte.index(s.x, s.y)))) continue;
     gross++;
     for (const i of b.boden) { karte.fluessig[i] = FLUESSIG.wasser; nass++; }
   }
@@ -162,7 +164,8 @@ export function setzeBoden(karte, welt, wandNaehe) {
       if (!offen(karte, i)) { karte.boden[i] = BODEN.stein; continue; }
       const amFels = wandNaehe[i] > -nahWand;
       let art = BODEN.stein, name = "stein";
-      if (!amFels && istHalle(kachelMitte(x), kachelMitte(y))) {
+      const mitte = feldMitte(x, y);
+      if (!amFels && istHalle(mitte.x, mitte.y)) {
         art = BODEN.kachel; name = "kachel";
       } else if (amFels) {
         art = BODEN.erde; name = "erde";
@@ -185,6 +188,7 @@ export function setzeBoden(karte, welt, wandNaehe) {
    Dazu die Nur-Diagonale: Ein Fass in der Ecke schafft genau die
    Scheinverbindung von Schritt 4. */
 export function zierErlaubt(karte, x, y) {
+  if (karte.starts.some((s) => s.x === x && s.y === y)) return false;
   const i = karte.index(x, y);
   if (!offen(karte, i)) return false;
   const merk = karte.hindernis[i];
@@ -250,6 +254,7 @@ export function setzeZier(karte, welt, saat) {
   const zahlen = { fass: 0, kiste: 0, sarg: 0, altar: 0, truhe: 0, spiess: 0 };
   for (let y = 1; y < karte.hoehe - 1; y++) {
     for (let x = 1; x < karte.breite - 1; x++) {
+      if (karte.starts.some((s) => s.x === x && s.y === y)) continue;
       const i = y * karte.breite + x;
       if (karte.hindernis[i] !== HINDERNIS.keins || karte.rampe[i] !== RAMPE.keine) continue;
       if (anDerWand(karte, x, y) && hash(i, 6, s) < SPIESS_HAEUFIGKEIT) {
@@ -258,7 +263,8 @@ export function setzeZier(karte, welt, saat) {
         continue;
       }
       if (karte.fluessig[i] !== FLUESSIG.keine) continue;
-      const halle = istHalle(kachelMitte(x), kachelMitte(y));
+      const mitte = feldMitte(x, y);
+      const halle = istHalle(mitte.x, mitte.y);
       let gewaehlt = null;
       for (const z of ZIER_ARTEN) {
         if (z.halle !== null && z.halle !== halle) continue;
@@ -351,13 +357,14 @@ export function waehleAusgang(karte, starts) {
    danach. Deshalb der Radius als grobes Kästchenmaß statt als Hülle. */
 export function sammleRaeume(karte, welt) {
   const rand = 2, raus = [0, 0], raeume = [];
-  const s1x = Math.floor((karte.breite * P) / welt.sektor) + rand;
-  const s1y = Math.floor((karte.hoehe * P) / welt.sektor) + rand;
+  const mass = weltMasse(karte);
+  const s1x = Math.floor(mass.breite / welt.sektor) + rand;
+  const s1y = Math.floor(mass.hoehe / welt.sektor) + rand;
   for (let sy = -rand; sy <= s1y; sy++) {
     for (let sx = -rand; sx <= s1x; sx++) {
       const raum = welt.raumBei(sx, sy);
       welt.entzerre(raum.x, raum.y, raus);
-      const x = Math.round((raus[0] - P / 2) / P), y = Math.round((raus[1] - P / 2) / P);
+      const { x, y } = weltNachFeld(raus[0], raus[1]);
       if (!karte.drin(x, y)) continue;
       const weite = Math.max(1, Math.round((2 * raum.r) / P));
       raeume.push({

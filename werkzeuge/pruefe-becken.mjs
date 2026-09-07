@@ -17,31 +17,16 @@
    die bloß fragt, ob überhaupt Wasser da ist, wäre bei der alten Regel
    ebenso grün gewesen.
 
-   ── Warum eine Schwelle und nicht „jede Karte" ─────────────────────
+   ── Regelprüfung und natürliche Verteilung ─────────────────────────
 
-   Ob eine Karte zwei Becken auf zwei Ebenen hat, entscheidet die
-   Höhlenform, nicht diese Regel — es gibt Saaten, deren Kerker eine
-   einzige große Mulde hat. Verlangt wird deshalb die **überwiegende
-   Mehrheit**, und die Zahl dahinter ist gemessen: 27 von 30 Saaten
-   (44 × 32) tragen Wasser auf mindestens zwei Ebenen, über 60 Saaten
-   waren es 52. Die Schwelle liegt bei 20 von 30 — zwei Dritteln.
-
-   Warum zwei Drittel und nicht 26: Sieben Karten Abstand lassen der
-   Streuung des Erzeugers Luft, denn kein Kerker ist bestellt, nur der
-   Anteil. Warum nicht tiefer: Die Hälfte wäre keine „überwiegende
-   Mehrheit" mehr, und zwei Drittel ist der kleinste runde Anteil, der
-   eindeutig einer ist. Die alte Regel „Ebene 0" liefert 0 von 30 —
-   sie fällt hier um zwanzig Karten durch, nicht um eine.
+   Ob die natürliche Höhle mehrere geeignete Senken enthält, entscheidet
+   ihre Form. Die Fähigkeit „auf jeder Ebene“ wird an vier kontrollierten
+   Becken gleicher Größe geprüft. Der unveränderte Lauf über 30 Saaten
+   berichtet weiterhin die Verteilung und prüft jedes vorhandene Wasser
+   auf seine Beckenlage; er erzwingt keinen erfundenen Höhlentyp.
 
    ── Was hier bewusst nicht geprüft wird ────────────────────────────
 
-   · **Dass jedes Wasserfeld auf einem Beckenboden liegt.** Das ist die
-     Zusage (j) und steht im Reihenlauf von
-     `werkzeuge/pruefe-landschaft.mjs`, der ohnehin jede Kachel von
-     sechzig Karten anfasst. Zweimal dieselbe Schleife wäre zweimal
-     Rechenzeit für eine Aussage.
-   · **Die Mindestgröße eines Sees** — ebenfalls dort, samt dem
-     Einzelschritt `setzeWasser` an einer Handkarte.
    · **Abgründe.** Sie sind Schritt 4 dieses Vorgangs; hier geht es
      allein um das Wasser.
    · **Wie Wasser aussieht.** Das ist `runtime/` und wird von
@@ -61,18 +46,15 @@ import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 import { macheKarte, HINDERNIS, FLUESSIG, EBENEN } from "../spiel/gitter.mjs";
 import { beckenGebiete } from "../spiel/kachelhilfe.mjs";
 import { baueLandschaft } from "../spiel/landschaft.mjs";
+import { setzeWasser } from "../spiel/ausstattung.mjs";
+import { BAUART } from "../spiel/bauart.mjs";
 
-/* Dreißig Saaten: genug, damit ein Anteil von zwei Dritteln überhaupt
-   eine Aussage ist, und wenig genug, dass der Lauf unter vier Sekunden
-   bleibt. Die Maße sind die des Reihenlaufs in
+/* Dreißig aufeinanderfolgende Saaten ohne Vorauswahl. Die Maße sind die des Reihenlaufs in
    `werkzeuge/pruefe-landschaft.mjs`, damit beide Zahlen vergleichbar
    sind. */
 const SAATEN = 30;
 const BREITE = 44;
 const HOEHE = 32;
-
-/* Zwei Drittel — die Begründung steht in der Kopfnotiz. */
-const MIND_ZWEI_EBENEN = 20;
 
 /* ══════════════════════════════════════════════════════════════════
    1 · Was ein Becken ist
@@ -205,36 +187,61 @@ abschnitt("Was ein Becken ist");
 
 abschnitt("Wasser auf mehreren Ebenen");
 
+/* Gleiche eingemauerte Zisternen auf allen vier Ebenen: Keine Saat
+   entscheidet, welche davon vorkommt. Auch Ebene 3 kann Wasser tragen. */
+const stufen = macheKarte(EBENEN * 5 + 2, 7);
+stufen.hindernis.fill(HINDERNIS.wand);
+const boeden = [];
+for (let ebene = 0; ebene < EBENEN; ebene++) {
+  const boden = [];
+  for (let y = 2; y <= 4; y++) for (let x = 2 + ebene * 5; x <= 4 + ebene * 5; x++) {
+    stufen.setze(x, y, { hindernis: HINDERNIS.keins, ebene });
+    boden.push(stufen.index(x, y));
+  }
+  boeden.push(boden);
+}
+const gesetzt = setzeWasser(stufen, { bauart: BAUART });
+gleich(gesetzt.seen, EBENEN, "Vier gleich große Becken werden auf vier Ebenen gefüllt");
+for (let ebene = 0; ebene < EBENEN; ebene++) {
+  behaupte(boeden[ebene].every((i) => stufen.fluessig[i] === FLUESSIG.wasser),
+    `Jedes Feld des kontrollierten Beckens auf Ebene ${ebene} enthält Wasser`);
+}
+
+/* Die Grenze wird gegen die echte Bauart geprüft, nicht gegen eine
+   auf diese Karte abgestimmte Zahl. Kleine Becken bleiben trocken. */
+const klein = macheKarte(12, 6);
+klein.hindernis.fill(HINDERNIS.wand);
+for (let x = 1; x < BAUART.wasserMindestSee; x++) {
+  klein.setze(x, 2, { hindernis: HINDERNIS.keins, ebene: 2 });
+}
+gleich(setzeWasser(klein, { bauart: BAUART }).felder, 0,
+  "Ein Becken knapp unter der Mindestgröße bleibt trocken");
+
 let zweiEbenen = 0, ohneWasser = 0, wasserKacheln = 0;
-const ebenenMitWasser = new Set();
 const verteilung = new Array(EBENEN + 1).fill(0);
 const jeEbene = new Array(EBENEN).fill(0);
 
 for (let saat = 1; saat <= SAATEN; saat++) {
   const karte = baueLandschaft({ saat, breite: BREITE, hoehe: HOEHE, spielerZahl: 2 });
   const hier = new Set();
+  const beckenBoden = new Set(beckenGebiete(karte).flatMap((b) => b.boden));
+  let ausserhalb = 0;
   for (let i = 0; i < karte.anzahl; i++) {
     if (karte.fluessig[i] !== FLUESSIG.wasser) continue;
+    if (!karte.blocktBewegung(i % karte.breite, Math.floor(i / karte.breite))
+      && !beckenBoden.has(i)) ausserhalb++;
     wasserKacheln++;
     jeEbene[karte.ebene[i]]++;
     hier.add(karte.ebene[i]);
-    ebenenMitWasser.add(karte.ebene[i]);
   }
   verteilung[hier.size]++;
   if (hier.size >= 2) zweiEbenen++;
   if (hier.size === 0) ohneWasser++;
+  gleich(ausserhalb, 0, `Saat ${saat}: Jedes begehbare Wasserfeld liegt in einem echten Becken`);
 }
 
-behaupte(zweiEbenen >= MIND_ZWEI_EBENEN,
-  `auf ${zweiEbenen} von ${SAATEN} Karten steht Wasser auf mindestens zwei Ebenen` +
-  ` (verlangt: ${MIND_ZWEI_EBENEN})`);
-gleich(ohneWasser, 0, `auf jeder der ${SAATEN} Karten steht überhaupt Wasser`);
-behaupte(ebenenMitWasser.size >= 3,
-  `über den ganzen Lauf tragen ${ebenenMitWasser.size} verschiedene Ebenen Wasser` +
-  " (die alte Regel gab genau eine)");
-
 console.log(`      · ${SAATEN} Karten ${BREITE} × ${HOEHE}:` +
-  ` ${zweiEbenen} mit Wasser auf mindestens zwei Ebenen (verlangt ${MIND_ZWEI_EBENEN}),` +
+  ` ${zweiEbenen} mit Wasser auf mindestens zwei Ebenen, ${ohneWasser} trocken,` +
   ` ${(wasserKacheln / SAATEN).toFixed(1)} Wasserkacheln je Karte`);
 console.log(`      · Karten nach Zahl der nassen Ebenen (0…${EBENEN}): ` +
   verteilung.join(" / ") + `  ·  Wasserkacheln je Ebene: ` + jeEbene.join(" / "));

@@ -60,6 +60,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { abschnitt, behaupte, gleich, nahe, ende } from "./helfer.mjs";
 import { macheKarte, HINDERNIS } from "../spiel/gitter.mjs";
+import { weltMasse, weltNachFeld } from "../spiel/raster.mjs";
+import { sichtlinie } from "../spiel/sicht.mjs";
 import { GRUNDHELLE, LICHT_ARTEN, bodenTon, nachRGB } from "../runtime/palette.js";
 import {
   KACHEL, LICHTPUNKT, PUNKTE_JE_FELD, STUFEN, WARM_ZUSATZ,
@@ -216,8 +218,11 @@ let tripelBericht = "";
   ]);
   werk.rechne(0.5, karte);
   const punkte = werk.lichtpunkte();
-  gleich(punkte.breite, 20 * PUNKTE_JE_FELD, "die Lichtkarte hat vier Punkte je Feld (Breite)");
-  gleich(punkte.hoehe, 12 * PUNKTE_JE_FELD, "die Lichtkarte hat vier Punkte je Feld (Höhe)");
+  const masse = weltMasse(karte);
+  gleich(punkte.breite, Math.ceil(masse.breite / LICHTPUNKT),
+    "die Lichtkarte deckt die Weltbreite einschließlich der versetzten Hexzeilen ab");
+  gleich(punkte.hoehe, Math.ceil(masse.hoehe / LICHTPUNKT),
+    "die Lichtkarte deckt die tatsächliche Welthöhe einschließlich der Spitzen ab");
 
   const verschieden = new Set();
   let daneben = 0;
@@ -419,8 +424,23 @@ let lichtBericht = "";
     "die Glättung wird abgeschaltet (Fehlerbuch D1)");
   gleich(ersterBruch(flaeche.aufrufe), null, "jedes Lichtrechteck liegt auf ganzen Bildpunkten");
   gleich(rechtecke.length, gezeichnet, "zeichneAuf meldet genau so viele Rechtecke, wie es setzt");
-  behaupte(rechtecke.every((a) => a[3] === LICHTPUNKT * 3 && a[4] === LICHTPUNKT * 3),
-    "jedes Rechteck ist einen Lichtpunkt breit, mal der Vergrößerung");
+  behaupte(rechtecke.every((a) => a[3] > 0 && a[3] <= LICHTPUNKT * 3
+    && a[3] % 3 === 0 && (a[4] === LICHTPUNKT * 3 || a[4] === 3)),
+  "Lichtblöcke sind vier Pixel groß, ihre Randspannen genau eine Pixelzeile hoch");
+  let ausserhalb = 0;
+  let randSpannen = 0;
+  for (const r of rechtecke) {
+    if (r[4] === 3) randSpannen++;
+    for (let py = 0; py < r[4]; py += 3) {
+      for (let px = 0; px < r[3]; px += 3) {
+        const feld = weltNachFeld((r[1] + px) / 3 + 5 + 0.5,
+          (r[2] + py) / 3 + 37 + 0.5);
+        if (!karte.drin(feld.x, feld.y)) ausserhalb++;
+      }
+    }
+  }
+  gleich(ausserhalb, 0, "kein Lichtblock oder Randstreifen bemalt den Raum außerhalb der Hexkarte");
+  behaupte(randSpannen > 0, "die Probe enthält tatsächlich beschnittene Lichtpunkte am Hexrand");
   gleich(mischen[0], "multiply", "die erste Lage multipliziert");
   behaupte(mischen.includes("lighter"), "die warme Lage kommt additiv obendrauf");
   behaupte(mischen.indexOf("multiply") < mischen.indexOf("lighter"),
@@ -461,6 +481,63 @@ let lichtBericht = "";
      Bild läuft in einer Schleife, und ein Wurf je Bild wäre ein
      Wasserfall aus Meldungen. */
   gleich(werk.zeichneAuf(null, {}), 0, "ohne Zeichenblatt wird nichts gezeichnet");
+}
+
+/* ── 7b · Ein Lichtblock darf keine fremden Hexfelder beleuchten ─── */
+abschnitt("7b · Pixelgenauer Schatten an inneren Hexgrenzen");
+{
+  function gemaltesLicht(karte, quellen) {
+    const werk = macheLichtwerk(karte), masse = weltMasse(karte);
+    werk.setzeQuellen(quellen); werk.rechne(0, karte);
+    let falschWarm = 0, falschHell = 0, beleuchtet = 0, ausserhalb = 0;
+    const marken = new Set();
+    const sichtbar = new Map();
+    const ctx = { fillStyle: "", globalCompositeOperation: "source-over",
+      fillRect(x, y, breite, hoehe) {
+        const rgb = this.fillStyle.match(/\d+/g).map(Number);
+        const warm = this.globalCompositeOperation === "lighter" && rgb[0] > 0;
+        const hell = this.globalCompositeOperation === "multiply"
+          && rgb[0] > Math.round(GRUNDSTUFE * 255);
+        for (let py = y; py < y + hoehe; py++) for (let px = x; px < x + breite; px++) {
+          const feld = weltNachFeld(px + 0.5, py + 0.5);
+          if (!karte.drin(feld.x, feld.y)) { ausserhalb++; continue; }
+          const i = karte.index(feld.x, feld.y);
+          let frei = sichtbar.get(i);
+          if (frei === undefined) {
+            frei = quellen.some((q) => sichtlinie(karte, q.x, q.y, feld.x, feld.y));
+            sichtbar.set(i, frei);
+          }
+          if (!frei && warm) falschWarm++;
+          if (!frei && hell) falschHell++;
+          if (frei && warm) { beleuchtet++; marken.add(`${px},${py}`); }
+        }
+      }
+    };
+    werk.zeichneAuf(ctx, { x: 0, y: 0, vergroesserung: 1,
+      breite: masse.breite, hoehe: masse.hoehe });
+    return { falschWarm, falschHell, beleuchtet, ausserhalb, marken };
+  }
+  for (const x of [4, 8]) for (const y of [5, 6]) {
+    const k = macheKarte(12, 12);
+    for (let yy = 0; yy < k.hoehe; yy++) k.setze(6, yy, { hindernis: HINDERNIS.wand });
+    const q = [{ x, y, art: "fackel", weite: 10, flackern: 0 }];
+    const zu = gemaltesLicht(k, q);
+    gleich(zu.falschWarm, 0, `Fackel ${x},${y}: kein additives Pixel hinter der Hexwand`);
+    gleich(zu.falschHell, 0, `Fackel ${x},${y}: kein aufgehelltes Pixel hinter der Hexwand`);
+    gleich(zu.ausserhalb, 0, `Fackel ${x},${y}: Licht bleibt auch am äußeren Kartenrand innen`);
+    behaupte(zu.beleuchtet > 500, "Der gültige Fackelraum bleibt tatsächlich beleuchtet");
+    const offen = gemaltesLicht(macheKarte(12, 12), q);
+    behaupte(offen.beleuchtet > zu.beleuchtet + 500,
+      "Ohne Wand erreicht das Licht auch die zuvor verdeckten echten Bildpunkte");
+  }
+  const beidseitig = macheKarte(12, 12);
+  for (let y = 0; y < 12; y++) beidseitig.setze(6, y, { hindernis: HINDERNIS.wand });
+  const zwei = gemaltesLicht(beidseitig, [
+    { x: 4, y: 6, art: "fackel", weite: 10, flackern: 0 },
+    { x: 8, y: 6, art: "fackel", weite: 10, flackern: 0 }
+  ]);
+  behaupte(zwei.marken.has("118,72") && zwei.marken.has("80,72"),
+    "Unabhängige Quellen beleuchten beide Seiten derselben Wand bis an ihre Hexränder");
 }
 
 /* ── 8 · Der Vorrat der Teilchen ──────────────────────────────────── */

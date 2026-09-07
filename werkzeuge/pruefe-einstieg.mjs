@@ -759,8 +759,10 @@ function listeOrdner(ordner) {
   const dateien = [...listeOrdner("runtime"), ...listeOrdner("netz"), "sw.js"];
   behaupte(dateien.length > 15, `${dateien.length} Dateien durchsucht`);
   const gefunden = dateien.filter((d) => /Math\.random/.test(ohneKommentare(liesWurzel(d))));
-  behaupte(/Math\.random/.test(liesWurzel("runtime/zeichnen.js")),
-    "runtime/zeichnen.js nennt Math.random - im Kommentar, und das zählt nicht");
+  behaupte(!/Math\.random/.test(ohneKommentare("/* Math.random() */")),
+    "ein Wurf im Kommentar zählt nicht als zweite Zufallsquelle");
+  behaupte(/Math\.random/.test(ohneKommentare("const wert = Math.random();")),
+    "ein tatsächlicher Wurf außerhalb eines Kommentars wird gefunden");
   gleich(gefunden.join(", "), "runtime/start.js",
     "Math.random steht in genau einer Datei unter runtime/, netz/ und sw.js");
 }

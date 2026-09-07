@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- [Aufgabe: Werkzeug] Sichtprüfung des tatsächlichen Granitzeichners.
+     Arbeitet zusammen mit topdown-vorschau.js und den Spielmodulen. -->
+<html lang="de">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hatred · Granithöhle von oben</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#04040a;color:#dedbd2;font:14px system-ui}
+header{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 22px;
+background:#101116;border-bottom:1px solid #343532}strong{letter-spacing:.15em;margin-right:auto}
+button,input,a{font:inherit;color:inherit;background:#1b1e22;border:1px solid #444843;
+padding:8px 12px;border-radius:4px;text-decoration:none}button{cursor:pointer}
+button:hover{background:#343b3a}input{width:78px}canvas{display:block;image-rendering:pixelated}
+footer{position:fixed;bottom:0;left:0;right:0;padding:10px 22px;background:#101116ed;
+color:#aaa99f;pointer-events:none}label{white-space:nowrap}#raster,#licht{width:auto}
+@media(max-width:700px){header{padding:10px;gap:6px}strong{width:100%}footer{font-size:12px}}
+</style>
+<header><strong>HATRED / GRANITHÖHLE</strong>
+<label>Saat <input id="saat" type="number" value="7"></label>
+<button id="hoehle">Höhle</button><button id="treppen">Treppen prüfen</button>
+<button id="minus" aria-label="Herauszoomen">−</button>
+<button id="plus" aria-label="Hineinzoomen">+</button>
+<label><input id="raster" type="checkbox" checked> Raster</label>
+<label><input id="licht" type="checkbox"> Fackellicht</label>
+<a href="../index.html">Spiel öffnen</a></header>
+<canvas id="bild" aria-label="Senkrechte Höhlenansicht"></canvas>
+<footer id="status">Granit wird berechnet …</footer>
+<script type="module" src="./topdown-vorschau.js"></script>
+</html>

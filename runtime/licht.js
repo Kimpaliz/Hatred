@@ -9,8 +9,8 @@
    beide Absicht:
 
    1. **Ein Lichtpunkt ist `LICHTPUNKT` Weltbildpunkte breit.** Die
-      Lichtkarte hat vier Punkte je Rasterfeld, nicht sechzehn. Das
-      ist der Grund, warum der Fackelkreis kantig ist.
+      Lichtkarte rechnet in Weltpunkten unabhängig vom Zeilenversatz.
+      Das ist der Grund, warum der Fackelkreis kantig ist.
    2. **Die Summe wird auf acht Stufen gerundet.** Aus einem weichen
       Verlauf werden Ringe. Ohne das Runden wäre die Karte ein Verlauf
       mit 256 Zwischenwerten, und der Kerker sähe aus wie mit dem
@@ -42,12 +42,14 @@
    wird von jedem Setzen der Blattmaße zurückgestellt (Fehlerbuch D1),
    und ein einziger vergessener Griff macht das ganze Licht weich.
    Gefüllte Rechtecke lassen sich gar nicht glätten, und gezeichnet
-   wird ohnehin nur der sichtbare Ausschnitt — das sind bei einem
-   320×180-Fenster gut zweihundert Rechtecke, nicht zwanzigtausend.
+   wird ohnehin nur der sichtbare Ausschnitt. Überquert ein Lichtblock
+   eine Hexgrenze, gehören seine Pixel zu getrennten Schattenproben.
+   Vorgezeichnete Pixelspannen verhindern Licht hinter einer Wand.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    `runtime/palette.js` (`LICHT_ARTEN`, `GRUNDHELLE`, `nachRGB`),
+   `spiel/raster.mjs` (Feldmitten, Weltmaße und Lichtpunktzuordnung),
    `spiel/sicht.mjs` (`sichtlinie` — der Schattenwurf), `spiel/licht.mjs`
    (dieselben Reichweiten, dort als Regel), `runtime/partikel.js` (holt
    `KACHEL` von hier und liefert über `leuchtende()` bewegte Quellen),
@@ -57,6 +59,7 @@
 
 import { LICHT_ARTEN, GRUNDHELLE, FARBEN, nachRGB } from "./palette.js";
 import { sichtlinie } from "../spiel/sicht.mjs";
+import { feldMitte, weltNachFeld, weltMasse, FELD_BREITE } from "../spiel/raster.mjs";
 
 /* ── Die Maße aus dem Bildvertrag ───────────────────────────────────
    Sie stehen hier und nicht in jeder Bilddatei noch einmal: Zwei
@@ -64,7 +67,7 @@ import { sichtlinie } from "../spiel/sicht.mjs";
    irgendwann gepflegt und die andere nicht. `spiel/bauart.mjs` führt
    dieselbe 16 als `PIXEL_JE_FELD` — dort muss sie stehen, weil der
    Kern nichts aus `runtime/` lesen darf. */
-export const KACHEL = 16;
+export const KACHEL = FELD_BREITE;
 export const LICHTPUNKT = 4;
 export const PUNKTE_JE_FELD = KACHEL / LICHTPUNKT;
 
@@ -144,8 +147,11 @@ function quelleAus(roh) {
   if (!(weite > 0) || !(staerke > 0)) return null;
   const { r, g, b } = nachRGB(hex);
   if (!Number.isFinite(r) || !Number.isFinite(g) || !Number.isFinite(b)) return null;
+  const mitte = feldMitte(roh.x, roh.y);
   return {
     x: roh.x, y: roh.y, weite, staerke, flackern,
+    weltX: Number.isFinite(roh.weltX) ? roh.weltX : mitte.x,
+    weltY: Number.isFinite(roh.weltY) ? roh.weltY : mitte.y,
     r: r / 255, g: g / 255, b: b / 255,
     saat: roh.x * 73.7 + roh.y * 149.3
   };
@@ -153,9 +159,9 @@ function quelleAus(roh) {
 
 /* ── Das Werk ───────────────────────────────────────────────────────
 
-   `karte` wird gereicht und nie geändert. Die Lichtkarte ist so groß
-   wie die Karte mal `PUNKTE_JE_FELD`; bei 44 × 32 Feldern sind das
-   176 × 128 Lichtpunkte, also 22.528 Werte je Kanal. */
+   `karte` wird gereicht und nie geändert. Die Lichtkarte deckt die
+   tatsächlichen Weltmaße einschließlich der äußeren Hexspitzen ab;
+   ein Lichtpunkt ist weiterhin vier Weltbildpunkte breit. */
 export function macheLichtwerk(karte) {
   let welt = null;
   let punkteBreite = 0;
@@ -163,6 +169,8 @@ export function macheLichtwerk(karte) {
   let rot = new Float32Array(0);
   let gruen = new Float32Array(0);
   let blau = new Float32Array(0);
+  let punktFelder = new Int32Array(0);
+  let punktGruppen = [];
   /* Die festen Quellen samt ihrem vorgerechneten Schattenwurf. Der
      Schattenwurf hängt nur an Karte und Lage — er wird beim Setzen
      einmal gezogen und nicht in jedem Bild erneut. */
@@ -175,70 +183,132 @@ export function macheLichtwerk(karte) {
 
   function richteEin(neueKarte) {
     welt = neueKarte;
-    punkteBreite = welt.breite * PUNKTE_JE_FELD;
-    punkteHoehe = welt.hoehe * PUNKTE_JE_FELD;
+    const masse = weltMasse(welt);
+    punkteBreite = Math.ceil(masse.breite / LICHTPUNKT);
+    punkteHoehe = Math.ceil(masse.hoehe / LICHTPUNKT);
     const anzahl = punkteBreite * punkteHoehe;
-    rot = new Float32Array(anzahl);
-    gruen = new Float32Array(anzahl);
-    blau = new Float32Array(anzahl);
-  }
-
-  /* Für jede Quelle: welche Felder ihres Kastens sie überhaupt sieht.
-     Außerhalb der Karte bleibt die Marke 0 — damit ist der Randfall
-     schon hier erledigt und nicht in der inneren Schleife. */
-  function macheSichtfeld(quelle) {
-    const feldX = Math.floor(quelle.x + 0.5);
-    const feldY = Math.floor(quelle.y + 0.5);
-    const spanne = Math.ceil(quelle.weite);
-    const breite = spanne * 2 + 1;
-    const hoehe = spanne * 2 + 1;
-    const sicht = new Uint8Array(breite * hoehe);
-    for (let j = 0; j < hoehe; j++) {
-      const y = feldY - spanne + j;
-      for (let i = 0; i < breite; i++) {
-        const x = feldX - spanne + i;
-        if (!welt.drin(x, y)) continue;
-        if (sichtlinie(welt, feldX, feldY, x, y)) sicht[j * breite + i] = 1;
+    punktFelder = new Int32Array(anzahl).fill(-1);
+    punktGruppen = new Array(anzahl).fill(null);
+    let naechsteStelle = anzahl;
+    for (let py = 0; py < punkteHoehe; py++) {
+      for (let px = 0; px < punkteBreite; px++) {
+        const stelle = py * punkteBreite + px;
+        const feld = weltNachFeld((px + 0.5) * LICHTPUNKT, (py + 0.5) * LICHTPUNKT);
+        if (welt.drin(feld.x, feld.y)) {
+          punktFelder[stelle] = feld.y * welt.breite + feld.x;
+        }
+        const ausschnitt = besitzerSpannen(px, py);
+        if (!ausschnitt.ganz || ausschnitt.gruppen.length !== 1) {
+          for (const gruppe of ausschnitt.gruppen) {
+            gruppe.stelle = gruppe.feld === punktFelder[stelle] ? stelle : naechsteStelle++;
+          }
+          punktGruppen[stelle] = ausschnitt;
+        }
       }
     }
-    return { x0: feldX - spanne, y0: feldY - spanne, breite, hoehe, sicht };
+    rot = new Float32Array(naechsteStelle);
+    gruen = new Float32Array(naechsteStelle);
+    blau = new Float32Array(naechsteStelle);
+  }
+
+  /* Ein 4×4-Block kann mehreren Hexfeldern gehören. Nur seine Mitte
+     zu prüfen ließe Wandlicht in den verdeckten Nachbarraum laufen.
+     Die Besitzerspannen werden einmal beim Kartenwechsel gebaut;
+     getrennte Lichtwerte sind nur an den Hexgrenzen nötig. */
+  function besitzerSpannen(px, py) {
+    const gruppen = new Map();
+    let pixel = 0;
+    for (let y = 0; y < LICHTPUNKT; y++) {
+      let anfang = 0;
+      let besitzer = -1;
+      for (let x = 0; x <= LICHTPUNKT; x++) {
+        const feld = x < LICHTPUNKT
+          ? weltNachFeld(px * LICHTPUNKT + x + 0.5, py * LICHTPUNKT + y + 0.5) : null;
+        const jetzt = feld !== null && welt.drin(feld.x, feld.y)
+          ? feld.y * welt.breite + feld.x : -1;
+        if (jetzt !== besitzer) {
+          if (besitzer >= 0) {
+            let gruppe = gruppen.get(besitzer);
+            if (!gruppe) {
+              gruppe = { feld: besitzer, stelle: -1, spannen: [] };
+              gruppen.set(besitzer, gruppe);
+            }
+            gruppe.spannen.push({ x: anfang, y, breite: x - anfang });
+            pixel += x - anfang;
+          }
+          besitzer = jetzt;
+          anfang = x;
+        }
+      }
+    }
+    return { ganz: pixel === LICHTPUNKT * LICHTPUNKT, gruppen: [...gruppen.values()] };
+  }
+
+  /* Jeder Lichtpunkt gehört zu seinem wirklichen Sechseck. Linien
+     werden pro Quell-/Zielfeld einmal abgefragt; die fertigen Beiträge
+     fester Quellen bleiben bis zum Karten-/Quellenwechsel erhalten.
+     Der begrenzte Pixelkasten spart Arbeit, seine Form ist kein Schatten. */
+  function macheSichtfeld(quelle) {
+    const von = weltNachFeld(quelle.weltX, quelle.weltY);
+    if (!welt.drin(von.x, von.y)) return { stellen: [], anteile: [] };
+    const radius = quelle.weite * KACHEL;
+    const radius2 = radius * radius;
+    const x0 = Math.max(0, Math.floor((quelle.weltX - radius) / LICHTPUNKT));
+    const y0 = Math.max(0, Math.floor((quelle.weltY - radius) / LICHTPUNKT));
+    const x1 = Math.min(punkteBreite - 1,
+      Math.ceil((quelle.weltX + radius) / LICHTPUNKT));
+    const y1 = Math.min(punkteHoehe - 1,
+      Math.ceil((quelle.weltY + radius) / LICHTPUNKT));
+    const gesehen = new Map();
+    const stellen = [];
+    const anteile = [];
+    function ergaenze(feld, stelle, anteil) {
+      if (feld < 0) return;
+      let frei = gesehen.get(feld);
+      if (frei === undefined) {
+        frei = sichtlinie(welt, von.x, von.y,
+          feld % welt.breite, Math.floor(feld / welt.breite));
+        gesehen.set(feld, frei);
+      }
+      if (!frei) return;
+      stellen.push(stelle);
+      anteile.push(anteil);
+    }
+    for (let py = y0; py <= y1; py++) {
+      const dy = (py + 0.5) * LICHTPUNKT - quelle.weltY;
+      for (let px = x0; px <= x1; px++) {
+        const dx = (px + 0.5) * LICHTPUNKT - quelle.weltX;
+        const abstand2 = dx * dx + dy * dy;
+        if (abstand2 >= radius2) continue;
+        const stelle = py * punkteBreite + px;
+        const ausschnitt = punktGruppen[stelle];
+        const anteil = 1 - abstand2 / radius2;
+        if (ausschnitt === null) {
+          ergaenze(punktFelder[stelle], stelle, anteil);
+        } else {
+          for (const gruppe of ausschnitt.gruppen) {
+            ergaenze(gruppe.feld, gruppe.stelle, anteil);
+          }
+        }
+      }
+    }
+    return { stellen: Uint32Array.from(stellen), anteile: Float32Array.from(anteile) };
   }
 
   /* Ein Licht trägt seinen Anteil ein. Gerechnet wird `1 − d² / w²`:
      voll an der Quelle, quadratisch fallend, an der Reichweite genau
-     null — dieselbe Formel wie in `spiel/licht.mjs`, damit das Bild
-     nicht anders abfällt als die Regel. Die Quelle sitzt in der
-     **Mitte** ihres Feldes, deshalb überall das halbe Feld Zuschlag. */
+     null. Abstand und Schatten sind bereits in Weltpunkten gerechnet;
+     hier ändern sich nur Stärke und Flackern, keine Quellposition. */
   function traegtEin(quelle, feld, zeit) {
     const faktor = flackerFaktor(zeit, quelle.flackern, quelle.saat);
     if (!(faktor > 0)) return;
     const staerke = quelle.staerke * faktor;
-    const mitteX = quelle.x + 0.5;
-    const mitteY = quelle.y + 0.5;
-    const weiteQuadrat = quelle.weite * quelle.weite;
-    for (let j = 0; j < feld.hoehe; j++) {
-      const feldY = feld.y0 + j;
-      for (let i = 0; i < feld.breite; i++) {
-        if (!feld.sicht[j * feld.breite + i]) continue;
-        const feldX = feld.x0 + i;
-        for (let pj = 0; pj < PUNKTE_JE_FELD; pj++) {
-          const abstandY = feldY + (pj + 0.5) / PUNKTE_JE_FELD - mitteY;
-          const quadratY = abstandY * abstandY;
-          if (quadratY >= weiteQuadrat) continue;
-          const zeilenAnfang = (feldY * PUNKTE_JE_FELD + pj) * punkteBreite
-            + feldX * PUNKTE_JE_FELD;
-          for (let pi = 0; pi < PUNKTE_JE_FELD; pi++) {
-            const abstandX = feldX + (pi + 0.5) / PUNKTE_JE_FELD - mitteX;
-            const quadrat = abstandX * abstandX + quadratY;
-            if (quadrat >= weiteQuadrat) continue;
-            const anteil = staerke * (1 - quadrat / weiteQuadrat);
-            const stelle = zeilenAnfang + pi;
-            rot[stelle] += anteil * quelle.r;
-            gruen[stelle] += anteil * quelle.g;
-            blau[stelle] += anteil * quelle.b;
-          }
-        }
-      }
+    for (let i = 0; i < feld.stellen.length; i++) {
+      const anteil = staerke * feld.anteile[i];
+      const stelle = feld.stellen[i];
+      rot[stelle] += anteil * quelle.r;
+      gruen[stelle] += anteil * quelle.g;
+      blau[stelle] += anteil * quelle.b;
     }
   }
 
@@ -292,9 +362,10 @@ export function macheLichtwerk(karte) {
      sechzehn: Ein Mittelwert läge zwischen den acht Stufen, und wer
      diese Zahl prüft, prüfte dann etwas anderes als das Bild zeigt. */
   function helligkeitBei(x, y) {
-    const mitte = PUNKTE_JE_FELD >> 1;
-    const punktX = Math.floor(x) * PUNKTE_JE_FELD + mitte;
-    const punktY = Math.floor(y) * PUNKTE_JE_FELD + mitte;
+    if (!welt || !welt.drin(Math.floor(x), Math.floor(y))) return { r: 0, g: 0, b: 0 };
+    const mitte = feldMitte(x, y);
+    const punktX = Math.floor(mitte.x / LICHTPUNKT);
+    const punktY = Math.floor(mitte.y / LICHTPUNKT);
     if (punktX < 0 || punktY < 0 || punktX >= punkteBreite || punktY >= punkteHoehe) {
       return { r: 0, g: 0, b: 0 };
     }
@@ -305,7 +376,9 @@ export function macheLichtwerk(karte) {
   /* Die rohe Lichtkarte. Für Messungen — damit `pruefe-bild.mjs` die
      acht Stufen zählen kann, statt sie über Feldmitten zu erraten. */
   function lichtpunkte() {
-    return { breite: punkteBreite, hoehe: punkteHoehe, r: rot, g: gruen, b: blau };
+    const anzahl = punkteBreite * punkteHoehe;
+    return { breite: punkteBreite, hoehe: punkteHoehe,
+      r: rot.subarray(0, anzahl), g: gruen.subarray(0, anzahl), b: blau.subarray(0, anzahl) };
   }
 
   function farbwort(r, g, b) {
@@ -369,16 +442,48 @@ export function macheLichtwerk(karte) {
     let gezeichnet = 0;
     let letzte = null;
 
+    function zeichnePunkt(punktX, schirmY, stelle, warm) {
+      const x = (punktX * LICHTPUNKT - eckeX) * vergroesserung;
+      const ausschnitt = punktGruppen[stelle];
+      let gleich = ausschnitt === null || ausschnitt.ganz;
+      if (ausschnitt !== null && gleich) {
+        for (const gruppe of ausschnitt.gruppen) {
+          const i = gruppe.stelle;
+          if (rot[i] !== rot[stelle] || gruen[i] !== gruen[stelle] || blau[i] !== blau[stelle]) {
+            gleich = false;
+            break;
+          }
+        }
+      }
+      if (gleich) {
+        const wort = warm ? warmwort(rot[stelle], blau[stelle])
+          : farbwort(rot[stelle], gruen[stelle], blau[stelle]);
+        if (wort === null) return;
+        if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
+        ctx.fillRect(x, schirmY, kante, kante);
+        gezeichnet++;
+      } else {
+        for (const gruppe of ausschnitt.gruppen) {
+          const i = gruppe.stelle;
+          const wort = warm ? warmwort(rot[i], blau[i]) : farbwort(rot[i], gruen[i], blau[i]);
+          if (wort === null) continue;
+          if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
+          for (const span of gruppe.spannen) {
+            ctx.fillRect(x + span.x * vergroesserung, schirmY + span.y * vergroesserung,
+              span.breite * vergroesserung, vergroesserung);
+            gezeichnet++;
+          }
+        }
+      }
+    }
+
     ctx.globalCompositeOperation = "multiply";
     for (let punktY = vonY; punktY <= bisY; punktY++) {
       const schirmY = (punktY * LICHTPUNKT - eckeY) * vergroesserung;
       const zeile = punktY * punkteBreite;
       for (let punktX = vonX; punktX <= bisX; punktX++) {
         const stelle = zeile + punktX;
-        const wort = farbwort(rot[stelle], gruen[stelle], blau[stelle]);
-        if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
-        ctx.fillRect((punktX * LICHTPUNKT - eckeX) * vergroesserung, schirmY, kante, kante);
-        gezeichnet++;
+        zeichnePunkt(punktX, schirmY, stelle, false);
       }
     }
 
@@ -389,11 +494,7 @@ export function macheLichtwerk(karte) {
       const zeile = punktY * punkteBreite;
       for (let punktX = vonX; punktX <= bisX; punktX++) {
         const stelle = zeile + punktX;
-        const wort = warmwort(rot[stelle], blau[stelle]);
-        if (wort === null) continue;
-        if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
-        ctx.fillRect((punktX * LICHTPUNKT - eckeX) * vergroesserung, schirmY, kante, kante);
-        gezeichnet++;
+        zeichnePunkt(punktX, schirmY, stelle, true);
       }
     }
 

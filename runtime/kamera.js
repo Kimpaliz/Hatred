@@ -58,8 +58,8 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `runtime/licht.js` (`KACHEL` — die 16 steht dort und nicht hier noch
-   einmal), `spiel/katalog/helden.mjs` (`sicht` je Klasse, daraus der
+   `runtime/licht.js` (`KACHEL`), `spiel/raster.mjs` (gemeinsame Hexmitten,
+   Weltmaße und Rückrechnung), `spiel/katalog/helden.mjs` (Sicht je Klasse, daraus der
    kleinste Ausschnitt), `spiel/gitter.mjs` (die Karte, deren `breite`
    und `hoehe` die Weltmaße geben), `runtime/zeichnen.js` und
    `runtime/oberflaeche.js` (fragen `sichtbareFelder`, `feldNachBild`,
@@ -71,6 +71,8 @@
 
 import { KACHEL } from "./licht.js";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
+import { feldMitte, weltNachFeld, weltMasse, ZEILEN_HOEHE, FELD_RADIUS }
+  from "../spiel/raster.mjs";
 
 /* Die weiteste Sicht aller Heldenklassen — gemessen, nicht geschätzt.
    `node werkzeuge/pruefe-schrift.mjs` druckt die Zahl mit. */
@@ -119,8 +121,9 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
   /* Die weichen Zahlen bleiben in der Hülle. Nach außen gibt es nur
      `eckeX`/`eckeY`, und die sind immer ganz — so kann niemand aus
      Versehen mit einer Bruchzahl zeichnen. */
-  let zielX = (karte.breite * KACHEL) / 2;
-  let zielY = (karte.hoehe * KACHEL) / 2;
+  const masse = weltMasse(karte);
+  let zielX = masse.breite / 2;
+  let zielY = masse.hoehe / 2;
   let weichX = zielX;
   let weichY = zielY;
   let ruettelRest = 0;
@@ -185,8 +188,9 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
      die vergangene Zeit in Sekunden; sie macht die Bewegung unabhängig
      davon, wie schnell der Rechner Bilder liefert. */
   function folge(x, y, sofort = false, dt = 1 / 60) {
-    zielX = x * KACHEL + KACHEL / 2;
-    zielY = y * KACHEL + KACHEL / 2;
+    const mitte = feldMitte(x, y);
+    zielX = mitte.x;
+    zielY = mitte.y;
     if (sofort) {
       weichX = zielX;
       weichY = zielY;
@@ -214,24 +218,23 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
     return kamera;
   }
 
-  /* Feld → Bildschirm, linke obere Ecke des Feldes. Erst in Weltpunkten
-     runden, dann vergrößern: So liegt jede Figur auf demselben Raster
-     wie der Boden unter ihr. */
+  /* Feld → Bildschirm, Anker eines 16×16-Sprites um die echte Hexmitte.
+     Höhe verschiebt den Anker nie: Der Blick bleibt exakt senkrecht.
+     Erst in Weltpunkten runden, danach ganzzahlig vergrößern. */
   function feldNachBild(feldX, feldY) {
+    const mitte = feldMitte(feldX, feldY);
     return {
-      x: (Math.round(feldX * KACHEL) - kamera.eckeX) * kamera.vergroesserung,
-      y: (Math.round(feldY * KACHEL) - kamera.eckeY) * kamera.vergroesserung
+      x: (Math.round(mitte.x - KACHEL / 2) - kamera.eckeX) * kamera.vergroesserung,
+      y: (Math.round(mitte.y - KACHEL / 2) - kamera.eckeY) * kamera.vergroesserung
     };
   }
 
-  /* Bildschirm → Feld, für den Mauszeiger. `floor`, nicht `round`:
-     Gefragt ist, auf welchem Feld der Punkt **liegt**, und das gilt auch
-     links und oberhalb der Karte, wo die Zahlen negativ werden. */
+  /* Bildschirm → Weltpunkt → wirklich getroffenes Sechseck. Die
+     dreieckigen Spitzen gehören zu ihrem Feld, auch bei negativen
+     Koordinaten und beliebiger ganzzahliger Zoomstufe. */
   function bildNachFeld(punktX, punktY) {
-    return {
-      x: Math.floor((punktX / kamera.vergroesserung + kamera.eckeX) / KACHEL),
-      y: Math.floor((punktY / kamera.vergroesserung + kamera.eckeY) / KACHEL)
-    };
+    return weltNachFeld(punktX / kamera.vergroesserung + kamera.eckeX,
+      punktY / kamera.vergroesserung + kamera.eckeY);
   }
 
   /* Welche Felder das Fenster berührt, beide Enden eingeschlossen und
@@ -240,12 +243,13 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
   function sichtbareFelder(rand = 0) {
     const zusatz = Math.max(0, Math.trunc(rand));
     return {
-      vonX: Math.max(0, Math.floor(kamera.eckeX / KACHEL) - zusatz),
-      vonY: Math.max(0, Math.floor(kamera.eckeY / KACHEL) - zusatz),
+      vonX: Math.max(0, Math.floor((kamera.eckeX - KACHEL / 2) / KACHEL) - zusatz),
+      vonY: Math.max(0,
+        Math.floor((kamera.eckeY - 2 * FELD_RADIUS) / ZEILEN_HOEHE) - zusatz),
       bisX: Math.min(karte.breite - 1,
         Math.floor((kamera.eckeX + sichtBreite() - 1) / KACHEL) + zusatz),
       bisY: Math.min(karte.hoehe - 1,
-        Math.floor((kamera.eckeY + sichtHoehe() - 1) / KACHEL) + zusatz)
+        Math.floor((kamera.eckeY + sichtHoehe() - 1) / ZEILEN_HOEHE) + zusatz)
     };
   }
 
@@ -303,8 +307,8 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
      stolpert die Zeichenschleife an einer Stelle, die harmlos aussieht. */
   const kamera = {
     karte,
-    weltBreite: karte.breite * KACHEL,
-    weltHoehe: karte.hoehe * KACHEL,
+    weltBreite: masse.breite,
+    weltHoehe: masse.hoehe,
     fensterBreite: 1,
     fensterHoehe: 1,
     standardVergroesserung: 1,

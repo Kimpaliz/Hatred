@@ -3,6 +3,103 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Granithöhle als senkrechtes Hexfeld, zusammenhängende Treppen
+
+**Zwischenstand zur Branch-Übernahme, 08.09.2026:** Auf ausdrücklichen
+Auftrag wird dieser Stand abgeschlossen. Die anschließend angefragte
+vollständige Übernahme von Scotophobias Sicht- und Lichtsystem ist
+noch offen. Das enthaltene Licht verwendet Hatreds bisherige Formeln
+mit korrigierter Hexgeometrie und Schattenabdeckung.
+
+**Abschlussprüfung, 08.09.2026:** Die vollständige Kette prüfte 52
+Programme in 86,8 Sekunden. 51 bestanden unmittelbar; der Dokumentationswächter
+verlangte das vorhandene Datum direkt in der Statuszeile. Nach dieser
+Textkorrektur bestand auch dessen gezielter Wiederholungslauf.
+
+**Offener Leistungsbefund, 08.09.2026:** Im lokalen Chrome-Test über
+30 Bilder der vollständigen Höhle lag der Median ohne Licht bei
+7,7 ms, mit 42 Fackeln bei 987,9 ms; die beleuchtete Treppenkarte lag
+bei 8,3 ms. Es entstehen keine neuen Materialpuffer. Der aktuelle
+Canvas-Zeichenweg des Lichts ist für die volle Übersicht zu langsam
+und muss beim Lichtumbau durch einen gebündelten Pixelpuffer ersetzt
+werden. Diese Messung belegt ausdrücklich keine ausreichende Bildrate.
+
+**Warum:** Der Auftrag verlangt ausdrücklich Scotophobias Granithöhle,
+ein bleibendes Raster, exakt senkrechten Blick und zusammenpassende
+Treppen. Die bisherige Darstellung verband sechs Bewegungsrichtungen
+mit quadratischen Bildkoordinaten, Wandvorderseiten und wiederholten
+Kachelmustern. Der neue Geländeaufbau ersetzt diesen Zeichenweg.
+
+**Quelle:** Hatred wurde gegen GitHub-Stand `0f576bf` geprüft. Die
+Granithöhle wurde aus dem Quellstand `d3460e9` gelesen. Raum- und
+Gangformeln, Verzerrung, Inseln und Standardparameter (`sector=215`,
+`corr=1.15`) bestimmen nun die Höhle. 24 feste Distanzproben aus der
+Quelle prüfen diese Übernahme unabhängig von der lokalen Installation.
+Das Granit-, Boden- und Geröllmaterial wird an Weltpixeln ausgewertet.
+
+**Aufbau:** `spiel/raster.mjs` liefert die gemeinsame Hexgeometrie für
+Erzeugung, Kamera, Auswahl, Licht und Partikel. Wände und Höhen werden
+an denselben Mitten abgetastet. Höhen verschieben keine Bildschirmorte.
+`runtime/granit-material.js` trägt die Quelloberflächen;
+`runtime/granit-feld.js` berechnet Materialrelief, Normalen,
+Umgebungsverdeckung und Höhenkonturen. Der alte Geländehelfer entfällt.
+`runtime/zeichnen.js` setzt gespeicherte Flächen, Gegenstände, Wesen,
+Licht und Partikel zusammen; ungesehene Hexfelder werden zuletzt verdeckt.
+
+**Treppen:** Eine weltweite Trittphase verbindet passende Nachbarläufe
+in allen sechs Richtungen. Innere Wangen entfallen. Gesperrte Ziele,
+falsche Höhen und unpassende Richtungen behalten ihre Klippenkontur.
+Die Kontur einer Seitenklippe darf nicht in den offenen Anschluss ragen.
+
+**Regeladapter:** Vier taktische Ebenen bleiben erhalten. Vor dem Wasser
+wird ein trockener Startbereich reserviert. Normalerweise wird danach
+ein trockener Start gesucht; falls das unmöglich ist, wird jedes
+betroffene Becken vollständig geleert. Zier blockiert die Starts nicht.
+Boden-, Hallen- und Zierproben verwenden dieselben Weltkoordinaten.
+Die Weltfassung im Netz-Handschlag steigt auf 2.
+
+**Rechenaufwand:** Transparente Feldbilder werden wiederverwendet und
+ungeglättet vergrößert. 4.096 gespeicherte Felder reichen für die ganze
+Standardkarte mit 2.240 Feldern; zweimaliges Zeichnen braucht weiterhin
+nur 2.240 Materialberechnungen. Drei Nachbarringe erkennen Änderungen.
+Die Prüfung umfasst auch 5.120 Felder und verlangt begrenzten Speicher.
+
+**Prüfungen:** Alte Vorgaben für Südflanken und Schachbrettboden wurden
+durch tatsächliche Pixelvergleiche ersetzt. Kern-, Netz-, Eingabe- und
+Erreichbarkeitsprüfungen bleiben bestehen. Material: 622 Behauptungen;
+Terrain: 17.953; Rasterprojektion: 9.863; Weltzeichner: 88. Ungültige
+oder zu große Weltkoordinaten dürfen die Rückrechnung nicht blockieren.
+Ein Gitterpixel, den Nachbarterrain übermalte, wird durch eine eigene
+Prüfung gegen das vollständige Sprite abgesichert.
+Die Lichtprüfung besteht 170 Behauptungen: Gemischte 4×4-Blöcke
+verwenden getrennte Beiträge je Hexbesitzer. Die Gegenprobe meldete
+zuvor 37–65 fremde Lichtpixel hinter einer Wand, danach keine.
+
+Die natürliche Kampf- und Beckenverteilung wird weiter berichtet.
+Die alte Mindestzahl zufälliger Begegnungen wurde durch vier feste
+Kampfpaare auf vier unabhängigen Spielständen ergänzt: 32 Angriffe,
+25 Schadensereignisse, vier Heilereignisse und keine Summenabweichung.
+Vier kontrollierte Senken prüfen Becken auf allen Höhen. Der Bericht
+über 30 unveränderte Saaten nennt 19 mehrstufig nasse und eine trockene Karte.
+Die Generatorprüfung besteht 324 Behauptungen. Ein kontrolliertes
+Becken mit 316 Bodenfeldern erzwingt den Startfallback; für ein bis
+vier Spieler muss die gesamte Senke trocken sein, nicht nur ihr Start.
+
+**Rotnachweise:** Veränderte Quellsektorgröße, verändertes Granitmaterial,
+verschobene Hexzeilen, fehlender Endnebel, falsche Treppenverbindungen,
+übermalte Sprites und ungültige Koordinaten lassen die jeweiligen
+Prüfungen fallen. Ausgeschaltete Treffer und Wasser nur auf Ebene 0
+lassen die kontrollierten Kampf- und Beckenprüfungen fallen.
+
+**Sichtprobe:** `werkzeuge/topdown-vorschau.html` verwendet den echten
+Spielzeichner und zeigt wahlweise Höhle oder Treppenkarte. Im lokalen
+Chrome-Lauf am 08.09.2026 wurden Spielstart, Zoom hinein/zurück und
+ein Mausklick vom Feld (50,28) nach (47,21) mit AP-Verbrauch ausgeführt.
+Desktop 1.440 × 900 und schmale Ansicht 915 × 412 lieferten keine
+JavaScript-Fehler. Architektur und Prüfbefehle stehen in
+[docs/GRANIT-RASTER.md](docs/GRANIT-RASTER.md); README, Spielbeschreibung
+und Wegweiser wurden an den neuen Aufbau angepasst.
+
 ## 07.09.2026 — Ein Wort vor dem Vorlauf: der Torwächter
 
 **Auftrag, wörtlich:** *„main schuetzen so das nur ich und freunde das
