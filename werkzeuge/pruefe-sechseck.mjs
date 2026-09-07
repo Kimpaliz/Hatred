@@ -42,22 +42,19 @@
    ── Was hier bewusst nicht geprüft wird ────────────────────────────
 
    Wie ein Sechseck **aussieht**. Diese Datei redet nur über
-   Nachbarschaft und Entfernung; gezeichnet wird noch gar nichts. Das
-   ist Absicht: Erst die Regeln, dann das Bild (Vorgang #6).
-
-   Und: Das alte Vierer-Raster ist **noch in Betrieb**. Nichts hier
-   schaltet um. Diese Datei beweist nur, dass die neue Rechnung stimmt,
-   bevor irgendetwas von ihr abhängt.
+   Nachbarschaft und Entfernung; ob der Boden als Sechseck oder als
+   versetztes Rechteck gemalt wird, steht hier nicht. Das ist Absicht:
+   Erst die Regeln, dann das Bild (Vorgang #6).
 
    ── Arbeitet zusammen mit ──────────────────────────────────────────
 
-   `spiel/gitter.mjs` (`SECHS_GERADE`, `SECHS_UNGERADE`,
-   `sechsRichtungen`, `sechsNachbarn`, `sechsAbstand`),
+   `spiel/gitter.mjs` (`RICHTUNGEN_GERADE`, `RICHTUNGEN_UNGERADE`,
+   `richtungen`, `nachbarn`, `abstand`),
    `werkzeuge/helfer.mjs`, `werkzeuge/pruefe-alles.mjs`. */
 
 import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 import {
-  SECHS_GERADE, SECHS_UNGERADE, macheKarte, sechsAbstand, sechsNachbarn, sechsRichtungen
+  RICHTUNGEN_GERADE, RICHTUNGEN_UNGERADE, macheKarte, abstand, nachbarn, richtungen
 } from "../spiel/gitter.mjs";
 
 const messungen = [];
@@ -75,28 +72,28 @@ const karte = macheKarte(BREITE, HOEHE);
 {
   abschnitt("Die zwei Richtungstabellen");
 
-  gleich(SECHS_GERADE.length, 6, "die gerade Zeile hat sechs Richtungen");
-  gleich(SECHS_UNGERADE.length, 6, "die ungerade Zeile hat sechs Richtungen");
+  gleich(RICHTUNGEN_GERADE.length, 6, "die gerade Zeile hat sechs Richtungen");
+  gleich(RICHTUNGEN_UNGERADE.length, 6, "die ungerade Zeile hat sechs Richtungen");
 
   /* Beide Tabellen müssen dieselben Namen führen — sonst hieße dieselbe
      Himmelsrichtung je nach Zeile anders, und jeder Aufrufer, der über
      den Namen geht, läge in jeder zweiten Zeile falsch. */
-  const nGerade = SECHS_GERADE.map((r) => r.name).sort().join(",");
-  const nUngerade = SECHS_UNGERADE.map((r) => r.name).sort().join(",");
+  const nGerade = RICHTUNGEN_GERADE.map((r) => r.name).sort().join(",");
+  const nUngerade = RICHTUNGEN_UNGERADE.map((r) => r.name).sort().join(",");
   gleich(nUngerade, nGerade, "beide Tabellen führen dieselben sechs Namen");
 
   /* Kein Eintrag darf auf der Stelle stehen bleiben. */
-  for (const [wie, tabelle] of [["gerade", SECHS_GERADE], ["ungerade", SECHS_UNGERADE]]) {
+  for (const [wie, tabelle] of [["gerade", RICHTUNGEN_GERADE], ["ungerade", RICHTUNGEN_UNGERADE]]) {
     const still = tabelle.filter((r) => r.dx === 0 && r.dy === 0);
     gleich(still.length, 0, `keine Richtung bleibt stehen (${wie})`);
     const doppelt = new Set(tabelle.map((r) => `${r.dx},${r.dy}`));
     gleich(doppelt.size, 6, `keine Richtung steht zweimal drin (${wie})`);
   }
 
-  gleich(sechsRichtungen(0), SECHS_GERADE, "Zeile 0 nimmt die gerade Tabelle");
-  gleich(sechsRichtungen(1), SECHS_UNGERADE, "Zeile 1 nimmt die ungerade Tabelle");
-  gleich(sechsRichtungen(4), SECHS_GERADE, "Zeile 4 nimmt die gerade Tabelle");
-  gleich(sechsRichtungen(7), SECHS_UNGERADE, "Zeile 7 nimmt die ungerade Tabelle");
+  gleich(richtungen(0), RICHTUNGEN_GERADE, "Zeile 0 nimmt die gerade Tabelle");
+  gleich(richtungen(1), RICHTUNGEN_UNGERADE, "Zeile 1 nimmt die ungerade Tabelle");
+  gleich(richtungen(4), RICHTUNGEN_GERADE, "Zeile 4 nimmt die gerade Tabelle");
+  gleich(richtungen(7), RICHTUNGEN_UNGERADE, "Zeile 7 nimmt die ungerade Tabelle");
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -111,15 +108,15 @@ const karte = macheKarte(BREITE, HOEHE);
   let innenSechs = 0, innen = 0, einseitig = 0, ersteStelle = "";
   for (let y = 0; y < HOEHE; y++) {
     for (let x = 0; x < BREITE; x++) {
-      const nb = sechsNachbarn(karte, x, y);
+      const nb = nachbarn(karte, x, y);
 
       /* Innen heißt: kein Nachbar fällt aus der Karte. */
-      const alleDrin = sechsRichtungen(y)
+      const alleDrin = richtungen(y)
         .every((r) => karte.drin(x + r.dx, y + r.dy));
       if (alleDrin) { innen++; if (nb.length === 6) innenSechs++; }
 
       for (const n of nb) {
-        const zurueck = sechsNachbarn(karte, n.x, n.y);
+        const zurueck = nachbarn(karte, n.x, n.y);
         if (!zurueck.some((z) => z.x === x && z.y === y)) {
           einseitig++;
           if (!ersteStelle) ersteStelle = `(${x},${y}) sieht (${n.x},${n.y}), umgekehrt nicht`;
@@ -146,8 +143,8 @@ const karte = macheKarte(BREITE, HOEHE);
   let nichtEins = 0, beispiel = "";
   for (let y = 0; y < HOEHE; y++) {
     for (let x = 0; x < BREITE; x++) {
-      for (const n of sechsNachbarn(karte, x, y)) {
-        const d = sechsAbstand(x, y, n.x, n.y);
+      for (const n of nachbarn(karte, x, y)) {
+        const d = abstand(x, y, n.x, n.y);
         if (d !== 1) {
           nichtEins++;
           if (!beispiel) beispiel = `(${x},${y})→(${n.x},${n.y}) ist ${d}`;
@@ -157,14 +154,14 @@ const karte = macheKarte(BREITE, HOEHE);
   }
   gleich(nichtEins, 0, `jeder Nachbar ist genau 1 weit${beispiel ? ` — ${beispiel}` : ""}`);
 
-  gleich(sechsAbstand(5, 5, 5, 5), 0, "ein Feld zu sich selbst ist 0 weit");
+  gleich(abstand(5, 5, 5, 5), 0, "ein Feld zu sich selbst ist 0 weit");
 
   /* Gegenseitig, wie die Nachbarschaft. */
   let unsymmetrisch = 0;
   for (let i = 0; i < 400; i++) {
     const ax = i % BREITE, ay = (i * 7) % HOEHE;
     const bx = (i * 3) % BREITE, by = (i * 11) % HOEHE;
-    if (sechsAbstand(ax, ay, bx, by) !== sechsAbstand(bx, by, ax, ay)) unsymmetrisch++;
+    if (abstand(ax, ay, bx, by) !== abstand(bx, by, ax, ay)) unsymmetrisch++;
   }
   gleich(unsymmetrisch, 0, "die Entfernung ist in beide Richtungen gleich");
 }
@@ -189,7 +186,7 @@ const karte = macheKarte(BREITE, HOEHE);
     const naechste = [];
     for (const [x, y] of welle) {
       const d = schritte.get(`${x},${y}`);
-      for (const n of sechsNachbarn(karte, x, y)) {
+      for (const n of nachbarn(karte, x, y)) {
         const k = `${n.x},${n.y}`;
         if (schritte.has(k)) continue;
         schritte.set(k, d + 1);
@@ -204,7 +201,7 @@ const karte = macheKarte(BREITE, HOEHE);
   let ungleich = 0, wo = "", groesste = 0;
   for (const [k, gelaufen] of schritte) {
     const [x, y] = k.split(",").map(Number);
-    const gerechnet = sechsAbstand(sx, sy, x, y);
+    const gerechnet = abstand(sx, sy, x, y);
     if (gerechnet > groesste) groesste = gerechnet;
     if (gelaufen !== gerechnet) {
       ungleich++;
@@ -232,7 +229,7 @@ const karte = macheKarte(BREITE, HOEHE);
   const zaehler = new Map();
   for (let y = 0; y < 41; y++) {
     for (let x = 0; x < 41; x++) {
-      const d = sechsAbstand(mx, my, x, y);
+      const d = abstand(mx, my, x, y);
       zaehler.set(d, (zaehler.get(d) || 0) + 1);
     }
   }
@@ -247,19 +244,28 @@ const karte = macheKarte(BREITE, HOEHE);
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   6 · Das alte Raster läuft noch
+   6 · Vom alten Raster ist nichts übrig
    ══════════════════════════════════════════════════════════════════
 
-   Diese Datei schaltet nichts um. Ginge das hier verloren, hätte
-   jemand mitten in der Vorbereitung den Kern umgestellt — und die
-   Umstellung soll ein eigener, beweisbarer Schritt sein. */
+   Bis zum 07.09.2026 stand hier das Gegenteil: „das alte Vierer-Raster
+   ist noch in Betrieb". Seit der Umstellung wacht dieselbe Stelle
+   darüber, dass es **weg** ist.
+
+   Warum das eine eigene Behauptung ist: Eine Vierer-Tabelle, die
+   irgendwo überlebt, fällt nirgends auf — sie liefert Nachbarn, nur
+   die falschen. Und `schussweite` als zweites Entfernungsmaß wäre
+   sofort wieder eine zweite Wahrheit über dasselbe. */
 {
-  abschnitt("Nichts ist umgeschaltet");
+  abschnitt("Vom alten Raster ist nichts übrig");
   const gitter = await import("../spiel/gitter.mjs");
-  gleich(gitter.RICHTUNGEN.length, 4,
-    "das alte Vierer-Raster ist noch in Betrieb (Umstellung ist ein eigener Schritt)");
-  behaupte(typeof gitter.schussweite === "function",
-    "die Schachbrett-Schussweite gibt es noch — sie entfällt erst mit der Umstellung");
+  gleich(gitter.RICHTUNGEN, undefined,
+    "die alte Vierer-Tabelle `RICHTUNGEN` gibt es nicht mehr");
+  gleich(gitter.schussweite, undefined,
+    "und die Schachbrett-Schussweite auch nicht — `abstand` ist beides");
+  gleich(Object.keys(gitter.RAMPE).length, 7,
+    "RAMPE führt sechs Richtungen plus „keine\u201c");
+  behaupte(!("nord" in gitter.RAMPE),
+    "und kein „nord\u201c — senkrecht liegt beim Sechseck kein Feld");
 }
 
 for (const zeile of messungen) console.log(`      · ${zeile}`);

@@ -34,7 +34,9 @@
    als eigenen Prozess und liest den Rückgabewert). */
 
 import { abschnitt, behaupte, gleich, nahe, tiefGleich, ende } from "./helfer.mjs";
-import { macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE, RICHTUNGEN } from "../spiel/gitter.mjs";
+import {
+  macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE, abstand, nachbarn, richtungen
+} from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import {
   GEHEN_KOSTEN, AUFSTIEG_KOSTEN, WASSER_ZUSCHLAG,
@@ -68,10 +70,28 @@ abschnitt("Ebener Schritt");
   gleich(begehbar(k, 3, 3, 4, 3), true, "gerader Schritt nach Osten");
   gleich(laufKosten(k, 3, 3, 4, 3), 1, "kostet einen Punkt");
 
-  /* Es gibt nur vier Richtungen — die Diagonale darf nicht durch die
-     Hintertür einen Punkt kosten. */
-  gleich(begehbar(k, 3, 3, 4, 4), false, "diagonal ist kein Schritt");
-  gleich(laufKosten(k, 3, 3, 4, 4), null, "diagonal kostet nichts, weil es nicht geht");
+  /* Seit dem 07.09.2026 sind es sechs Richtungen (Vorgang #7). Der
+     Begriff „Diagonale" gibt es nicht mehr: Auf ungerader Zeile 3 ist
+     (4,4) der Nachbar nach Südost und ein ganz gewöhnlicher Schritt.
+
+     Geprüft wird stattdessen der Fall, der ohne diese Arbeit falsch
+     wäre: **Ein Sprung über zwei Felder ist kein Schritt.** Das ist
+     die Grenze, die auf jedem Raster gilt und die eine falsche
+     Nachbarschaftstabelle sofort aufweicht. */
+  gleich(begehbar(k, 3, 3, 4, 4), true, "auf ungerader Zeile ist (4,4) der Nachbar nach Südost");
+  gleich(laufKosten(k, 3, 3, 4, 4), 1, "und kostet einen Punkt wie jeder andere Schritt");
+  gleich(begehbar(k, 3, 3, 3, 4), true, "und (3,4) ist der Nachbar nach Südwest");
+
+  /* Auf gerader Zeile liegen die schrägen Nachbarn andersherum. Ohne
+     diese beiden Zeilen bliebe die Zeilenparität ungeprüft, und eine
+     Tabelle für beide Zeilen käme durch. */
+  gleich(begehbar(k, 3, 4, 3, 5), true, "auf gerader Zeile ist (3,5) der Nachbar nach Südost");
+  gleich(begehbar(k, 3, 4, 2, 5), true, "und (2,5) der Nachbar nach Südwest");
+  gleich(begehbar(k, 3, 4, 4, 5), false, "aber (4,5) ist von dort kein Nachbar");
+
+  /* Zwei Felder weit ist auf keinem Raster ein Schritt. */
+  gleich(begehbar(k, 3, 3, 5, 3), false, "zwei Felder weit ist kein Schritt");
+  gleich(laufKosten(k, 3, 3, 5, 3), null, "und kostet nichts, weil es nicht geht");
   gleich(begehbar(k, 3, 3, 5, 3), false, "zwei Felder auf einmal sind kein Schritt");
   gleich(begehbar(k, 3, 3, 3, 3), false, "stehenbleiben ist kein Schritt");
 
@@ -104,7 +124,7 @@ abschnitt("Aufstieg");
 
   /* Falsche Richtung: Die Rampe liegt richtig, zeigt aber nach Norden,
      gegangen wird nach Osten. */
-  k.setze(3, 3, { rampe: RAMPE.nord });
+  k.setze(3, 3, { rampe: RAMPE.nordost });
   gleich(begehbar(k, 3, 3, 4, 3), false, "hinauf über eine Rampe in falscher Richtung verboten");
 
   /* Rampe auf dem oberen Feld statt auf dem unteren — auch das ist
@@ -134,17 +154,27 @@ abschnitt("Aufstieg");
 
 abschnitt("Rampe zeigt nach");
 {
+  /* Seit dem Sechseck gibt es kein „nord" mehr — senkrecht nach oben
+     liegt beim Sechseck kein Feld, sondern eine Kante. Geprüft wird
+     deshalb an einer geraden und einer ungeraden Zeile, dass dieselbe
+     Rampenrichtung auf beiden **verschiedene** Nachbarn meint. Genau
+     das ist die Stelle, an der eine Tabelle für beide Zeilen auffiele. */
   const k = flach();
-  k.setze(2, 2, { rampe: RAMPE.nord });
-  k.setze(3, 2, { rampe: RAMPE.west });
-  tiefGleich(rampeZeigtNach(k, 2, 2), { dx: 0, dy: -1 }, "Nordrampe zeigt nach oben");
-  tiefGleich(rampeZeigtNach(k, 3, 2), { dx: -1, dy: 0 }, "Westrampe zeigt nach links");
+  k.setze(2, 2, { rampe: RAMPE.nordost });
+  k.setze(3, 3, { rampe: RAMPE.nordost });
+  k.setze(4, 4, { rampe: RAMPE.west });
+  tiefGleich(rampeZeigtNach(k, 2, 2), { dx: 0, dy: -1 },
+    "Nordost-Rampe auf gerader Zeile zeigt nach (0,-1)");
+  tiefGleich(rampeZeigtNach(k, 3, 3), { dx: 1, dy: -1 },
+    "dieselbe Rampe auf ungerader Zeile zeigt nach (1,-1)");
+  tiefGleich(rampeZeigtNach(k, 4, 4), { dx: -1, dy: 0 },
+    "Westrampe zeigt auf jeder Zeile nach links");
   gleich(rampeZeigtNach(k, 5, 5), null, "ohne Rampe: nichts");
   gleich(rampeZeigtNach(k, -1, 5), null, "außerhalb: nichts");
 
   /* Jede Rampenrichtung muss zu genau einer Laufrichtung passen —
      sonst trägt eine davon niemanden. */
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(5)) {
     const p = flach();
     p.setze(5, 5, { rampe: r.rampe });
     p.setze(5 + r.dx, 5 + r.dy, { ebene: 2 });
@@ -298,25 +328,59 @@ abschnitt("Deckung");
   gleich(hatDeckung(k, 9, 5, zx, zy), false, "ein Spieß deckt nicht");
   k.setze(6, 5, { hindernis: HINDERNIS.keins });
 
-  /* Die anderen drei Richtungen, je einzeln. */
-  k.setze(4, 5, { hindernis: HINDERNIS.kiste });
-  gleich(hatDeckung(k, 1, 5, zx, zy), true, "gegen Westen deckt das Westfeld");
-  gleich(hatDeckung(k, 9, 5, zx, zy), false, "und nur dieses");
-  k.setze(4, 5, { hindernis: HINDERNIS.keins });
-  k.setze(5, 4, { hindernis: HINDERNIS.altar });
-  gleich(hatDeckung(k, 5, 1, zx, zy), true, "gegen Norden deckt das Nordfeld");
-  k.setze(5, 4, { hindernis: HINDERNIS.keins });
-  k.setze(5, 6, { hindernis: HINDERNIS.sarg });
-  gleich(hatDeckung(k, 5, 9, zx, zy), true, "gegen Süden deckt das Südfeld");
-  k.setze(5, 6, { hindernis: HINDERNIS.keins });
+  /* ── Alle sechs Richtungen, je einzeln ─────────────────────────
 
-  /* Schräg, aber mit klarer Hauptrichtung: nur das Ostfeld zählt. */
-  k.setze(5, 6, { hindernis: HINDERNIS.fass });
-  gleich(hatDeckung(k, 9, 6, zx, zy), false, "bei flachem Winkel zählt nur die Hauptrichtung");
-  /* Exakt über Eck: beide Felder dieser Ecke zählen. */
-  gleich(hatDeckung(k, 9, 9, zx, zy), true, "genau über Eck zählt auch das Südfeld");
-  k.setze(5, 6, { hindernis: HINDERNIS.keins });
-  gleich(hatDeckung(k, 9, 9, zx, zy), false, "über Eck ohne Hindernis: keine Deckung");
+     Bis zum 07.09.2026 standen hier vier Richtungen und dazu eine
+     Sonderregel: „Steht der Angreifer exakt über Eck, zählen beide
+     Felder dieser Ecke." Die Ecke war der Preis des Quadratrasters —
+     seine Diagonale ist keine Nachbarschaft, also musste die
+     Schusslinie von Hand nachgebaut werden.
+
+     Auf dem Sechseck fällt das weg. Deckung gibt jeder Nachbar des
+     Ziels, der **näher am Angreifer** liegt als das Ziel selbst. Bei
+     einem Angreifer geradeaus ist das genau einer, bei einem zwischen
+     zwei Richtungen sind es zwei — dieselbe Wirkung, aber als Folge
+     der Geometrie statt als Sonderfall.
+
+     Geprüft wird das nicht an einer Handvoll Beispiele, sondern über
+     alle sechs Nachbarn: Für jeden wird ein Angreifer weit in dieser
+     Richtung aufgestellt, und genau dieser Nachbar muss decken. */
+  for (const r of richtungen(zy)) {
+    const nx = zx + r.dx, ny = zy + r.dy;
+    /* Der Angreifer steht drei Felder weiter in derselben Richtung. */
+    const ax = zx + r.dx * 3, ay = zy + r.dy * 3;
+    if (!k.drin(ax, ay)) continue;
+
+    k.setze(nx, ny, { hindernis: HINDERNIS.fass });
+    gleich(hatDeckung(k, ax, ay, zx, zy), true, `gegen ${r.name} deckt das Feld nach ${r.name}`);
+    k.setze(nx, ny, { hindernis: HINDERNIS.keins });
+    gleich(hatDeckung(k, ax, ay, zx, zy), false, `ohne Hindernis nach ${r.name}: keine Deckung`);
+
+    /* Und das Feld auf der **Gegenseite** deckt nie — es liegt hinter
+       dem Ziel, nicht davor. */
+    const gx = zx - r.dx, gy = zy - r.dy;
+    if (k.drin(gx, gy)) {
+      k.setze(gx, gy, { hindernis: HINDERNIS.fass });
+      gleich(hatDeckung(k, ax, ay, zx, zy), false,
+        `ein Fass hinter dem Ziel deckt nicht gegen ${r.name}`);
+      k.setze(gx, gy, { hindernis: HINDERNIS.keins });
+    }
+  }
+
+  /* Ein Angreifer zwischen zwei Richtungen: dann liegen **zwei**
+     Nachbarn näher, und jeder von beiden deckt für sich allein. */
+  {
+    const zwischen = nachbarn(k, zx, zy)
+      .filter((n) => abstand(n.x, n.y, 9, 8) < abstand(zx, zy, 9, 8));
+    gleich(zwischen.length, 2, "gegen einen Angreifer schräg dahinter liegen zwei Nachbarn näher");
+    for (const n of zwischen) {
+      k.setze(n.x, n.y, { hindernis: HINDERNIS.fass });
+      gleich(hatDeckung(k, 9, 8, zx, zy), true,
+        `das Feld nach ${n.richtung.name} deckt für sich allein`);
+      k.setze(n.x, n.y, { hindernis: HINDERNIS.keins });
+    }
+    gleich(hatDeckung(k, 9, 8, zx, zy), false, "ohne Hindernis deckt keins von beiden");
+  }
 
   gleich(hatDeckung(k, zx, zy, zx, zy), false, "auf dem eigenen Feld gibt es keine Richtung");
 }
@@ -388,7 +452,7 @@ abschnitt("Gleichlauf");
     const teile = [];
     for (let y = 0; y < k.hoehe; y++) {
       for (let x = 0; x < k.breite; x++) {
-        for (const r of RICHTUNGEN) {
+        for (const r of richtungen(y)) {
           const nx = x + r.dx, ny = y + r.dy;
           teile.push(`k${laufKosten(k, x, y, nx, ny)}`);
           teile.push(`t${sturzTiefe(k, x, y, nx, ny)}`);

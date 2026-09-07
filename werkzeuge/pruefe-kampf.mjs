@@ -794,18 +794,25 @@ abschnitt("Angriff: flaeche2");
   const kelch = waffe("feuerkelch");           /* 4 AP, 2d4+3, Fläche */
   const a = probe({ apMax: 6 }, { x: 2, y: 8 });
   const z = probe({ lpMax: 40 }, { x: 8, y: 8 });
-  const nord = probe({ lpMax: 40 }, { x: 8, y: 7 });
+  /* Die Nachbarn des Ziels (8,8). Zeile 8 ist gerade, dort liegt der
+     Nachbar nach Nordosten auf (8,7) und der nach Osten auf (9,8).
+     Welcher zuerst drankommt, entscheidet die Reihenfolge in
+     `richtungen` — und dass sie **feststeht**, ist der Punkt: Zwei
+     Rechner müssen dieselbe Folge von Ereignissen erzeugen, sonst
+     bricht die Runde ab (Fehlerbuch B2). Seit dem Sechseck steht Osten
+     an erster Stelle, vorher stand Norden dort. */
+  const nordost = probe({ lpMax: 40 }, { x: 8, y: 7 });
   const ost = probe({ lpMax: 40 }, { x: 9, y: 8 });
   const fern = probe({ lpMax: 40 }, { x: 12, y: 8 });
-  const zu = zustandMit(karte, [a, z, nord, ost, fern], immerTreffer());
+  const zu = zustandMit(karte, [a, z, nordost, ost, fern], immerTreffer());
 
   const e = fuehreAngriffAus(zu, a, z, kelch);
   const flaeche = e.filter((x) => x.quelle === "flaeche");
   gleich(flaeche.length, 2, "beide Nachbarn bekommen etwas ab");
-  gleich(flaeche[0].wer, nord.id, "erst nach Norden");
-  gleich(flaeche[1].wer, ost.id, "dann nach Osten — die Reihenfolge steht fest");
+  gleich(flaeche[0].wer, ost.id, "erst nach Osten");
+  gleich(flaeche[1].wer, nordost.id, "dann nach Nordosten — die Reihenfolge steht fest");
   gleich(fern.lp, 40, "wer weiter weg steht, bleibt heil");
-  behaupte(nord.lp < 40 && ost.lp < 40, "die Nachbarn haben Schaden");
+  behaupte(nordost.lp < 40 && ost.lp < 40, "die Nachbarn haben Schaden");
 }
 
 abschnitt("Angriff: Gleichlauf");

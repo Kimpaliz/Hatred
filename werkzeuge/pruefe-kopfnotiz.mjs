@@ -96,7 +96,7 @@ const AUS_DEM_SKILL = new Set([
 const BEKANNTE_ABWEICHUNGEN = [
   {
     datei: "spiel/gitter.mjs",
-    zeile: 137,
+    zeile: 134,
     zeichen: 101,
     grund: "vom Vertrag eingefroren: „Was schon fertig ist — NICHT ändern, nur benutzen.“"
   }

@@ -25,7 +25,7 @@
    `spiel/gitter.mjs`. Gelesen von `spiel/landschaft.mjs`,
    `spiel/ausstattung.mjs` und `werkzeuge/pruefe-landschaft.mjs`. */
 
-import { RICHTUNGEN } from "./gitter.mjs";
+import { richtungen } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
 import { PIXEL_JE_FELD } from "./bauart.mjs";
 
@@ -51,7 +51,7 @@ export function laufKostenFeld(karte, quellen) {
     for (const i of eimer[stand]) {
       if (kosten[i] !== stand) continue;
       const x = spalte(karte, i), y = zeile(karte, i);
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         const preis = karte.drin(nx, ny) ? laufKosten(karte, x, y, nx, ny) : null;
         if (preis === null) continue;
@@ -87,7 +87,7 @@ export function erreichbareFelder(karte, quellen, rueckwaerts = false, fenster =
   while (stapel.length) {
     const i = stapel.pop();
     const x = spalte(karte, i), y = zeile(karte, i);
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       const nx = x + r.dx, ny = y + r.dy;
       if (!drin(nx, ny) || gut[ny * karte.breite + nx]) continue;
       const geht = rueckwaerts

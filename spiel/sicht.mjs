@@ -38,13 +38,14 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `spiel/gitter.mjs` (Karte, `schussweite`), `spiel/hoehen.mjs`
+   `spiel/gitter.mjs` (Karte, `abstand`), `spiel/hoehen.mjs`
    (`blocktSichtlinie` — die Regel, wann ein Zwischenfeld im Weg steht),
    `spiel/licht.mjs` (nutzt `sichtlinie`, damit Licht nicht durch Wände
    fällt, und legt die Dunkelheit über das Ergebnis von hier),
    `spiel/kampf.mjs` und `spiel/gegner-ki.mjs` (fragen, wer wen sieht),
    `runtime/zeichnen.js` (zeichnet nur, was im Sichtfeld liegt). */
 
+import { abstand, alsWuerfel, vonWuerfel } from "./gitter.mjs";
 import { blocktSichtlinie } from "./hoehen.mjs";
 
 /* Die Sichtweite eines Wesens, das keine eigene mitbringt. Der Katalog
@@ -75,20 +76,63 @@ function inFesterReihenfolge(ax, ay, zx, zy) {
    Rein ganzzahlig: nur Vergleiche, Additionen und Vorzeichen. Kein
    Gleitkommaschritt, an dem zwei Browser auseinanderlaufen könnten
    (derselbe Grund wie in `spiel/zufall.mjs`). */
+/* `Math.round` als ganzzahlige Rechnung. Ein Bruch p/n wird gerundet,
+   ohne dass je eine Kommazahl entsteht — dieselbe Vorsicht wie in
+   `spiel/zufall.mjs`: Zwei Browser dürfen hier nicht auseinanderlaufen. */
+const teileGerundet = (p, n) => Math.floor((2 * p + n) / (2 * n));
+
+/* Läuft die Linie von Sechseck zu Sechseck ab und meldet jedes Feld an
+   `besuche`. Gibt `besuche` false zurück, bricht der Lauf sofort ab —
+   so muss `sichtlinie` hinter der ersten Wand nicht weiterrechnen.
+
+   ── Warum nicht mehr Bresenham ─────────────────────────────────────
+
+   Bis zum 07.09.2026 lief hier die Bresenham-Linie eines Quadratrasters.
+   Seit dem Sechseck (Vorgang #7) wäre das die zweite Geometrie im
+   Spiel: Man ginge über Sechsecke und sähe über Quadrate. Was dabei
+   herauskommt, ist kein Schönheitsfehler, sondern ein Widerspruch —
+   Felder, die man sieht und nicht erreicht, und Felder, die man
+   erreicht und nicht sieht.
+
+   Gerechnet wird deshalb in Würfelkoordinaten: Zwischen Auge und Ziel
+   wird in `schritte` gleichen Teilen geteilt, und jeder Zwischenpunkt
+   fällt auf das nächstgelegene Sechseck.
+
+   ── Warum das ohne eine einzige Kommazahl geht ─────────────────────
+
+   Die Zwischenpunkte sind Brüche mit demselben Nenner. Gerundet wird
+   über `teileGerundet`, verglichen wird über die Zähler. Eine
+   Kommazahl käme nie auf zwei Browsern gleich heraus, und die Runde
+   bräche mit „auseinandergelaufen" ab. */
 function laufeLinie(ax, ay, zx, zy, besuche) {
-  let x = ax;
-  let y = ay;
-  const breit = Math.abs(zx - ax);
-  const hoch = -Math.abs(zy - ay);
-  const schrittX = ax < zx ? 1 : -1;
-  const schrittY = ay < zy ? 1 : -1;
-  let fehler = breit + hoch;
-  for (;;) {
-    if (besuche(x, y) === false) return;
-    if (x === zx && y === zy) return;
-    const doppelt = 2 * fehler;
-    if (doppelt >= hoch) { fehler += hoch; x += schrittX; }
-    if (doppelt <= breit) { fehler += breit; y += schrittY; }
+  const schritte = abstand(ax, ay, zx, zy);
+  if (schritte === 0) { besuche(ax, ay); return; }
+
+  const a = alsWuerfel(ax, ay);
+  const b = alsWuerfel(zx, zy);
+
+  for (let i = 0; i <= schritte; i++) {
+    /* Der exakte Punkt ist (a·(N−i) + b·i) / N — hier als Zähler. */
+    const px = a.wx * (schritte - i) + b.wx * i;
+    const py = a.wy * (schritte - i) + b.wy * i;
+    const pz = a.wz * (schritte - i) + b.wz * i;
+
+    let rx = teileGerundet(px, schritte);
+    let ry = teileGerundet(py, schritte);
+    let rz = teileGerundet(pz, schritte);
+
+    /* Drei gerundete Zahlen summieren sich selten wieder zu null. Die
+       mit der größten Verschiebung wird nachgezogen — die übliche
+       Würfelrundung, nur mit Zählern statt Kommazahlen. */
+    const wegX = Math.abs(rx * schritte - px);
+    const wegY = Math.abs(ry * schritte - py);
+    const wegZ = Math.abs(rz * schritte - pz);
+    if (wegX > wegY && wegX > wegZ) rx = -ry - rz;
+    else if (wegY > wegZ) ry = -rx - rz;
+    else rz = -rx - ry;
+
+    const feld = vonWuerfel(rx, rz);
+    if (besuche(feld.x, feld.y) === false) return;
   }
 }
 
@@ -134,7 +178,7 @@ export function sichtlinie(karte, ax, ay, zx, zy) {
 /* Alle Feldindizes, die von (x,y) aus in `reichweite` Feldern sichtbar
    sind — das eigene Feld immer mit dabei.
 
-   Gemessen wird in der Schachbrett-Entfernung (`schussweite` aus
+   Gemessen wird in der Schachbrett-Entfernung (`abstand` aus
    `gitter.mjs`), nicht in Manhattan-Schritten: Sonst hätte das
    Sichtfeld die Form eines Rhombus, und ein Bogen würde diagonal
    weiter schießen, als das Auge reicht. Sicht und Waffenreichweite

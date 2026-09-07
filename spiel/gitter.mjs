@@ -94,19 +94,16 @@ export const EBENE_GRABEN = 0;
 export const EBENE_BODEN = 1;
 
 /* Rampen: 0 = keine, sonst die Richtung, in die es **hinauf** geht.
-   Eine Rampe liegt auf dem tieferen der beiden Felder. */
-export const RAMPE = { keine: 0, nord: 1, ost: 2, sued: 3, west: 4 };
+   Eine Rampe liegt auf dem tieferen der beiden Felder.
 
-/* Die vier Richtungen. Es sind bewusst vier und nicht acht: Bei acht
-   ist die Diagonale entweder zu billig (1 Punkt für √2 Weg) oder
-   krumm (1,41 Punkte) — und Aktionspunkte sollen ganze Zahlen
-   bleiben, damit man sie im Kopf zählen kann. */
-export const RICHTUNGEN = [
-  { dx: 0, dy: -1, name: "nord", rampe: RAMPE.nord },
-  { dx: 1, dy: 0, name: "ost", rampe: RAMPE.ost },
-  { dx: 0, dy: 1, name: "sued", rampe: RAMPE.sued },
-  { dx: -1, dy: 0, name: "west", rampe: RAMPE.west }
-];
+   Sechs Richtungen seit dem 07.09.2026 (Vorgang #6/#7). Die Namen sind
+   die eines spitz nach oben stehenden Sechsecks: zwei waagerechte
+   Nachbarn, je zwei schräg oben und schräg unten. Ein „nord" gibt es
+   nicht mehr — senkrecht nach oben liegt beim Sechseck kein Feld,
+   sondern eine Kante. */
+export const RAMPE = {
+  keine: 0, ost: 1, suedost: 2, suedwest: 3, west: 4, nordwest: 5, nordost: 6
+};
 
 export function macheKarte(breite, hoehe) {
   if (!Number.isInteger(breite) || !Number.isInteger(hoehe) || breite < 4 || hoehe < 4) {
@@ -190,30 +187,24 @@ export function* alleFelder(karte) {
   }
 }
 
-/* Die vier Nachbarn, ohne die außerhalb. */
+/* Die sechs Nachbarn, ohne die außerhalb. Welche sechs, hängt von der
+   Zeile ab — Begründung unten beim Sechseckraster. */
 export function nachbarn(karte, x, y) {
   const raus = [];
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     const nx = x + r.dx, ny = y + r.dy;
     if (karte.drin(nx, ny)) raus.push({ x: nx, y: ny, richtung: r });
   }
   return raus;
 }
 
-/* Manhattan — die einzig richtige Entfernung, wenn man nur in vier
-   Richtungen läuft. */
-export const abstand = (ax, ay, bx, by) => Math.abs(ax - bx) + Math.abs(ay - by);
-
-/* Für Reichweiten von Fernwaffen: die Schachbrett-Entfernung. Ein Bogen
-   soll diagonal genauso weit schießen wie gerade — sonst hat die
-   Reichweite die Form eines Rhombus, und das sieht falsch aus. */
-export const schussweite = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.abs(ay - by));
-
 /* ══════════════════════════════════════════════════════════════════
    Das Sechseckraster
    ══════════════════════════════════════════════════════════════════
 
    Entschieden am 07.09.2026 (Vorgang #6): *„ja hexagon. raster form."*
+   Seit derselben Sitzung ist es **in Betrieb** — `nachbarn()` und
+   `abstand()` oben rechnen damit. `schussweite` gibt es nicht mehr.
 
    ── Warum die Speicherform bleibt ──────────────────────────────────
 
@@ -241,12 +232,17 @@ export const schussweite = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.
 
    ── Warum nur **ein** Entfernungsmaß ───────────────────────────────
 
-   Auf dem Quadrat braucht es zwei (`abstand` fürs Laufen, `schussweite`
-   fürs Schießen), weil die Diagonale beides nicht zugleich sein kann.
+   Bis zum 07.09.2026 gab es zwei: `abstand` (Manhattan) fürs Laufen und
+   `schussweite` (Schachbrett) fürs Schießen. Zwei, weil die Diagonale
+   eines Quadrats beides nicht zugleich sein kann — ein Bogen soll
+   diagonal so weit schießen wie gerade, ein Schritt aber nicht diagonal
+   billiger sein.
+
    Sechs gleichwertige Nachbarn haben dieses Problem nicht: Der Schritt
-   in jede Richtung ist gleich weit. `sechsAbstand` ist zugleich die
-   Laufentfernung und die Schussweite — bewiesen unten dadurch, dass sie
-   mit der gezählten Schrittzahl übereinstimmt.
+   in jede Richtung ist gleich weit. `abstand` ist deshalb jetzt beides,
+   und `schussweite` ist **ersatzlos entfallen** — nicht umbenannt,
+   entfallen. Ein zweiter Name für dieselbe Rechnung wäre die nächste
+   Stelle, an der zwei Wahrheiten auseinanderlaufen.
 
    ── Arbeitet zusammen mit ──────────────────────────────────────────
 
@@ -256,49 +252,48 @@ export const schussweite = (ax, ay, bx, by) => Math.max(Math.abs(ax - bx), Math.
 /* Sechs Richtungen, getrennt nach gerader und ungerader Zeile. Die
    Namen sind die eines spitz nach oben stehenden Sechsecks: zwei
    waagerechte Nachbarn, je zwei schräg oben und schräg unten. */
-export const SECHS_GERADE = [
-  { dx: 1, dy: 0, name: "ost" },
-  { dx: 0, dy: 1, name: "suedost" },
-  { dx: -1, dy: 1, name: "suedwest" },
-  { dx: -1, dy: 0, name: "west" },
-  { dx: -1, dy: -1, name: "nordwest" },
-  { dx: 0, dy: -1, name: "nordost" }
+export const RICHTUNGEN_GERADE = [
+  { dx: 1, dy: 0, name: "ost", rampe: RAMPE.ost },
+  { dx: 0, dy: 1, name: "suedost", rampe: RAMPE.suedost },
+  { dx: -1, dy: 1, name: "suedwest", rampe: RAMPE.suedwest },
+  { dx: -1, dy: 0, name: "west", rampe: RAMPE.west },
+  { dx: -1, dy: -1, name: "nordwest", rampe: RAMPE.nordwest },
+  { dx: 0, dy: -1, name: "nordost", rampe: RAMPE.nordost }
 ];
 
-export const SECHS_UNGERADE = [
-  { dx: 1, dy: 0, name: "ost" },
-  { dx: 1, dy: 1, name: "suedost" },
-  { dx: 0, dy: 1, name: "suedwest" },
-  { dx: -1, dy: 0, name: "west" },
-  { dx: 0, dy: -1, name: "nordwest" },
-  { dx: 1, dy: -1, name: "nordost" }
+export const RICHTUNGEN_UNGERADE = [
+  { dx: 1, dy: 0, name: "ost", rampe: RAMPE.ost },
+  { dx: 1, dy: 1, name: "suedost", rampe: RAMPE.suedost },
+  { dx: 0, dy: 1, name: "suedwest", rampe: RAMPE.suedwest },
+  { dx: -1, dy: 0, name: "west", rampe: RAMPE.west },
+  { dx: 0, dy: -1, name: "nordwest", rampe: RAMPE.nordwest },
+  { dx: 1, dy: -1, name: "nordost", rampe: RAMPE.nordost }
 ];
 
 /* Welche Tabelle für diese Zeile gilt. Ungerade Zeilen liegen versetzt. */
-export const sechsRichtungen = (y) => ((y & 1) === 0 ? SECHS_GERADE : SECHS_UNGERADE);
-
-/* Die sechs Nachbarn eines Feldes, ohne die außerhalb der Karte. */
-export function sechsNachbarn(karte, x, y) {
-  const raus = [];
-  for (const r of sechsRichtungen(y)) {
-    const nx = x + r.dx, ny = y + r.dy;
-    if (karte.drin(nx, ny)) raus.push({ x: nx, y: ny, richtung: r });
-  }
-  return raus;
-}
+export const richtungen = (y) =>
+  ((y & 1) === 0 ? RICHTUNGEN_GERADE : RICHTUNGEN_UNGERADE);
 
 /* Versatzzeilen in Würfelkoordinaten. Nur dort ist die Entfernung eine
    einfache Rechnung; in Versatzzeilen selbst wäre sie ein Wust von
    Fallunterscheidungen — und jede davon eine Stelle, an der jemand sich
-   vertut. */
-function alsWuerfel(x, y) {
+   vertut. Die drei Zahlen summieren sich immer zu null; daran erkennt
+   man einen Rechenfehler sofort.
+
+   Ausgeführt, weil `spiel/sicht.mjs` die Sichtlinie darüber legt:
+   Sehen und Gehen müssen demselben Raster folgen, sonst sieht man
+   Felder, die man nicht erreicht. */
+export function alsWuerfel(x, y) {
   const wx = x - ((y - (y & 1)) >> 1);
   const wz = y;
   return { wx, wy: -wx - wz, wz };
 }
 
+/* Zurück aus den Würfelkoordinaten in Versatzzeilen. */
+export const vonWuerfel = (wx, wz) => ({ x: wx + ((wz - (wz & 1)) >> 1), y: wz });
+
 /* Die Entfernung in Schritten — zugleich Laufweg und Schussweite. */
-export function sechsAbstand(ax, ay, bx, by) {
+export function abstand(ax, ay, bx, by) {
   const a = alsWuerfel(ax, ay), b = alsWuerfel(bx, by);
   return (Math.abs(a.wx - b.wx) + Math.abs(a.wy - b.wy) + Math.abs(a.wz - b.wz)) / 2;
 }

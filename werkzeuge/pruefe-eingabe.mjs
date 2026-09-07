@@ -50,7 +50,7 @@
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
 
 import {
-  HINDERNIS, RAMPE, RICHTUNGEN, alleFelder, macheKarte
+  HINDERNIS, RAMPE, richtungen, alleFelder, macheKarte
 } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { erreichbareFelder, pfadAus } from "../spiel/wegfindung.mjs";
@@ -294,7 +294,7 @@ abschnitt("Sturzwarnung");
   let ausKern = 0;
   for (const { x, y, i } of alleFelder(probe.zustand.karte)) {
     if (probe.zustand.karte.blocktBewegung(x, y) || reich.has(i)) continue;
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       const nx = x - r.dx;
       const ny = y - r.dy;
       if (!probe.zustand.karte.drin(nx, ny)) continue;

@@ -28,7 +28,7 @@
    Hallen), `spiel/hoehen.mjs` (Erreichbarkeit nach dem Setzen). */
 
 import {
-  BODEN, FLUESSIG, HINDERNIS, RAMPE, RICHTUNGEN, EBENE_GRABEN
+  BODEN, FLUESSIG, HINDERNIS, RAMPE, richtungen, EBENE_GRABEN
 } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
 import { macheWeltfeld } from "./welt-feld.mjs";
@@ -176,7 +176,7 @@ export function zierErlaubt(karte, x, y) {
   const merk = karte.hindernis[i];
   karte.hindernis[i] = HINDERNIS.wand;
   const nachbarn = [];
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     const nx = x + r.dx, ny = y + r.dy;
     if (karte.drin(nx, ny) && !karte.blocktBewegung(nx, ny)) nachbarn.push({ x: nx, y: ny });
   }
@@ -195,7 +195,7 @@ export function zierErlaubt(karte, x, y) {
 /* Berührt die Kachel orthogonal eine Wand? Die Stelle für Fackeln und
    Spieße — beide hängen an der Wand und nicht in der Luft. */
 function anDerWand(karte, x, y) {
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     if (karte.hindernisBei(x + r.dx, y + r.dy) === HINDERNIS.wand) return true;
   }
   return false;

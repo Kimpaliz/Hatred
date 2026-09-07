@@ -51,7 +51,7 @@ import {
   MIN_KARTE, MIN_EBENEN_FLAECHE, FACKEL_ABSTAND, RAUM_ARTEN, ZUSATZ_RAMPEN
 } from "../spiel/landschaft.mjs";
 import {
-  macheKarte, HINDERNIS, FLUESSIG, BODEN, RAMPE, RICHTUNGEN, EBENEN, EBENE_GRABEN
+  macheKarte, HINDERNIS, FLUESSIG, BODEN, RAMPE, richtungen, EBENEN, EBENE_GRABEN
 } from "../spiel/gitter.mjs";
 import { begehbar, laufKosten } from "../spiel/hoehen.mjs";
 import { macheWeltfeld } from "../spiel/welt-feld.mjs";
@@ -501,13 +501,29 @@ abschnitt("Rampen");
     return k;
   };
   const a = bau(), b = bau(), keine = bau(), alle = bau();
-  const kanten = aufstiegsKanten(a).length;
+  /* ── Warum hier nicht die Kanten gezählt werden ─────────────────
+
+     Eine Rampe liegt auf dem **tieferen** der beiden Felder, und ein
+     Feld trägt höchstens eine. Auf dem Quadratraster fiel das kaum auf:
+     Ein Feld hat vier Nachbarn, selten mehr als einen davon eine Stufe
+     höher. Auf dem Sechseck sind es sechs, und dasselbe tiefe Feld
+     grenzt regelmäßig an mehrere höhere.
+
+     „Mit Anteil 1 bekommt jede Aufstiegskante eine Rampe" ist deshalb
+     seit dem 07.09.2026 gar nicht mehr erfüllbar — gemessen: 35 Kanten,
+     aber nur 18 verschiedene tiefe Felder. Gezählt wird jetzt, was
+     zählbar ist. */
+  const kantenListe = aufstiegsKanten(a);
+  const kanten = new Set(kantenListe.map((e) => e.tief)).size;
+  behaupte(kantenListe.length >= kanten,
+    `${kantenListe.length} Aufstiegskanten auf ${kanten} verschiedenen tiefen Feldern`);
   const zahlA = streueZusatzRampen(a, 12345);
   const zahlB = streueZusatzRampen(b, 12345);
   gleich(zahlA, zahlB, "dieselbe Saat streut dieselbe Zahl Zusatzrampen");
   gleich(a.summe(), b.summe(), "und dieselben Rampen an denselben Stellen");
   gleich(streueZusatzRampen(keine, 12345, 0), 0, "mit Anteil 0 wird keine gesetzt");
-  gleich(streueZusatzRampen(alle, 12345, 1), kanten, `mit Anteil 1 alle ${kanten} Aufstiege`);
+  gleich(streueZusatzRampen(alle, 12345, 1), kanten,
+    `mit Anteil 1 bekommt jedes der ${kanten} tiefen Felder seine Rampe`);
   behaupte(zahlA > 0 && zahlA < kanten,
     `mit ${ZUSATZ_RAMPEN} sind es ${zahlA} von ${kanten} — mehr als eine, nicht alle`);
   let obenFalsch = 0;
@@ -617,7 +633,7 @@ abschnitt("Zier und Licht");
   for (const f of fackeln) {
     if (karte.hindernisBei(f.x, f.y) !== HINDERNIS.fackelsockel) falscherOrt++;
     let anWand = false;
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(f.y)) {
       if (karte.hindernisBei(f.x + r.dx, f.y + r.dy) === HINDERNIS.wand) anWand = true;
     }
     if (!anWand) falscherOrt++;
@@ -817,7 +833,7 @@ const KANTEN_JE_KARTE_MIND = 5;
       for (let x = 0; x < k.breite; x++) {
         if (k.blocktBewegung(x, y)) continue;
         const e = k.ebeneBei(x, y);
-        for (const r of RICHTUNGEN) {
+        for (const r of richtungen(y)) {
           const nx = x + r.dx, ny = y + r.dy;
           if (!k.drin(nx, ny) || k.blocktBewegung(nx, ny)) continue;
           const d = e - k.ebeneBei(nx, ny);

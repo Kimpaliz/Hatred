@@ -52,7 +52,7 @@
    `werkzeuge/pruefe-landschaft.mjs`, `werkzeuge/karte-zeigen.mjs`. */
 
 import {
-  macheKarte, RICHTUNGEN, RAMPE, BODEN, FLUESSIG, HINDERNIS,
+  macheKarte, richtungen, RAMPE, BODEN, FLUESSIG, HINDERNIS,
   BLOCKT_BEWEGUNG, EBENEN, EBENE_GRABEN
 } from "./gitter.mjs";
 import { laufKosten } from "./hoehen.mjs";
@@ -127,10 +127,6 @@ const P = PIXEL_JE_FELD;
 /* „Offen" heißt hier immer: blockt die Bewegung nicht. Eine Säule ist
    damit keine offene Kachel — und genau so soll jede
    Erreichbarkeitsfrage sie sehen. */
-
-/* Die Gegenrichtung aus `RICHTUNGEN`. Nord ↔ Süd, Ost ↔ West liegen
-   dort zwei Plätze auseinander — keine zufällige Reihenfolge, sondern
-   die Bedingung, unter der diese Zeile stimmt. */
 
 /* ═══ Schritt 1 — Rastern ═══════════════════════════════════════════════════
    Neun Proben an den Neuntelmitten. Die mittlere liegt genau auf der
@@ -244,7 +240,7 @@ export function legeKleineEbenenZusammen(karte, mindest = MIN_EBENEN_FLAECHE) {
       if (nummer[i] !== kleinste) continue;
       felder.push(i);
       const x = spalte(karte, i), y = zeile(karte, i);
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         if (!karte.drin(nx, ny)) continue;
         const j = ny * karte.breite + nx;
@@ -303,7 +299,7 @@ export function schneideKliffe(karte) {
       const e = karte.ebene[i];
       const x = spalte(karte, i), y = zeile(karte, i);
       let tiefer = 0, hoeher = 0;
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         if (!karte.drin(nx, ny)) continue;
         const j = ny * karte.breite + nx;
@@ -341,7 +337,7 @@ export function setzeEbenen(karte, welt) {
    nach der **einzelnen** Kachel, in beiden Richtungen. */
 function ringsum(karte, i, sollOffen) {
   const x = spalte(karte, i), y = zeile(karte, i);
-  for (const r of RICHTUNGEN) {
+  for (const r of richtungen(y)) {
     if (offen(karte, (y + r.dy) * karte.breite + x + r.dx) !== sollOffen) return false;
   }
   return true;
@@ -477,7 +473,7 @@ export function aufstiegsKanten(karte) {
     for (let x = 0; x < karte.breite; x++) {
       const i = y * karte.breite + x;
       if (!offen(karte, i)) continue;
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx, ny = y + r.dy;
         if (!karte.drin(nx, ny)) continue;
         const j = ny * karte.breite + nx;
@@ -533,8 +529,9 @@ export function verbindeMitRampen(karte) {
     let neu = 0;
     for (const i of schlecht) {
       const x = spalte(karte, i), y = zeile(karte, i);
-      for (let k = 0; k < RICHTUNGEN.length; k++) {
-        const r = RICHTUNGEN[k];
+      const tabelle = richtungen(y);
+      for (let k = 0; k < tabelle.length; k++) {
+        const r = tabelle[k];
         const nx = x + r.dx, ny = y + r.dy;
         if (!karte.drin(nx, ny)) continue;
         const j = ny * karte.breite + nx;
@@ -545,7 +542,7 @@ export function verbindeMitRampen(karte) {
           rampen++; neu++;
         } else if (karte.ebene[i] === karte.ebene[j] + 1 && karte.rampe[j] === RAMPE.keine) {
           /* j liegt tiefer: die Rampe gehört auf j und zeigt zurück. */
-          karte.rampe[j] = gegen(k).rampe;
+          karte.rampe[j] = gegen(ny, k).rampe;
           rampen++; neu++;
         }
       }

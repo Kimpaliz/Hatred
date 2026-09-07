@@ -29,7 +29,7 @@
    Formen), `werkzeuge/helfer.mjs`, `werkzeuge/pruefe-alles.mjs`. */
 
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
-import { macheKarte, BODEN, HINDERNIS, RICHTUNGEN, abstand } from "../spiel/gitter.mjs";
+import { macheKarte, BODEN, HINDERNIS, richtungen, abstand } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { AKTION, pruefeAktion, wendeAn } from "../spiel/aktionen.mjs";
 import { amZugWesen, starteRunde, SEITE_JAEGER, SEITE_BRUT } from "../spiel/zug.mjs";

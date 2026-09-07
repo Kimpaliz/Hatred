@@ -99,7 +99,7 @@
    `runtime/zeichnen.js` (malt `ansicht()`),
    `werkzeuge/pruefe-eingabe.mjs`. */
 
-import { RICHTUNGEN } from "../spiel/gitter.mjs";
+import { richtungen } from "../spiel/gitter.mjs";
 import { erreichbareFelder, pfadAus } from "../spiel/wegfindung.mjs";
 import { sturzTiefe, sturzSchaden, stossZiel } from "../spiel/hoehen.mjs";
 import { AKTION, kostenVon, pruefeAktion } from "../spiel/aktionen.mjs";
@@ -136,7 +136,7 @@ export const SLOTS = [
   { taste: "6", art: "sofort", typ: AKTION.trank }
 ];
 
-/* Pfeiltaste → Stelle in `RICHTUNGEN` (nord, ost, süd, west). */
+/* Pfeiltaste → Stelle in `richtungen` (nord, ost, süd, west). */
 export const ZEIGER_TASTEN = {
   ArrowUp: 0,
   ArrowRight: 1,
@@ -415,7 +415,7 @@ export function macheEingabe({
     if (merkReichweite.has(karte.index(x, y))) return null;
 
     let tiefste = 0;
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       const nx = x - r.dx;
       const ny = y - r.dy;
       if (!karte.drin(nx, ny)) continue;
@@ -575,7 +575,10 @@ export function macheEingabe({
   function zeigerSchritt(stelle) {
     const z = holeZustand();
     const w = eigenesWesen();
-    const r = RICHTUNGEN[stelle];
+    /* Die Tabelle der Zeile, auf der der Zeiger gerade steht — auf dem
+       Sechseckraster hängt die Richtung an der Zeilenparität. */
+    const zeile = zeigerFeld ? zeigerFeld.y : (w ? w.y : 0);
+    const r = richtungen(zeile)[stelle];
     if (modus === MODUS.stoss && w) return stossInRichtung(z, w, r);
     if (!zeigerFeld) {
       zeigerFeld = w ? { x: w.x, y: w.y } : null;

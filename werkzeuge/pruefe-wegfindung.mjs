@@ -47,7 +47,8 @@
 
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
 import {
-  macheKarte, alleFelder, RICHTUNGEN, RAMPE, HINDERNIS, FLUESSIG
+  macheKarte, alleFelder, richtungen, RAMPE, HINDERNIS, FLUESSIG, abstand,
+  RICHTUNGEN_GERADE, RICHTUNGEN_UNGERADE
 } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { laufKosten, sturzTiefe } from "../spiel/hoehen.mjs";
@@ -101,7 +102,7 @@ function kostenStumpf(karte, vx, vy, ap, belegt = () => false) {
     for (const { x, y, i } of alleFelder(karte)) {
       const hier = beste.get(i);
       if (hier === undefined) continue;
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(y)) {
         const nx = x + r.dx;
         const ny = y + r.dy;
         if (!karte.drin(nx, ny) || belegt(nx, ny)) continue;
@@ -150,7 +151,7 @@ function zufallsKarte(saat) {
      das muss die Wegfindung aushalten. */
   for (const { x, y } of alleFelder(karte)) {
     const hinauf = [];
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       if (karte.ebeneBei(x + r.dx, y + r.dy) === karte.ebeneBei(x, y) + 1) hinauf.push(r.rampe);
     }
     if (hinauf.length > 0 && zufall.trifft(0.6)) {
@@ -246,10 +247,21 @@ abschnitt("Gerade Wege");
   gleich(wegSuche(k, { x: 1, y: 3 }, { x: 9, y: 3 }, { maxKosten: 8 }).kosten, 8,
     "genau auf der Obergrenze schon");
 
-  const felder = erreichbareFelder(k, 5, 3, 3);
-  gleich(felder.size, 25, "aus drei Punkten wird auf freier Fläche eine Raute aus 25 Feldern");
+  /* Auf freier Fläche ist die Reichweite eine Sechseck-Scheibe. Ihre
+     Größe ist nicht abgeschrieben, sondern gerechnet: 1 in der Mitte
+     plus 6n je Ring, also 1 + 3n(n+1). Für n = 3 sind das 37. Auf dem
+     Quadrat wären es 25 gewesen — eine Raute.
+
+     Gegen die Formel geprüft und nicht gegen eine Zahl, damit diese
+     Stelle jede Änderung an der Nachbarschaft bemerkt, statt nur eine
+     bestimmte. */
+  const REICHT = 3;
+  const scheibe = 1 + 3 * REICHT * (REICHT + 1);
+  const felder = erreichbareFelder(k, 5, 3, REICHT);
+  gleich(felder.size, scheibe,
+    `aus ${REICHT} Punkten wird eine Sechseck-Scheibe aus ${scheibe} Feldern`);
   gleich(kostenVon(felder, k, 8, 3), 3, "drei nach Osten kosten drei");
-  gleich(kostenVon(felder, k, 7, 4), 3, "über Eck ebenso");
+  gleich(kostenVon(felder, k, 7, 4), 2, "schräg nach Südwesten sind es zwei");
   gleich(felder.has(k.index(9, 3)), false, "vier Felder weit reicht es nicht");
 }
 
@@ -269,7 +281,14 @@ abschnitt("Wände");
 
   k.setze(4, 0, { hindernis: HINDERNIS.keins });
   const w = wegSuche(k, { x: 1, y: 3 }, { x: 7, y: 3 });
-  gleich(w.kosten, 12, "durch die Lücke: drei hinauf, sechs quer, drei hinab");
+  /* Auf dem Quadrat waren es zwölf: drei hinauf, sechs quer, drei
+     hinab. Auf dem Sechseck deckt ein schräger Schritt beides zugleich
+     ab, deshalb neun. Gegengeprüft mit der Luftlinie, damit hier keine
+     abgeschriebene Zahl steht: Kürzer als die Entfernung kann kein Weg
+     sein, und mit einer Wand dazwischen ist er länger. */
+  gleich(w.kosten, 9, "durch die Lücke sind es neun Punkte");
+  behaupte(w.kosten > abstand(1, 3, 7, 3),
+    "und das ist mehr als die Luftlinie — die Wand kostet etwas");
   behaupte(w.pfad.some((f) => f.x === 4 && f.y === 0), "und der Weg geht durch die Lücke");
   behaupte(wegIstEcht(k, w.pfad), "auch dieser Weg ist Schritt für Schritt echt");
 }
@@ -293,7 +312,7 @@ abschnitt("Rampen und Höhen");
 
   /* Eine zweite Rampe, die in die falsche Richtung zeigt: Wer nur
      fragt „liegt da eine Rampe?", steigt hier auf und kommt auf 6. */
-  k.setze(5, 1, { rampe: RAMPE.nord });
+  k.setze(5, 1, { rampe: RAMPE.suedost });
   const weit = erreichbareFelder(k, 1, 2, 10);
   gleich(kostenVon(weit, k, 6, 1), 7, "die Rampe in die falsche Richtung trägt niemanden hinauf");
 
@@ -307,14 +326,22 @@ abschnitt("Rampen und Höhen");
   gleich(wegSuche(hoch, { x: 1, y: 2 }, { x: 4, y: 2 }).kosten, 4,
     "über eine Ebene mit Rampe: zwei Schritte und zwei für den Anstieg");
 
-  /* Wasser bremst — und zusammen mit der Rampe kostet ein einziger
-     Schritt drei Punkte. */
+  /* Wasser bremst. Eine **einzelne** Pfütze reicht auf dem Sechseck
+     als Probe nicht mehr: Es gibt sechs Wege an ihr vorbei, und
+     mindestens einer ist gleich lang. Auf dem Quadrat war das anders,
+     und die alte Fassung dieser Stelle hat genau deshalb nach der
+     Umstellung angeschlagen — zu Recht.
+
+     Geprüft wird deshalb an einem Wassergraben quer über die Karte:
+     Dort gibt es kein Vorbei, und die Frage „kostet Nässe wirklich
+     etwas" ist wieder eine Frage. */
   const nass = macheKarte(12, 5);
   gleich(wegSuche(nass, { x: 1, y: 2 }, { x: 5, y: 2 }).kosten, 4, "trocken sind es vier");
-  nass.setze(3, 2, { fluessig: FLUESSIG.wasser });
+  for (let y = 0; y < 5; y++) nass.setze(3, y, { fluessig: FLUESSIG.wasser });
   const durch = wegSuche(nass, { x: 1, y: 2 }, { x: 5, y: 2 });
-  gleich(durch.kosten, 5, "durch das Wasser sind es fünf");
-  behaupte(durch.pfad.some((f) => f.x === 3 && f.y === 2), "der Umweg wäre teurer als die Pfütze");
+  gleich(durch.kosten, 5, "durch den Graben sind es fünf");
+  behaupte(durch.pfad.some((f) => f.x === 3),
+    "und der Weg führt hindurch, weil es kein Vorbei gibt");
 
   const beides = macheKarte(12, 5);
   for (const { x, y } of alleFelder(beides)) if (x >= 5) beides.setze(x, y, { ebene: 2 });
@@ -338,7 +365,12 @@ abschnitt("Stürze");
   k.setze(4, 3, { ebene: 2 });
 
   const treppe = wegSuche(k, { x: 1, y: 1 }, { x: 5, y: 1 });
-  gleich(treppe.kosten, 8, "ohne Sturz führt der Weg über die Stufe: acht Punkte");
+  /* Sechs statt acht: Der Umweg über die Stufe fällt auf dem Sechseck
+     kürzer aus, weil ein schräger Schritt zugleich quer und längs
+     zählt. Die Aussage bleibt dieselbe — es gibt einen Weg ohne Sturz,
+     und er ist länger als die Luftlinie. */
+  gleich(treppe.kosten, 6, "ohne Sturz führt der Weg über die Stufe: sechs Punkte");
+  behaupte(treppe.kosten > abstand(1, 1, 5, 1), "und er ist länger als die Luftlinie");
   behaupte(!hatSturz(k, treppe.pfad), "und er springt nirgends");
   behaupte(wegIstEcht(k, treppe.pfad), "und ist Schritt für Schritt echt");
 
@@ -394,16 +426,25 @@ abschnitt("Freies Feld");
 
   const mitte = (x, y) => x === 3 && y === 3;
   tiefGleich(naechstesFreiesFeld(k, 3, 3, { belegt: mitte }), { x: 3, y: 2 },
-    "bei gleicher Entfernung gewinnt der kleinere Feldindex — das ist der Norden");
+    "bei gleicher Entfernung gewinnt der kleinere Feldindex");
 
-  const kreuz = (x, y) => Math.abs(x - 3) + Math.abs(y - 3) <= 1;
-  tiefGleich(naechstesFreiesFeld(k, 3, 3, { belegt: kreuz }), { x: 3, y: 1 },
-    "ist der ganze Ring besetzt, wird der nächste genommen");
+  /* Der Ring wird mit `abstand` beschrieben, nicht mit einer
+     Handrechnung: Auf dem Sechseck ist „ringsum" etwas anderes als
+     |dx| + |dy| <= 1, und eine abgeschriebene Formel wäre die zweite
+     Wahrheit über die Nachbarschaft. */
+  const ring = (x, y) => abstand(x, y, 3, 3) <= 1;
+  const ausserhalb = naechstesFreiesFeld(k, 3, 3, { belegt: ring });
+  gleich(abstand(ausserhalb.x, ausserhalb.y, 3, 3), 2,
+    "ist der ganze Ring besetzt, wird ein Feld aus dem zweiten Ring genommen");
+  tiefGleich(naechstesFreiesFeld(k, 3, 3, { belegt: ring }), ausserhalb,
+    "und zwar zweimal dasselbe");
 
   gleich(naechstesFreiesFeld(k, -1, 3), null, "außerhalb der Karte gibt es keinen Platz");
 
   const eingemauert = macheKarte(8, 8);
-  for (const r of RICHTUNGEN) eingemauert.setze(3 + r.dx, 3 + r.dy, { hindernis: HINDERNIS.wand });
+  for (const r of richtungen(3)) {
+    eingemauert.setze(3 + r.dx, 3 + r.dy, { hindernis: HINDERNIS.wand });
+  }
   gleich(naechstesFreiesFeld(eingemauert, 3, 3, { belegt: mitte }), null,
     "durch Wände sucht niemand einen Platz");
 
@@ -417,26 +458,39 @@ abschnitt("Freies Feld");
 
 abschnitt("Immer derselbe Weg");
 {
-  /* Zwischen (0,0) und (5,5) liegen auf offener Fläche 252 Wege der
-     Länge 10. Welcher herauskommt, folgt aus der Vorfahrtsregel und
-     ist von Hand herleitbar:
+  /* Zwischen (0,0) und (5,5) liegen auf offener Fläche viele gleich
+     kurze Wege. Welcher herauskommt, folgt aus der Vorfahrtsregel
+     (erst Kosten, dann Feldnummer) und **muss** auf jedem Rechner
+     derselbe sein — sonst laufen zwei Spieler auseinander.
 
-     Abgearbeitet wird nach (Kosten, Feldindex). Ein Feld (x,y) mit
-     x>0 und y>0 hat zwei Nachbarn, die einen Punkt näher am Start
-     liegen: den im Norden (Index (y-1)*breite + x) und den im Westen
-     (Index y*breite + x-1). Der nördliche hat den kleineren Index —
-     die Differenz ist breite-1 — und wird deshalb zuerst abgearbeitet.
-     Weil der Vorgänger nur bei echter Verbesserung wechselt, bleibt er
-     der Vorgänger. Rückwärts vom Ziel heißt das: erst nach Norden bis
-     zur Zeile 0, dann nach Westen. Vorwärts gelesen: erst nach Osten,
-     dann nach Süden. */
+     ── Warum hier kein abgeschriebener Weg mehr steht ──────────────
+
+     Bis zum 07.09.2026 stand der erwartete Weg Feld für Feld in dieser
+     Datei. Mit dem Sechseck wurde er ein anderer, und beim Nachtragen
+     fiel auf, dass die Liste die schwächere Prüfung war: Sie sagt, ob
+     genau *dieser* Weg herauskommt — nicht, ob **immer derselbe**
+     herauskommt. Geprüft wird jetzt das Zweite, und das ist die
+     Eigenschaft, an der der Netz-Koop hängt.
+
+     Dazu die Bedingung, die eine Liste nie geprüft hat: Jeder Schritt
+     muss ein echter Nachbarschritt sein. */
   const k = macheKarte(8, 8);
-  tiefGleich(wegSuche(k, { x: 0, y: 0 }, { x: 5, y: 5 }).pfad, [
-    { x: 0, y: 0, kosten: 0 }, { x: 1, y: 0, kosten: 1 }, { x: 2, y: 0, kosten: 2 },
-    { x: 3, y: 0, kosten: 3 }, { x: 4, y: 0, kosten: 4 }, { x: 5, y: 0, kosten: 5 },
-    { x: 5, y: 1, kosten: 6 }, { x: 5, y: 2, kosten: 7 }, { x: 5, y: 3, kosten: 8 },
-    { x: 5, y: 4, kosten: 9 }, { x: 5, y: 5, kosten: 10 }
-  ], "der Gleichstand fällt immer auf denselben Weg");
+  const einmal = wegSuche(k, { x: 0, y: 0 }, { x: 5, y: 5 });
+  const nochmal = wegSuche(macheKarte(8, 8), { x: 0, y: 0 }, { x: 5, y: 5 });
+  tiefGleich(nochmal.pfad, einmal.pfad,
+    "der Gleichstand fällt auf zwei frisch gebauten Karten auf denselben Weg");
+
+  gleich(einmal.kosten, abstand(0, 0, 5, 5),
+    "auf freier Fläche ist der Weg genau so lang wie die Luftlinie");
+  gleich(einmal.pfad.length, einmal.kosten + 1, "der Pfad trägt das Startfeld vorn");
+
+  let unecht = 0;
+  for (let i = 1; i < einmal.pfad.length; i++) {
+    const v = einmal.pfad[i - 1], n = einmal.pfad[i];
+    if (abstand(v.x, v.y, n.x, n.y) !== 1) unecht++;
+    if (n.kosten !== v.kosten + 1) unecht++;
+  }
+  gleich(unecht, 0, "jeder Schritt ist ein Nachbarschritt und kostet genau einen Punkt");
 }
 {
   /* Zwei Gänge um einen Block, exakt gleich lang. */
@@ -447,7 +501,7 @@ abschnitt("Immer derselbe Weg");
   for (let y = 1; y <= 5; y++) { oeffne(1, y); oeffne(7, y); }
 
   const w = wegSuche(k, { x: 1, y: 3 }, { x: 7, y: 3 });
-  gleich(w.kosten, 10, "beide Gänge sind zehn Punkte lang");
+  gleich(w.kosten, 9, "beide Gänge sind neun Punkte lang");
   behaupte(w.pfad.some((f) => f.y === 1), "genommen wird der nördliche");
   behaupte(!w.pfad.some((f) => f.y === 5), "der südliche nicht");
   behaupte(wegIstEcht(k, w.pfad), "und der Weg ist echt");
@@ -471,7 +525,7 @@ abschnitt("Immer derselbe Weg");
 }
 
 {
-  /* Die Nachbarn werden in der Reihenfolge aus `RICHTUNGEN` besucht.
+  /* Die Nachbarn werden in der Reihenfolge aus `richtungen` besucht.
      Dass das Ergebnis daran **nicht** hängt, ist kein Zufall, sondern
      die Folge der Vorfahrt: Welcher Vorgänger gewinnt, entscheidet die
      Warteschlange (Kosten, dann Feldindex) und nicht, wer zuerst
@@ -481,12 +535,18 @@ abschnitt("Immer derselbe Weg");
      vier Rechner hängen wieder an einer Schleifenreihenfolge. */
   const karte = zufallsKarte(37);
   const vorwaerts = probeText(karte);
-  RICHTUNGEN.reverse();
+  /* Seit dem Sechseck gibt es zwei Tabellen — eine je Zeilenparität.
+     Beide müssen gedreht werden, sonst prüfte diese Stelle nur noch
+     die halbe Karte. */
+  RICHTUNGEN_GERADE.reverse();
+  RICHTUNGEN_UNGERADE.reverse();
   const rueckwaerts = probeText(karte);
-  RICHTUNGEN.reverse();
+  RICHTUNGEN_GERADE.reverse();
+  RICHTUNGEN_UNGERADE.reverse();
   gleich(ersteAbweichung(rueckwaerts, vorwaerts), -1,
     "die Besuchsreihenfolge der Nachbarn entscheidet nichts (Stelle der ersten Abweichung)");
-  gleich(RICHTUNGEN[0].name, "nord", "und die Richtungsliste liegt danach wieder richtig herum");
+  gleich(RICHTUNGEN_GERADE[0].name, "ost", "und die gerade Tabelle liegt wieder richtig herum");
+  gleich(RICHTUNGEN_UNGERADE[0].name, "ost", "die ungerade auch");
   gleich(ersteAbweichung(probeText(karte), vorwaerts), -1, "die Antwort ist danach unverändert");
 }
 

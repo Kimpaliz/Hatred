@@ -94,7 +94,7 @@
    `spiel/katalog/*.mjs` (Waffen, Fähigkeiten, Verhalten),
    `werkzeuge/pruefe-ki.mjs`. */
 
-import { schussweite } from "./gitter.mjs";
+import { abstand } from "./gitter.mjs";
 import {
   STURZ_AB_STUFEN, sturzTiefe, sturzSchaden, hoehenVorteil, hatDeckung,
   betretenSchaden, stossZiel
@@ -266,7 +266,7 @@ function erkanntVon(lage, beobachter, ziel) {
   const karte = lage.karte;
   if (!ziel || ziel.lebt === false) return false;
   if (!karte.drin(beobachter.x, beobachter.y) || !karte.drin(ziel.x, ziel.y)) return false;
-  const weite = schussweite(beobachter.x, beobachter.y, ziel.x, ziel.y);
+  const weite = abstand(beobachter.x, beobachter.y, ziel.x, ziel.y);
   if (weite > sichtVon(beobachter)) return false;
   if (!sichtlinie(karte, beobachter.x, beobachter.y, ziel.x, ziel.y)) return false;
   if (hatWirkung(ziel, "verbergen") && weite > SICHT_IM_DUNKELN) return false;
@@ -415,7 +415,7 @@ function feldWert(lage, wesen, x, y, ziele) {
 
 function wertGegenZiel(lage, wesen, x, y, ziel, g) {
   const karte = lage.karte;
-  let wert = -g.naehe * Math.abs(schussweite(x, y, ziel.x, ziel.y) - wunschAbstand(wesen));
+  let wert = -g.naehe * Math.abs(abstand(x, y, ziel.x, ziel.y) - wunschAbstand(wesen));
   wert += g.hoehe * hoehenVorteil(karte, x, y, ziel.x, ziel.y);
   if (hatDeckung(karte, ziel.x, ziel.y, x, y)) wert += g.deckung;
   if (kannAngreifenVon(lage, wesen, x, y, ziel)) wert += g.angriff;
@@ -424,7 +424,7 @@ function wertGegenZiel(lage, wesen, x, y, ziel, g) {
      ist mehr wert als jedes andere. Genau dieser Zug macht die Höhen
      zum Spiel. */
   const schub = schubGewinn(lage, x, y, ziel, true);
-  if (schub > 0 && schussweite(x, y, ziel.x, ziel.y) === 1) {
+  if (schub > 0 &&(x, y, ziel.x, ziel.y) === 1) {
     wert += WERT_STOSS_ZUSATZ + WERT_JE_SCHADEN * schub;
   }
   return wert;
@@ -453,7 +453,7 @@ function besteSofortAktion(lage, wesen, ziele) {
   };
 
   for (const ziel of ziele) {
-    if (schussweite(wesen.x, wesen.y, ziel.x, ziel.y) !== 1) continue;
+    if (abstand(wesen.x, wesen.y, ziel.x, ziel.y) !== 1) continue;
     const schub = schubGewinn(lage, wesen.x, wesen.y, ziel, true);
     if (schub <= 0) continue;
     pruefe({ typ: AKTION.stoss, wer: wesen.id, ziel: ziel.id },

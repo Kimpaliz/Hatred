@@ -54,7 +54,7 @@
 
 import { readFileSync } from "node:fs";
 import { abschnitt, behaupte, gleich, nahe, tiefGleich, wirft, ende } from "./helfer.mjs";
-import { macheKarte, alleFelder, schussweite, HINDERNIS, RAMPE } from "../spiel/gitter.mjs";
+import { macheKarte, alleFelder, abstand, HINDERNIS, RAMPE } from "../spiel/gitter.mjs";
 import { blocktSichtlinie } from "../spiel/hoehen.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import {
@@ -83,14 +83,32 @@ abschnitt("Linie");
   tiefGleich(waagerecht[4], { x: 6, y: 5 }, "das Ziel ist dabei");
   behaupte(waagerecht.every((f) => f.y === 5), "eine waagerechte Linie bleibt waagerecht");
 
+  /* Seit dem Sechseck (Vorgang #7) misst nur noch ein Maßband. Von
+     (0,0) auf gerader Zeile nach (2,1) sind es drei Schritte, also vier
+     Felder mit beiden Enden. Auf dem Quadrat wären es zwei gewesen —
+     genau daran erkennt man, dass Sehen und Gehen jetzt dasselbe
+     Raster meinen. */
   const schraeg = linienFelder(0, 0, 2, 1);
-  gleich(schraeg.length, 3, "Länge ist Schachbrett-Entfernung plus eins");
+  gleich(schraeg.length, abstand(0, 0, 2, 1) + 1, "Länge ist die Entfernung plus eins");
+  gleich(schraeg.length, 4, "und das sind hier vier Felder");
+
+  /* Jeder Schritt der Linie ist ein echter Nachbarschritt. Ohne diese
+     Behauptung könnte die Linie über Felder springen, die niemand
+     betreten kann — und man sähe durch eine Wand, ohne sie zu fragen. */
+  for (const [ax, ay, zx, zy] of [[0, 0, 9, 4], [3, 8, 7, 1], [2, 3, 2, 9], [5, 5, 0, 5]]) {
+    const linie = linienFelder(ax, ay, zx, zy);
+    let keinNachbar = 0;
+    for (let i = 1; i < linie.length; i++) {
+      if (abstand(linie[i - 1].x, linie[i - 1].y, linie[i].x, linie[i].y) !== 1) keinNachbar++;
+    }
+    gleich(keinNachbar, 0, `jeder Schritt in ${ax},${ay} → ${zx},${zy} ist ein Nachbarschritt`);
+  }
 
   /* Kein Feld darf übersprungen werden — sonst blickt man durch eine
      Wand hindurch, ohne sie je gefragt zu haben. */
   for (const [ax, ay, zx, zy] of [[0, 0, 9, 4], [9, 4, 0, 0], [3, 8, 7, 1], [5, 5, 5, 0]]) {
     const linie = linienFelder(ax, ay, zx, zy);
-    gleich(linie.length, schussweite(ax, ay, zx, zy) + 1, `Länge ${ax},${ay} → ${zx},${zy}`);
+    gleich(linie.length, abstand(ax, ay, zx, zy) + 1, `Länge ${ax},${ay} → ${zx},${zy}`);
     let luecken = 0;
     for (let i = 1; i < linie.length; i++) {
       const dx = Math.abs(linie[i].x - linie[i - 1].x);
@@ -229,7 +247,7 @@ abschnitt("Symmetrie");
   let naivEinseitig = 0;
   for (const a of alleFelder(k)) {
     for (const b of alleFelder(k)) {
-      if (schussweite(a.x, a.y, b.x, b.y) > REICHWEITE) continue;
+      if (abstand(a.x, a.y, b.x, b.y) > REICHWEITE) continue;
       const aSiehtB = felder.get(a.i).has(b.i);
       const bSiehtA = felder.get(b.i).has(a.i);
       if (aSiehtB !== bSiehtA) einseitig++;
@@ -307,7 +325,7 @@ abschnitt("Sichtfeld");
   for (const a of alleFelder(p)) {
     const feld = sichtfeld(p, a.x, a.y, 5);
     for (const b of alleFelder(p)) {
-      if (schussweite(a.x, a.y, b.x, b.y) > 5) continue;
+      if (abstand(a.x, a.y, b.x, b.y) > 5) continue;
       if (feld.has(b.i) !== sichtlinie(p, a.x, a.y, b.x, b.y)) uneinig++;
     }
   }

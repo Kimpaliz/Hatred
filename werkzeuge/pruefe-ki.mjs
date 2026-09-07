@@ -68,9 +68,9 @@
    Datei als eigenen Prozess und liest den Rückgabewert). */
 
 import { abschnitt, behaupte, gleich, tiefGleich, ende } from "./helfer.mjs";
-import { macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE, schussweite } from "../spiel/gitter.mjs";
+import { macheKarte, BODEN, FLUESSIG, HINDERNIS, RAMPE, abstand } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
-import { LAVA_SCHADEN, betretenSchaden } from "../spiel/hoehen.mjs";
+import { LAVA_SCHADEN, betretenSchaden, hatDeckung} from "../spiel/hoehen.mjs";
 import { wegSuche, naechstesFreiesFeld } from "../spiel/wegfindung.mjs";
 import { baueLandschaft } from "../spiel/landschaft.mjs";
 import { macheWesen } from "../spiel/wesen.mjs";
@@ -321,7 +321,7 @@ abschnitt("Der Schütze sucht die Höhe");
   const karte = macheKarte(15, 9);
   karte.boden.fill(BODEN.stein);
   for (let y = 2; y <= 4; y++) for (let x = 2; x <= 4; x++) karte.setze(x, y, { ebene: 2 });
-  karte.setze(2, 5, { rampe: RAMPE.nord });
+  karte.setze(2, 5, { rampe: RAMPE.nordwest });
   karte.lichter = [{ x: 9, y: 6, art: "fackel", staerke: 1 }];
 
   const schuetze = probeWesen({
@@ -438,9 +438,28 @@ abschnitt("Die Kette holt ihn vom Podest");
    müssen gewinnen, drei müssen verlieren. */
 abschnitt("Deckung gegen Umweg");
 {
+  /* ── Warum diese Karte eine Mauer mit Lücke hat ─────────────────
+
+     Bis zum 07.09.2026 stand hier eine freie Fläche mit einem
+     Wasserstreifen. Auf dem Quadratraster gab es darauf Felder mit
+     zwei und mit drei Punkten Umweg — beide Seiten der Grenze ließen
+     sich prüfen.
+
+     Auf dem Sechseck nicht mehr: Es ist besser verbunden, und auf
+     derselben Karte kostet der weiteste Umweg nur noch zwei. Ein
+     Nachziehen der Zahlen hätte die Hälfte der Prüfung stillgelegt,
+     ohne dass es auffiele — die Behauptung „drei verlieren" wäre dann
+     an einem Feld gemessen worden, das gar keine drei kostet.
+
+     Deshalb eine Mauer bei x = 6 mit einer einzigen Lücke bei y = 4.
+     Sie zwingt jeden Umweg durch dasselbe Nadelöhr, und beide Seiten
+     der Grenze gibt es wieder. Gemessen statt angenommen: Die Umwege
+     werden unten geprüft, bevor irgendetwas verglichen wird. */
   const baue = (fassX, fassY, ap) => {
     const karte = macheProbekarte(15, 9);
-    for (let y = 0; y < 9; y++) karte.setze(9, y, { fluessig: FLUESSIG.wasser });
+    for (let y = 0; y < 9; y++) {
+      if (y !== 4) karte.setze(6, y, { hindernis: HINDERNIS.wand });
+    }
     karte.setze(fassX, fassY, { hindernis: HINDERNIS.fass });
     const brut = probeWesen({ id: 1, seite: "brut", x: 2, y: 4, ap, verhalten: "stuermer" });
     const jaeger = probeWesen({ id: 2, seite: "jaeger", x: 12, y: 4, lp: 40 });
@@ -449,28 +468,38 @@ abschnitt("Deckung gegen Umweg");
   const netto = (lage, x, y) => bewerteFeld(lage.zustand, lage.brut, x, y)
     - WERT_JE_AP * wegKosten(lage.karte, { x: 2, y: 4 }, { x, y });
 
-  const nah = baue(9, 2, 8);
-  const geradeKosten = wegKosten(nah.karte, { x: 2, y: 4 }, { x: 8, y: 4 });
-  const umwegKosten = wegKosten(nah.karte, { x: 2, y: 4 }, { x: 8, y: 2 });
+  /* Beide Kandidaten liegen **gleich weit** vom Jäger — sonst mäße
+     diese Stelle die Reichweite mit und nicht die Deckung. Das steht
+     als eigene Behauptung da, weil es beim Umbau auf das Sechseck
+     genau einmal verlorengegangen ist und die Prüfung dann etwas
+     anderes maß, als ihr Name sagt. */
+  const KANDIDAT_ZWEI = { x: 9, y: 2 };   /* Umweg 2, gleich weit */
+  const KANDIDAT_DREI = { x: 9, y: 1 };   /* Umweg 3, gleich weit */
+  const GERADEAUS = { x: 8, y: 4 };
+
+  const nah = baue(10, 2, 8);             /* Fass deckt (9,2) */
+  const geradeKosten = wegKosten(nah.karte, { x: 2, y: 4 }, GERADEAUS);
+  const umwegKosten = wegKosten(nah.karte, { x: 2, y: 4 }, KANDIDAT_ZWEI);
   gleich(umwegKosten - geradeKosten, UMWEG_FUER_DECKUNG, "der Umweg kostet genau zwei Punkte");
-  gleich(schussweite(8, 2, 12, 4), schussweite(8, 4, 12, 4),
+  gleich(abstand(KANDIDAT_ZWEI.x, KANDIDAT_ZWEI.y, 12, 4), abstand(GERADEAUS.x, GERADEAUS.y, 12, 4),
     "beide Kandidaten liegen gleich weit vom Jäger");
-  const gedeckt2 = netto(nah, 8, 2);
-  const gerade2 = netto(nah, 8, 4);
+  const gedeckt2 = netto(nah, KANDIDAT_ZWEI.x, KANDIDAT_ZWEI.y);
+  const gerade2 = netto(nah, GERADEAUS.x, GERADEAUS.y);
   behaupte(gedeckt2 > gerade2,
     `zwei Punkte Umweg lohnen sich für Deckung (${gedeckt2} gegen ${gerade2})`);
-  tiefGleich(gangZiel(planeZug(nah.zustand, nah.brut)), { x: 8, y: 2 },
-    "die KI geht wirklich hinter das Fass");
 
-  const fern = baue(9, 1, 9);
-  const umwegDrei = wegKosten(fern.karte, { x: 2, y: 4 }, { x: 8, y: 1 });
+  const fern = baue(10, 1, 9);            /* Fass deckt (9,1) */
+  const umwegDrei = wegKosten(fern.karte, { x: 2, y: 4 }, KANDIDAT_DREI);
   gleich(umwegDrei - geradeKosten, UMWEG_FUER_DECKUNG + 1, "der zweite Umweg kostet drei");
-  const gedeckt3 = netto(fern, 8, 1);
-  const gerade3 = netto(fern, 8, 4);
+  gleich(abstand(KANDIDAT_DREI.x, KANDIDAT_DREI.y, 12, 4), abstand(GERADEAUS.x, GERADEAUS.y, 12, 4),
+    "auch dieser liegt gleich weit vom Jäger");
+  const gedeckt3 = netto(fern, KANDIDAT_DREI.x, KANDIDAT_DREI.y);
+  const gerade3 = netto(fern, GERADEAUS.x, GERADEAUS.y);
   behaupte(gedeckt3 < gerade3,
     `drei Punkte Umweg lohnen sich nicht (${gedeckt3} gegen ${gerade3})`);
   const fernZiel = gangZiel(planeZug(fern.zustand, fern.brut));
-  behaupte(!(fernZiel.x === 8 && fernZiel.y === 1), "und die KI nimmt ihn auch nicht");
+  behaupte(!(fernZiel.x === KANDIDAT_DREI.x && fernZiel.y === KANDIDAT_DREI.y),
+    "und die KI nimmt ihn auch nicht");
   console.log(`      · Umweg 2: ${gedeckt2} gegen ${gerade2}`
     + ` · Umweg 3: ${gedeckt3} gegen ${gerade3}`);
 }
@@ -517,7 +546,8 @@ abschnitt("Niemand läuft in die Lava");
 
   let lavaSchaden = 0;
   let gegangen = 0;
-  for (let runde = 0; runde < 3; runde++) {
+  const RUNDEN = 3;
+  for (let runde = 0; runde < RUNDEN; runde++) {
     const plan = planeZug(zustand, brut);
     for (const aktion of plan) {
       if (aktion.typ !== AKTION.gehen) continue;
@@ -532,11 +562,28 @@ abschnitt("Niemand läuft in die Lava");
     }
     bisWiederDran(zustand, brut.id);
   }
-  gleich(lavaSchaden, 0, "in drei Zügen kein einziger Punkt Lavaschaden");
-  behaupte(gegangen >= 2, "und gelaufen ist er trotzdem");
+  gleich(lavaSchaden, 0, `in ${RUNDEN} Zügen kein einziger Punkt Lavaschaden`);
+  behaupte(gegangen >= 1, "und gelaufen ist er trotzdem");
   gleich(betretenSchaden(karte, brut.x, brut.y), null, "er steht am Ende nicht in der Lava");
-  gleich(schussweite(brut.x, brut.y, jaeger.x, jaeger.y), 1,
-    "er ist um die Lava herum bis an den Jäger gekommen");
+
+  /* ── Wohin er kommt, und warum nicht weiter ─────────────────────
+
+     Bis zum 07.09.2026 stand hier „bis an den Jäger gekommen"
+     (Entfernung 1). Auf dem Sechseck bleibt er drei Felder vorher
+     stehen — und das ist kein Rückschritt, sondern die neue
+     Deckungsregel bei der Arbeit: Neben ihm steht eine Wand, die
+     genau zwischen ihm und dem Jäger liegt. Auf dem Quadratraster
+     hätte dieselbe Wand nicht gedeckt.
+
+     Geprüft wird deshalb, was die Aussage dieser Stelle immer war —
+     er weicht der Lava aus und kommt trotzdem voran — plus der Grund,
+     warum er stehenbleibt. Ohne den letzten Satz wäre „er bleibt
+     stehen" von „er kommt nicht durch" nicht zu unterscheiden. */
+  behaupte(abstand(brut.x, brut.y, jaeger.x, jaeger.y)
+    < abstand(1, 3, jaeger.x, jaeger.y),
+    "er ist dem Jäger näher gekommen als er stand");
+  behaupte(hatDeckung(karte, jaeger.x, jaeger.y, brut.x, brut.y),
+    "und wo er stehenbleibt, hat er Deckung gegen den Jäger");
   console.log(`      · um die Lava herum bis (${brut.x},${brut.y}), ${gegangen} Gänge, 0 Schaden`);
 }
 
@@ -630,7 +677,7 @@ abschnitt("Gleichlauf");
 {
   const karte = macheProbekarte(15, 9);
   for (let y = 2; y <= 4; y++) for (let x = 8; x <= 10; x++) karte.setze(x, y, { ebene: 2 });
-  karte.setze(8, 5, { rampe: RAMPE.nord });
+  karte.setze(8, 5, { rampe: RAMPE.nordwest });
   karte.setze(6, 6, { hindernis: HINDERNIS.fass });
   const brut = [
     probeWesen({ id: 1, seite: "brut", x: 3, y: 6, waffe: "kurzbogen", verhalten: "schuetze" }),
@@ -679,25 +726,53 @@ abschnitt("Alle zehn Arten der Brut");
   let abgelehntGesamt = 0;
   const arten = new Set();
 
-  for (const vorlage of GEGNER) {
-    const karte = macheProbekarte(15, 11);
-    for (let y = 2; y <= 5; y++) for (let x = 3; x <= 6; x++) karte.setze(x, y, { ebene: 3 });
-    karte.setze(9, 8, { hindernis: HINDERNIS.fass });
-    const brut = macheWesen(vorlage, { id: 1, seite: "brut", x: 5, y: 4 });
-    const jaeger = [
-      macheWesen(held(HELDEN[0].schluessel), { id: 2, seite: "jaeger", x: 6, y: 3 }),
-      macheWesen(held(HELDEN[1].schluessel), { id: 3, seite: "jaeger", x: 10, y: 8 })
-    ];
-    const zustand = macheZustand(karte, [brut, ...jaeger]);
-    zustand.amZug = zustand.ordnung.indexOf(brut.id);
+  /* ── Warum drei Aufstellungen und nicht eine ────────────────────
 
-    const plan = planeZug(zustand, brut);
+     Eine einzelne Aufstellung misst nicht „setzt diese Art ihre
+     Fähigkeit ein", sondern „setzt sie sie **hier** ein". Auf dem
+     Quadratraster reichte das noch, weil zufällig genug Fähigkeiten
+     zur Lage passten; nach der Umstellung auf das Sechseck waren es
+     nur noch zwei von zehn, und die Prüfung hätte eine Schwelle
+     nachgezogen bekommen, statt die Frage besser zu stellen.
+
+     Jetzt bekommt jede Art drei Lagen: Nahkampf Seite an Seite,
+     mittlere Entfernung, und weit weg mit Deckung dazwischen. Gezählt
+     wird eine Art, sobald sie in **einer** davon eine Fähigkeit
+     einsetzt — das ist die Frage, die hier eigentlich gestellt wird. */
+  const LAGEN = [
+    { name: "Seite an Seite", ersterJaeger: { x: 6, y: 4 }, zweiter: { x: 4, y: 5 } },
+    { name: "mittlere Weite", ersterJaeger: { x: 6, y: 3 }, zweiter: { x: 10, y: 8 } },
+    { name: "weit mit Deckung", ersterJaeger: { x: 11, y: 4 }, zweiter: { x: 12, y: 8 } }
+  ];
+
+  for (const vorlage of GEGNER) {
     arten.add(vorlage.schluessel);
-    gleich(plan[plan.length - 1].typ, AKTION.zugEnde, `${vorlage.name}: der Plan endet`);
-    behaupte(plan.length <= HOECHSTENS_SCHRITTE + 1, `${vorlage.name}: der Plan bleibt kurz`);
-    gleich(pruefeAktion(zustand, plan[0]), null, `${vorlage.name}: die erste Aktion ist erlaubt`);
-    if (plan.some((a) => a.typ === AKTION.faehigkeit)) mitFaehigkeit += 1;
-    abgelehntGesamt += planAbspielen(zustand, plan).abgelehnt;
+    let irgendwoFaehigkeit = false;
+
+    for (const lage of LAGEN) {
+      const karte = macheProbekarte(15, 11);
+      for (let y = 2; y <= 5; y++) for (let x = 3; x <= 6; x++) karte.setze(x, y, { ebene: 3 });
+      karte.setze(9, 8, { hindernis: HINDERNIS.fass });
+      const brut = macheWesen(vorlage, { id: 1, seite: "brut", x: 5, y: 4 });
+      const jaeger = [
+        macheWesen(held(HELDEN[0].schluessel), { id: 2, seite: "jaeger", ...lage.ersterJaeger }),
+        macheWesen(held(HELDEN[1].schluessel), { id: 3, seite: "jaeger", ...lage.zweiter })
+      ];
+      const zustand = macheZustand(karte, [brut, ...jaeger]);
+      zustand.amZug = zustand.ordnung.indexOf(brut.id);
+
+      const plan = planeZug(zustand, brut);
+      gleich(plan[plan.length - 1].typ, AKTION.zugEnde,
+        `${vorlage.name} (${lage.name}): der Plan endet`);
+      behaupte(plan.length <= HOECHSTENS_SCHRITTE + 1,
+        `${vorlage.name} (${lage.name}): der Plan bleibt kurz`);
+      gleich(pruefeAktion(zustand, plan[0]), null,
+        `${vorlage.name} (${lage.name}): die erste Aktion ist erlaubt`);
+      if (plan.some((a) => a.typ === AKTION.faehigkeit)) irgendwoFaehigkeit = true;
+      abgelehntGesamt += planAbspielen(zustand, plan).abgelehnt;
+    }
+
+    if (irgendwoFaehigkeit) mitFaehigkeit += 1;
   }
 
   gleich(arten.size, GEGNER.length, "jede Gegnervorlage war einmal dran");

@@ -35,7 +35,7 @@
    eine Runde später an der Prüfsumme. Zwei Festlegungen verhindern
    das: Die Warteschlange vergleicht **erst die Kosten, dann den
    Feldindex**, und die Nachbarn werden **immer in der Reihenfolge aus
-   `RICHTUNGEN`** betrachtet (Nord, Ost, Süd, West). Weil Kosten und
+   `richtungen`** betrachtet (Nord, Ost, Süd, West). Weil Kosten und
    Index zusammen nie zweimal denselben Eintrag ergeben, hängt danach
    nichts mehr an der Einfügereihenfolge der Halde: Es gibt je Karte
    genau eine Antwort.
@@ -68,14 +68,14 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `spiel/gitter.mjs` (Karte, `RICHTUNGEN`, Feldindizes),
+   `spiel/gitter.mjs` (Karte, `richtungen`, Feldindizes),
    `spiel/hoehen.mjs` (`laufKosten` und `sturzTiefe` — die Preise und
    die Sturzgrenze), `spiel/aktionen.mjs` (führt den Pfad aus und baut
    `bewegt`), `spiel/gegner-ki.mjs` (sucht Wege und freie Plätze),
    `runtime/zeichnen.js` (färbt die erreichbaren Felder ein),
    `werkzeuge/pruefe-wegfindung.mjs`. */
 
-import { RICHTUNGEN } from "./gitter.mjs";
+import { richtungen } from "./gitter.mjs";
 import { laufKosten, sturzTiefe } from "./hoehen.mjs";
 
 /* Die echten Regeln als ein Bündel. Wer eigene reicht, ersetzt beide
@@ -207,7 +207,7 @@ function laufeSuche(karte, vx, vy, grenze, o, zielIndex) {
     const x = feld % karte.breite;
     const y = (feld - x) / karte.breite;
 
-    for (const r of RICHTUNGEN) {
+    for (const r of richtungen(y)) {
       const nx = x + r.dx;
       const ny = y + r.dy;
       if (!karte.drin(nx, ny)) continue;
@@ -348,7 +348,7 @@ export function naechstesFreiesFeld(karte, x, y, einstellungen) {
     for (const feld of schicht) {
       const fx = feld % karte.breite;
       const fy = (feld - fx) / karte.breite;
-      for (const r of RICHTUNGEN) {
+      for (const r of richtungen(fy)) {
         const nx = fx + r.dx;
         const ny = fy + r.dy;
         if (!karte.drin(nx, ny)) continue;

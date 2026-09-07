@@ -38,14 +38,14 @@
 
    `runtime/sprite-daten.js` (die Raster), `runtime/sprites.js` (jede
    gemessene Funktion), `runtime/palette.js` (`FARBEN`, `helligkeit`,
-   `bodenTon`), `spiel/gitter.mjs` (`BODEN`, `RICHTUNGEN`),
+   `bodenTon`), `spiel/gitter.mjs` (`BODEN`, `richtungen`),
    `spiel/katalog/gegner.mjs` und `spiel/katalog/helden.mjs` (die
    Schlüssel müssen sich decken), `werkzeuge/werkstatt-auftrag.mjs`
    (die Tabelle `MERKMAL` — sie steht dort und nicht hier, damit es sie
    nur einmal gibt) und `werkzeuge/helfer.mjs`. */
 
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
-import { BODEN, RICHTUNGEN } from "../spiel/gitter.mjs";
+import { BODEN, richtungen } from "../spiel/gitter.mjs";
 import { GEGNER } from "../spiel/katalog/gegner.mjs";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
 import { FARBEN, helligkeit, bodenTon } from "../runtime/palette.js";
@@ -120,10 +120,36 @@ gleich(SPIELER_FARBEN.length, 4, "vier Spielerfarben");
 for (const eintrag of alle) {
   behaupte(Array.isArray(MERKMAL[eintrag.voll]), `${eintrag.voll}: kein Eintrag in MERKMAL`);
 }
+/* Wie eine Figur **blickt**, ist etwas anderes als wohin sie **geht**.
+   Seit dem 07.09.2026 geht sie in sechs Richtungen (Sechseckraster,
+   Vorgang #7), gezeichnet wird sie aber weiter in vier Ansichten: von
+   vorn, von hinten und zweimal von der Seite. Mehr Ansichten hieße
+   mehr Bilder, und das ist eine Bildentscheidung, keine Regelfrage.
+
+   Bis zum 07.09.2026 hing diese Zählung an der Richtungstabelle des
+   Kerns. Das war eine Kopplung, die es nie hätte geben dürfen: Der
+   Kern zählt Nachbarn, diese Datei zählt Zeichnungen. Geprüft wird
+   deshalb jetzt, was wirklich zusammengehört — `richtungAus` bildet
+   jeden Schritt auf eine der vier Ansichten ab, **auch die schrägen
+   des Sechsecks**. */
 tiefGleich([RICHTUNG_NORD, RICHTUNG_OST, RICHTUNG_SUED, RICHTUNG_WEST], [0, 1, 2, 3],
-  "die vier Richtungen zählen wie RICHTUNGEN in spiel/gitter.mjs");
-tiefGleich(RICHTUNGEN.map((r) => r.name), ["nord", "ost", "sued", "west"],
-  "und der Kern zählt sie in derselben Reihenfolge");
+  "vier Blickrichtungen, in dieser Reihenfolge gezählt");
+for (const y of [4, 5]) {
+  for (const r of richtungen(y)) {
+    const blick = richtungAus(r.dx, r.dy);
+    behaupte([0, 1, 2, 3].includes(blick),
+      `Schritt nach ${r.name} (Zeile ${y % 2 === 0 ? "gerade" : "ungerade"}) hat eine Ansicht`);
+  }
+}
+gleich(richtungAus(1, 0), RICHTUNG_OST, "nach Osten blickt sie nach Osten");
+gleich(richtungAus(-1, 0), RICHTUNG_WEST, "nach Westen nach Westen");
+gleich(richtungAus(0, 1), RICHTUNG_SUED, "nach Südwesten auf gerader Zeile: nach Süden");
+gleich(richtungAus(0, -1), RICHTUNG_NORD, "nach Nordosten auf gerader Zeile: nach Norden");
+/* Bei gleichem Betrag gewinnt die Senkrechte — so steht es in
+   `richtungAus`, und so bleibt es: Ein Schritt schräg nach unten sieht
+   von oben mehr nach „weg vom Betrachter" aus als nach „zur Seite". */
+gleich(richtungAus(1, 1), RICHTUNG_SUED, "schräg nach Südosten blickt sie nach Süden");
+gleich(richtungAus(1, -1), RICHTUNG_NORD, "schräg nach Nordosten nach Norden");
 
 /* ── 1 · Gleiche Breiten, ungerade Kante ──────────────────────────── */
 abschnitt("1 · Maße");

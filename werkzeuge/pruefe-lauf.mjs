@@ -47,7 +47,7 @@
    Prozess und liest den Rückgabewert). */
 
 import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.mjs";
-import { macheKarte, BODEN, HINDERNIS, RICHTUNGEN, abstand } from "../spiel/gitter.mjs";
+import { macheKarte, BODEN, HINDERNIS, richtungen, abstand } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { AKTION, pruefeAktion, wendeAn } from "../spiel/aktionen.mjs";
 import { amZugWesen, starteRunde, SEITE_JAEGER, SEITE_BRUT } from "../spiel/zug.mjs";
@@ -749,7 +749,7 @@ let langerText = "";
   const opfer = zustand.wesen.find((w) => w.seite === SEITE_BRUT);
   behaupte(!!opfer, "es gibt eine Brut als Ziel");
 
-  const platz = RICHTUNGEN
+  const platz = richtungen(hexer.y)
     .map((r) => ({ x: hexer.x + r.dx, y: hexer.y + r.dy }))
     .find((f) => zustand.karte.drin(f.x, f.y) && !zustand.karte.blocktBewegung(f.x, f.y));
   behaupte(!!platz, "neben dem Bluthexer ist ein Feld frei");

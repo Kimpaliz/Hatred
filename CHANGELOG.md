@@ -3,6 +3,90 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 07.09.2026 — Der Kern läuft auf Sechsecken (Arbeitsstand, Kette rot)
+
+**Auftrag, wörtlich:** *„okay weiter"* — nach *„ja hexagon. raster form."*
+
+> ⚠️ **Dieser Stand ist nicht fertig.** 33 von 40 Prüfungen sind grün,
+> **7 sind rot**. Er steht hier als Zwischenstand auf dem Zweig
+> `kern/sechseck`, damit die Arbeit nicht verlorengeht und der nächste
+> Schritt auf etwas Nachlesbarem aufsetzt. **Nicht nach `main`.**
+
+## Was jetzt auf Sechsecken rechnet
+
+Die Umstellung selbst ist durch. `RICHTUNGEN` mit vier Einträgen gibt es
+nicht mehr, `schussweite` auch nicht.
+
+| Stelle | vorher | jetzt |
+| --- | --- | --- |
+| `nachbarn()` | vier feste Richtungen | sechs, je nach Zeilenparität |
+| `abstand()` | Manhattan | Sechseck-Entfernung |
+| `schussweite()` | Schachbrett | **entfallen** — `abstand` ist beides |
+| `RAMPE` | nord/ost/sued/west | ost/suedost/suedwest/west/nordwest/nordost |
+| Sichtlinie | Bresenham (Quadrat) | Würfelkoordinaten (Sechseck) |
+| `hatDeckung` | Sonderregel „über Eck" | jeder Nachbar, der näher am Angreifer liegt |
+
+**Zwanzig Schleifen** in `spiel/`, `runtime/` und den Prüfungen haben ihre
+Zeile bekommen — auf dem Sechseck hängt die Richtungstabelle daran.
+
+## Drei Funde, die den Umbau wert waren
+
+**1. Die Sichtlinie war die zweite Geometrie im Spiel.** `spiel/sicht.mjs`
+lief auf Bresenham, also auf Quadraten. Wäre das so geblieben, ginge man
+über Sechsecke und sähe über Quadrate: Felder, die man sieht und nicht
+erreicht, und umgekehrt. Sie läuft jetzt in Würfelkoordinaten — und
+**ohne eine einzige Kommazahl**, weil zwei Browser sonst auseinanderlaufen.
+Gemessen: 0 einseitige Sichtpaare über 7544 sichtbare.
+
+**2. Die Deckungsregel zeigte ins Leere.** `hatDeckung` rechnete mit
+`Math.sign(dx)` auf Versatzzeilen — sie fand Deckung hinter Dingen, die
+nicht im Weg standen, und übersah welche, die es waren. Jetzt: *jeder
+Nachbar des Ziels, der näher am Angreifer liegt*. Die Sonderregel „steht
+er exakt über Eck, zählen beide Felder" ist **ersatzlos entfallen** —
+sie war der Preis des Quadratrasters.
+
+Das hat die Prüfung sofort belohnt: Sie deckt jetzt alle sechs
+Richtungen systematisch ab statt vier per Hand (127 → 149 Behauptungen).
+
+**3. Die Gegenrichtung nahm die falsche Zeile.** Mein erster Anlauf
+schrieb `richtungen(y + 1)` — „die andere Parität". Für die vier schrägen
+Richtungen stimmt das, für **Ost und West nicht**: Dort bleibt man in
+derselben Zeile. Gemessen von der Landschaftsprüfung: Von 35 möglichen
+Aufstiegen bekamen nur 18 ihre Rampe.
+
+## Was der Umbau von selbst besser gemacht hat
+
+- **Ein Maßband statt zwei.** `abstand` ist Laufweg und Schussweite.
+- **`oeffneDiagonalen` entfällt** (19 Zeilen) — Sechsecke berühren sich
+  nie nur über Eck.
+- **Ein Gegner nimmt jetzt Deckung**, wo er vorher weitergelaufen wäre.
+  Die KI-Prüfung hat das gefunden: Er bleibt drei Felder vor dem Jäger
+  hinter einer Wand stehen. Auf dem Quadrat hätte dieselbe Wand nicht
+  gedeckt. Das ist kein Fehler, das ist die neue Regel bei der Arbeit.
+
+## Was noch rot ist — und warum
+
+| Prüfung | woran es liegt |
+| --- | --- |
+| **zeichnen** | Rampen werden noch als Nord/Süd-Striche gemalt. Gehört zum System **Bild** und damit auf den Zweig `bild/sechseck` (Regel 2). |
+| **tippen** | Vier Pfeiltasten für sechs Richtungen. Gehört zum System **Oberfläche**, Zweig `flaeche/sechseck`. |
+| **app** | Folgefehler aus beiden. |
+| **eingabe** | Sturzwarnung: 19 statt 17 Felder. Die Zahl ist auf dem Sechseck eine andere — nachzurechnen, nicht nachzuziehen. |
+| **landschaft** | Zwei Entfernungen (9 statt 10, 16 statt 18) und eine Rampenregel. |
+| **ki** | Der Schütze steigt nicht mehr aufs Podest, seit die Deckungsregel anders rechnet. Braucht eine Aufstellung, die die Frage wieder stellt. |
+| **arbeitsweise** | Nur die Buchhaltung — grün, sobald dieser Eintrag steht. |
+
+*Warum das kein Versehen ist:* Zwei der sieben gehören ausdrücklich
+**nicht** auf diesen Zweig. Ein Sechseck im Kern und ein Sechseck im Bild
+sind zwei Systeme, und Regel 2 will sie getrennt. Dass die Prüfkette
+trotzdem alles auf einmal laufen lässt, macht einen Zwischenstand
+zwangsläufig rot — das ist die Bauart der Kette, nicht ein Fehler dieser
+Arbeit.
+
+**Stand:** 33 von 40 grün, **11.348 Behauptungen** in den grünen.
+
+---
+
 ## 07.09.2026 — Das Sechseckraster rechnet, ohne dass etwas umgeschaltet ist
 
 **Janniks Entscheidung, wörtlich:** *„ja hexagon. raster form."* (#6)

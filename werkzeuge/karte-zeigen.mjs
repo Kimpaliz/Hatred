@@ -55,11 +55,15 @@ const ZEICHEN_FLUESSIG = {
   [FLUESSIG.oel]: "O"
 };
 
+/* Sechs Pfeile seit dem Sechseckraster. Kein „nach oben" — senkrecht
+   liegt beim Sechseck kein Feld, sondern eine Kante. */
 const ZEICHEN_RAMPE = {
-  [RAMPE.nord]: "↑",
   [RAMPE.ost]: "→",
-  [RAMPE.sued]: "↓",
-  [RAMPE.west]: "←"
+  [RAMPE.suedost]: "↘",
+  [RAMPE.suedwest]: "↙",
+  [RAMPE.west]: "←",
+  [RAMPE.nordwest]: "↖",
+  [RAMPE.nordost]: "↗"
 };
 
 /* Namen und Größen kommen aus `spiel/gitter.mjs`, nicht aus einer

@@ -238,7 +238,7 @@ abschnitt("2 · Ganze Bildpunkte");
 {
   const karte = macheProbeKarte();
   karte.setze(5, 5, { ebene: 3 });
-  karte.setze(5, 6, { ebene: 2, rampe: RAMPE.nord });
+  karte.setze(5, 6, { ebene: 2, rampe: RAMPE.nordost });
   karte.setze(6, 5, { hindernis: HINDERNIS.wand });
   karte.setze(9, 9, { fluessig: FLUESSIG.lava });
   karte.setze(10, 9, { fluessig: FLUESSIG.schleim });
@@ -637,7 +637,7 @@ abschnitt("11 · Determinismus");
   const bauKarte = () => {
     const karte = macheProbeKarte(24, 18, 90210);
     for (let x = 0; x < karte.breite; x++) karte.setze(x, 5, { ebene: 3 });
-    karte.setze(6, 6, { rampe: RAMPE.nord });
+    karte.setze(6, 6, { rampe: RAMPE.nordost });
     karte.setze(9, 9, { fluessig: FLUESSIG.lava });
     karte.setze(10, 9, { fluessig: FLUESSIG.schleim });
     karte.setze(3, 3, { hindernis: HINDERNIS.fass });
