@@ -30,7 +30,10 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `werkzeuge/pruefe-tippen.mjs` (misst hierüber), `runtime/start.js`
+   `werkzeuge/pruefe-tippen.mjs` (misst hierüber),
+   `werkzeuge/pruefe-bild.mjs` und `werkzeuge/pruefe-raster-projektion.mjs`
+   (nehmen `macheBildflaeche` für den Pixelpuffer des Lichts),
+   `runtime/start.js`
    (holt sich `document`, `requestAnimationFrame` und das Blatt von
    hier), `runtime/eingabe.js` (hängt sich an dieselben Hörer),
    `runtime/palette.js` (`FARBEN.hudGrund` — daran wird die Leiste im
@@ -143,6 +146,103 @@ export function macheErsatzflaeche(breite, hoehe) {
       rechtecke.push({ x, y, b, h, farbe });
     }
   };
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Das Blatt, das einen Pixelpuffer mitschreibt
+   ══════════════════════════════════════════════════════════════════
+
+   Seit dem 08.09.2026 legt `runtime/licht.js` sein Licht nicht mehr als
+   Zehntausende Rechtecke auf, sondern als **einen** Pixelpuffer je
+   Lage: `putImageData` auf ein Nebenblatt, `drawImage` ganzzahlig
+   vergrößert aufs Hauptblatt. Ein Blatt, das nur `fillRect`
+   mitschreibt, sähe davon **nichts** und meldete für immer grün — der
+   schlimmste denkbare Ausgang (Fehlerbuch C5). Dieses hier schreibt
+   beides mit: die Bildpunkte, die in den Puffer geschrieben wurden,
+   und die Stelle, an der er gelandet ist.
+
+   Zwei Griffe, ohne die es nichts sähe:
+
+   · **Das Nebenblatt kommt über `canvas.ownerDocument`** — derselbe
+     Weg, den `runtime/licht.js` und `runtime/granit-feld.js` im
+     Browser gehen. Ein erfundener zweiter Weg prüfte einen Weg, den
+     der Browser nie geht.
+   · **Der Puffer wird kopiert**, nicht gemerkt. Das Licht füllt für die
+     zweite Lage denselben Speicher noch einmal; wer sich die Kiste
+     merkt statt ihres Inhalts, hat am Ende zweimal die warme Lage und
+     merkt es nie.
+
+   `glaettung` wird bei jeder Lage **mitgeschrieben**: Beim Vergrößern
+   ist ein eingeschaltetes `imageSmoothing` genau der Fehler, an dem
+   Pixelgrafik stirbt (Fehlerbuch D1) — und an einem `drawImage` sieht
+   man ihn dem Ergebnis nicht an. */
+export function macheBildflaeche(breite, hoehe) {
+  const aufrufe = [];
+  const lagen = [];
+  let blattBreite = breite;
+  let blattHoehe = hoehe;
+  let glaettung = true;
+  let mischen = "source-over";
+  let letzterPuffer = null;
+  let nebenblaetter = 0;
+
+  const nebenZiel = {
+    createImageData: (b, h) => ({ width: b, height: h,
+      data: new Uint8ClampedArray(b * h * 4) }),
+    putImageData(bild, x, y) {
+      letzterPuffer = { breite: bild.width, hoehe: bild.height, daten: bild.data.slice() };
+      aufrufe.push(["puffer", bild.width, bild.height, x, y]);
+    }
+  };
+  const nebenblatt = {
+    width: 0, height: 0, getContext: (art) => (art === "2d" ? nebenZiel : null)
+  };
+  const schriftstueck = {
+    createElement(art) {
+      if (art !== "canvas") return null;
+      nebenblaetter++;
+      return nebenblatt;
+    }
+  };
+
+  return {
+    canvas: {
+      get width() { return blattBreite; },
+      set width(wert) { blattBreite = wert; glaettung = true; },
+      get height() { return blattHoehe; },
+      set height(wert) { blattHoehe = wert; glaettung = true; },
+      ownerDocument: schriftstueck
+    },
+    aufrufe: () => aufrufe.slice(),
+    /* Eine Lage je `drawImage`: womit gemischt wurde, wohin sie kam,
+       wie groß sie gezogen wurde und welche Bildpunkte darin standen. */
+    lagen: () => lagen.slice(),
+    nebenblaetter: () => nebenblaetter,
+    nebenMasse: () => ({ breite: nebenblatt.width, hoehe: nebenblatt.height }),
+    set imageSmoothingEnabled(wert) { glaettung = wert; aufrufe.push(["glaettung", wert]); },
+    get imageSmoothingEnabled() { return glaettung; },
+    set fillStyle(wert) { aufrufe.push(["farbe", wert]); },
+    get fillStyle() { return "#000000"; },
+    set globalCompositeOperation(wert) { mischen = wert; aufrufe.push(["mischen", wert]); },
+    get globalCompositeOperation() { return mischen; },
+    fillRect(x, y, b, h) { aufrufe.push(["rechteck", x, y, b, h]); },
+    drawImage(quelle, x, y, b, h) {
+      aufrufe.push(["bild", x, y, b, h]);
+      lagen.push({ mischen, glaettung, x, y, breite: b, hoehe: h, puffer: letzterPuffer });
+    }
+  };
+}
+
+/* Ein Bildpunkt aus dem Puffer einer Lage — `null` außerhalb. Vier
+   Bytes von Hand zusammenzusuchen ist in jeder zweiten Behauptung
+   dieselbe Rechnung, und einmal falsch gezählt ist eine grüne
+   Prüfung, die den Blaukanal für den roten hält. */
+export function bildpunkt(lage, x, y) {
+  const puffer = lage && lage.puffer;
+  if (!puffer || x < 0 || y < 0 || x >= puffer.breite || y >= puffer.hoehe) return null;
+  const i = (y * puffer.breite + x) * 4;
+  return { r: puffer.daten[i], g: puffer.daten[i + 1],
+    b: puffer.daten[i + 2], a: puffer.daten[i + 3] };
 }
 
 /* ══════════════════════════════════════════════════════════════════

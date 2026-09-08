@@ -45,15 +45,23 @@
      ganzzahlig hält, meldete für immer „grün". Die Selbstprobe füttert
      ihn deshalb mit einem erfundenen Aufruf auf 12,5 und verlangt,
      dass er anschlägt.
+   · **Der Rechteckweg, nicht der Puffer.** Seit dem 08.09.2026 malt
+     das Licht im Browser keine Rechtecke mehr, sondern füllt je Lage
+     einen Pixelpuffer. Was hier steht, misst weiter die einzelnen
+     Aufrufe — nur an ihnen sieht man einen halben Bildpunkt. Den
+     Pufferweg misst `werkzeuge/pruefe-licht-puffer.mjs`, und dort
+     steht auch die Behauptung, die beide zusammenbindet: gleiche
+     Eingaben, gleiches Bild, Punkt für Punkt (Fehlerbuch C5).
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    `runtime/licht.js` und `runtime/partikel.js` (jede gemessene
    Funktion), `runtime/palette.js` (`LICHT_ARTEN`, `GRUNDHELLE`,
    `bodenTon`, `nachRGB`), `spiel/gitter.mjs` (`macheKarte`,
-   `HINDERNIS`), `werkzeuge/helfer.mjs` (Behauptungen und Abschluss)
-   und `werkzeuge/pruefe-alles.mjs`, das diese Datei als eigenen
-   Prozess startet. */
+   `HINDERNIS`), `werkzeuge/helfer.mjs` (Behauptungen und Abschluss),
+   `werkzeuge/pruefe-licht-puffer.mjs` (misst dieselbe Funktion über
+   den Pixelpuffer) und `werkzeuge/pruefe-alles.mjs`, das diese Datei
+   als eigenen Prozess startet. */
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -447,10 +455,10 @@ let lichtBericht = "";
     "erst multiplizieren, dann glühen — umgekehrt multiplizierte man das Glühen weg");
   gleich(mischen[mischen.length - 1], "source-over",
     "am Ende steht der Grundzustand wieder — sonst zeichnet alles Spätere additiv");
-  behaupte(werk.anzahlFarbwoerter() <= STUFEN ** 3,
-    `höchstens ${STUFEN ** 3} Farbzeichenketten, gezählt ${werk.anzahlFarbwoerter()}`);
-  behaupte(werk.anzahlFarbwoerter() >= 2,
-    `die Stufen kommen wirklich auf dem Blatt an (${werk.anzahlFarbwoerter()} Farben)`);
+  behaupte(werk.anzahlFarben() <= STUFEN ** 3,
+    `höchstens ${STUFEN ** 3} Farben, gezählt ${werk.anzahlFarben()}`);
+  behaupte(werk.anzahlFarben() >= 2,
+    `die Stufen kommen wirklich auf dem Blatt an (${werk.anzahlFarben()} Farben)`);
   /* Wie viele Rechtecke auf welche Lage entfallen. Ohne diese Zählung
      bestünde die Prüfung auch dann, wenn die additive Lage zwar
      eingeschaltet, aber nie gezeichnet würde — und der Fackelkern
@@ -473,9 +481,9 @@ let lichtBericht = "";
   const alle = karte.breite * karte.hoehe * PUNKTE_JE_FELD * PUNKTE_JE_FELD;
   behaupte(jeLage.get("multiply") < alle / 4,
     `nur der Ausschnitt wird gezeichnet: ${jeLage.get("multiply")} statt ${alle} Lichtpunkte`);
-  lichtBericht = `${rechtecke.length} Rechtecke (${jeLage.get("multiply")} multiply, ` +
-    `${jeLage.get("lighter")} lighter) für ein 480×240-Fenster bei Vergrößerung 3, ` +
-    `${werk.anzahlFarbwoerter()} Farbzeichenketten`;
+  lichtBericht = `Rechteckweg: ${rechtecke.length} Rechtecke ` +
+    `(${jeLage.get("multiply")} multiply, ${jeLage.get("lighter")} lighter) für ein ` +
+    `480×240-Fenster bei Vergrößerung 3, ${werk.anzahlFarben()} Farben`;
 
   /* Ohne Zeichenblatt darf nichts geschehen, statt zu werfen: Das
      Bild läuft in einer Schleife, und ein Wurf je Bild wäre ein

@@ -35,16 +35,38 @@
    Das Flackern ist reines Bild: Was ein Wesen sehen **darf**,
    entscheidet allein `spiel/licht.mjs`, und das flackert nie.
 
-   ── Warum Rechtecke statt eines hochskalierten Blattes ─────────────
+   ── Warum ein gebündelter Pixelpuffer und nicht Rechtecke ──────────
 
-   Der übliche Weg wäre ein kleines Zeichenblatt, das ungeglättet
-   vergrößert aufgelegt wird. Der Weg hat einen Haken: `imageSmoothing`
-   wird von jedem Setzen der Blattmaße zurückgestellt (Fehlerbuch D1),
-   und ein einziger vergessener Griff macht das ganze Licht weich.
-   Gefüllte Rechtecke lassen sich gar nicht glätten, und gezeichnet
-   wird ohnehin nur der sichtbare Ausschnitt. Überquert ein Lichtblock
-   eine Hexgrenze, gehören seine Pixel zu getrennten Schattenproben.
-   Vorgezeichnete Pixelspannen verhindern Licht hinter einer Wand.
+   Bis zum 08.09.2026 setzte diese Datei je Lichtpunkt ein eigenes
+   `fillRect`, und das zweimal — einmal für die abdunkelnde, einmal für
+   die glühende Lage. Bei voller Übersicht sind das Zehntausende
+   Aufrufe je Bild, jeder mit einer Farbzeichenkette; im Chromium
+   blieben davon 6,3 Bilder je Sekunde übrig. Jetzt wird ein
+   Nebenzeichenblatt gefüllt, mit `putImageData` belegt und mit
+   `drawImage` **ganzzahlig** vergrößert aufs Hauptblatt gezogen: aus
+   Zehntausenden Aufrufen werden zwei.
+
+   Der Puffer rechnet in **Weltbildpunkten**, nicht in Lichtpunkten. Ein
+   4×4-Block gehört an einer Hexgrenze zwei Sechsecken; in
+   Lichtpunktauflösung liefe das Licht um die Wand herum, und die
+   vorgezeichneten Pixelspannen aus `besitzerSpannen` hätten keinen Ort
+   mehr, an dem sie stehen könnten.
+
+   Der wunde Punkt bleibt die Glättung (Fehlerbuch D1): Jedes Setzen der
+   Blattmaße stellt `imageSmoothing` zurück, deshalb wird es in
+   `zeichneAuf` bei **jedem** Bild neu abgeschaltet und die Vergrößerung
+   bleibt eine ganze Zahl.
+
+   ── Warum der Rechteckweg daneben stehen bleibt ────────────────────
+
+   Ein Zeichenblatt ohne `drawImage` bekommt weiterhin einzelne
+   Rechtecke — derselbe Aufbau wie in `runtime/granit-feld.js`. Das ist
+   kein toter Zweig: An den einzelnen Aufrufen misst die Prüfkette, was
+   an einem Pixelpuffer gar nicht mehr zu sehen wäre — dass jede Kante
+   auf ganzen Bildpunkten liegt. Dass beide Wege Bildpunkt für
+   Bildpunkt dasselbe malen, behauptet `werkzeuge/pruefe-bild.mjs`;
+   ohne diese Brücke prüfte die Kette einen Weg, den der Browser nie
+   geht (Fehlerbuch C5).
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
@@ -107,6 +129,32 @@ const WEITE_OHNE_ART = 1.5;
    eine reine Funktion der Zeit. */
 const FLACKER_SCHNELL = 11.3;
 const FLACKER_LANGSAM = 4.7;
+
+/* ── Vier Bytes in einer Zahl ───────────────────────────────────────
+
+   Ein Bildpunkt des Puffers wird als **ein** 32-Bit-Wert geschrieben
+   statt als vier einzelne Bytes; das ist der Unterschied zwischen einer
+   und vier Schreibbewegungen je Bildpunkt, und bei zwei Millionen
+   Bildpunkten je Bild zählt der. Welche Bytefolge der Rechner dafür
+   nimmt, wird **gemessen** und nicht geraten: Ein x86 legt das Rot ins
+   erste Byte, eine große Maschine ins letzte, und wer sich vertut,
+   bekommt ein blaues Licht ohne jede Fehlermeldung. */
+const ROT_ZUERST = (() => {
+  const probe = new Uint8ClampedArray(4);
+  new Uint32Array(probe.buffer)[0] = 1;
+  return probe[0] === 1;
+})();
+
+/* Undurchsichtig, immer: `0` heißt „hier steht nichts" und bleibt
+   durchsichtig — unter „multiply" wie unter „lighter" ändert ein
+   durchsichtiger Bildpunkt nichts, genau wie ein nie gesetztes
+   Rechteck. Deshalb darf keine echte Farbe zufällig 0 werden, und das
+   kann sie nicht: Der Alphakanal steht auf 255. */
+const packe = (r, g, b) => (ROT_ZUERST
+  ? ((255 << 24) | (b << 16) | (g << 8) | r)
+  : ((r << 24) | (g << 16) | (b << 8) | 255)) >>> 0;
+
+const macheFarbe = (r, g, b) => ({ wort: `rgb(${r},${g},${b})`, wert: packe(r, g, b) });
 
 /* Auf die acht Stufen. Werte über 1 werden vorher gedeckelt — würde
    je Quelle gedeckelt, hinge das Ergebnis an der Reihenfolge der
@@ -175,11 +223,25 @@ export function macheLichtwerk(karte) {
      Schattenwurf hängt nur an Karte und Lage — er wird beim Setzen
      einmal gezogen und nicht in jedem Bild erneut. */
   let feste = [];
-  /* Farbzeichenketten für das Zeichenblatt. Bei acht Stufen je Kanal
-     gibt es höchstens 8³ = 512 verschiedene; sie jedes Bild neu
-     zusammenzusetzen wäre der teuerste Teil des ganzen Lichts. */
-  const woerter = new Map();
-  const warmWoerter = new Map();
+  /* Die Farben für das Zeichenblatt. Jeder Eintrag trägt **beides**:
+     die Zeichenkette für den Rechteckweg und den gepackten 32-Bit-Wert
+     für den Puffer. Bei acht Stufen je Kanal gibt es höchstens
+     8³ = 512 verschiedene; sie jedes Bild neu zusammenzusetzen wäre der
+     teuerste Teil des ganzen Lichts. Zwei getrennte Vorräte wären zwei
+     Wahrheiten — dann könnten Puffer und Rechteck verschiedene Töne
+     malen, ohne dass es jemandem auffiele. */
+  const farben = new Map();
+  const warmFarben = new Map();
+
+  /* Das Nebenzeichenblatt samt seinem Bild. Es wird einmal angelegt und
+     nur dann neu gemacht, wenn sich das sichtbare Rechteck ändert —
+     jedes Setzen der Blattmaße kostet und stellt die Glättung zurück. */
+  let nebenBlatt = null;
+  let nebenZiel = null;
+  let nebenBild = null;
+  let nebenWorte = null;
+  let nebenBreite = 0;
+  let nebenHoehe = 0;
 
   function richteEin(neueKarte) {
     welt = neueKarte;
@@ -381,49 +443,55 @@ export function macheLichtwerk(karte) {
       r: rot.subarray(0, anzahl), g: gruen.subarray(0, anzahl), b: blau.subarray(0, anzahl) };
   }
 
-  function farbwort(r, g, b) {
+  function farbeVon(r, g, b) {
     const schluessel = (Math.round(r * STUFEN_TEILER) * STUFEN
       + Math.round(g * STUFEN_TEILER)) * STUFEN + Math.round(b * STUFEN_TEILER);
-    let wort = woerter.get(schluessel);
-    if (wort === undefined) {
-      wort = `rgb(${Math.round(r * 255)},${Math.round(g * 255)},${Math.round(b * 255)})`;
-      woerter.set(schluessel, wort);
+    let farbe = farben.get(schluessel);
+    if (farbe === undefined) {
+      farbe = macheFarbe(Math.round(r * 255), Math.round(g * 255), Math.round(b * 255));
+      farben.set(schluessel, farbe);
     }
-    return wort;
+    return farbe;
   }
 
   /* Der warme Überschuss: um wie viel das Rot das Blau übersteigt.
      Kaltes Licht (Arkan, Blitz) bekommt damit gar keine additive
      Lage — und genau so soll es sein: Ein Zauberlicht glüht nicht. */
-  function warmwort(r, b) {
+  function warmFarbeVon(r, b) {
     const warm = r - b;
     if (!(warm > 0)) return null;
     const stufe = Math.round(warm * STUFEN_TEILER);
-    let wort = warmWoerter.get(stufe);
-    if (wort === undefined) {
+    let farbe = warmFarben.get(stufe);
+    if (farbe === undefined) {
       const grund = warm * WARM_ZUSATZ * 255;
       const wertR = Math.round(grund);
-      wort = wertR < 1 ? null : `rgb(${wertR},${Math.round(grund * WARM_GRUEN)},`
-        + `${Math.round(grund * WARM_BLAU)})`;
-      warmWoerter.set(stufe, wort);
+      farbe = wertR < 1 ? null
+        : macheFarbe(wertR, Math.round(grund * WARM_GRUEN), Math.round(grund * WARM_BLAU));
+      warmFarben.set(stufe, farbe);
     }
-    return wort;
+    return farbe;
   }
 
-  /* Legt die Karte über die Welt. `kamera`: `{x, y, vergroesserung,
-     breite, hoehe}` — `x`/`y` die Weltbildpunkte der linken oberen
-     Ecke, `vergroesserung` ganzzahlig, `breite`/`hoehe` das Fenster in
-     Bildschirmpunkten. Fehlt das Fenster, wird es vom Zeichenblatt
-     genommen; fehlt auch das, wird alles gezeichnet.
+  /* Ein angeschnittener Lichtblock darf nur dann als ein Stück gemalt
+     werden, wenn alle seine Sechsecke denselben Wert tragen. Sonst
+     liefe das Licht über die Hexgrenze in den verdeckten Nachbarraum. */
+  function einerlei(ausschnitt, stelle) {
+    if (!ausschnitt.ganz) return false;
+    for (const gruppe of ausschnitt.gruppen) {
+      const i = gruppe.stelle;
+      if (rot[i] !== rot[stelle] || gruen[i] !== gruen[stelle] || blau[i] !== blau[stelle]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-     Zwei Lagen in fester Reihenfolge: erst "multiply" (die Welt wird
-     abgedunkelt und eingefärbt), dann "lighter" für den warmen
-     Überschuss. Umgekehrt multiplizierte die zweite Lage das eigene
-     Glühen wieder weg. Gibt die Zahl der gezeichneten Rechtecke
-     zurück — eine Zahl, die sich messen lässt. */
-  function zeichneAuf(ctx, kamera = {}) {
-    if (!ctx || punkteBreite === 0) return 0;
-    ctx.imageSmoothingEnabled = false;
+  /* Das sichtbare Lichtpunkt-Rechteck. `kamera`: `{x, y,
+     vergroesserung, breite, hoehe}` — `x`/`y` die Weltbildpunkte der
+     linken oberen Ecke, `vergroesserung` ganzzahlig, `breite`/`hoehe`
+     das Fenster in Bildschirmpunkten. Fehlt das Fenster, wird es vom
+     Zeichenblatt genommen; fehlt auch das, wird alles gezeichnet. */
+  function fensterVon(ctx, kamera) {
     const vergroesserung = Math.max(1, Math.floor(kamera.vergroesserung || 1));
     const eckeX = Math.round(kamera.x || 0);
     const eckeY = Math.round(kamera.y || 0);
@@ -432,72 +500,196 @@ export function macheLichtwerk(karte) {
       : (Number.isFinite(blatt.width) ? blatt.width : punkteBreite * LICHTPUNKT * vergroesserung);
     const fensterHoehe = Number.isFinite(kamera.hoehe) ? kamera.hoehe
       : (Number.isFinite(blatt.height) ? blatt.height : punkteHoehe * LICHTPUNKT * vergroesserung);
-    const vonX = Math.max(0, Math.floor(eckeX / LICHTPUNKT));
-    const vonY = Math.max(0, Math.floor(eckeY / LICHTPUNKT));
-    const bisX = Math.min(punkteBreite - 1,
-      Math.floor((eckeX + Math.ceil(fensterBreite / vergroesserung) - 1) / LICHTPUNKT));
-    const bisY = Math.min(punkteHoehe - 1,
-      Math.floor((eckeY + Math.ceil(fensterHoehe / vergroesserung) - 1) / LICHTPUNKT));
-    const kante = LICHTPUNKT * vergroesserung;
+    return {
+      vergroesserung, eckeX, eckeY,
+      vonX: Math.max(0, Math.floor(eckeX / LICHTPUNKT)),
+      vonY: Math.max(0, Math.floor(eckeY / LICHTPUNKT)),
+      bisX: Math.min(punkteBreite - 1,
+        Math.floor((eckeX + Math.ceil(fensterBreite / vergroesserung) - 1) / LICHTPUNKT)),
+      bisY: Math.min(punkteHoehe - 1,
+        Math.floor((eckeY + Math.ceil(fensterHoehe / vergroesserung) - 1) / LICHTPUNKT))
+    };
+  }
+
+  /* Das Nebenblatt in der Größe des sichtbaren Rechtecks. Gibt `false`,
+     wenn dieses Zeichenblatt keines hergibt — dann malt der
+     Rechteckweg. Derselbe Weg wie in `runtime/granit-feld.js`. */
+  function richteNebenblattEin(ctx, breite, hoehe) {
+    if (nebenZiel === null) {
+      let blatt = null;
+      if (typeof OffscreenCanvas !== "undefined") blatt = new OffscreenCanvas(breite, hoehe);
+      else if (ctx?.canvas?.ownerDocument?.createElement) {
+        blatt = ctx.canvas.ownerDocument.createElement("canvas");
+      }
+      const ziel = blatt?.getContext?.("2d");
+      if (!ziel || typeof ziel.createImageData !== "function"
+        || typeof ziel.putImageData !== "function") return false;
+      nebenBlatt = blatt;
+      nebenZiel = ziel;
+    }
+    if (nebenBreite !== breite || nebenHoehe !== hoehe) {
+      nebenBlatt.width = breite;
+      nebenBlatt.height = hoehe;
+      nebenBild = nebenZiel.createImageData(breite, hoehe);
+      nebenWorte = new Uint32Array(nebenBild.data.buffer);
+      nebenBreite = breite;
+      nebenHoehe = hoehe;
+    }
+    return true;
+  }
+
+  /* Eine Lage in den Puffer. Kein Zeichenaufruf, nur Schreibbewegungen
+     in ein `Uint32Array`.
+
+     Die vier Unterzeilen eines Lichtblocks sind gleich, solange er nur
+     einem Sechseck gehört — deshalb wird die oberste gefüllt und
+     dreimal am Stück kopiert (`copyWithin` ist ein Speicherzug, keine
+     Schleife). Angeschnittene Blöcke bekommen in der obersten Zeile
+     die Null und schreiben ihre Spannen danach einzeln nach; so wird
+     **jeder** Bildpunkt des Puffers in jedem Bild neu gesetzt und kein
+     Rest des vorigen Bildes bleibt stehen.
+
+     Der Nachbar von links wird gemerkt: Ein dunkler Kerker ist über
+     weite Strecken derselbe Ton, und drei Zahlenvergleiche sind
+     billiger als drei Rundungen und ein Nachschlagen. */
+  function fuellePuffer(f, warm) {
+    const krumm = [];
+    const worte = nebenWorte;
+    const breite = nebenBreite;
+    let letztR = -1;
+    let letztG = -1;
+    let letztB = -1;
+    let letztWert = 0;
+    for (let punktY = f.vonY; punktY <= f.bisY; punktY++) {
+      const zeile0 = (punktY - f.vonY) * LICHTPUNKT * breite;
+      const reihe = punktY * punkteBreite;
+      krumm.length = 0;
+      for (let punktX = f.vonX; punktX <= f.bisX; punktX++) {
+        const stelle = reihe + punktX;
+        const i = zeile0 + (punktX - f.vonX) * LICHTPUNKT;
+        const ausschnitt = punktGruppen[stelle];
+        let wert = 0;
+        if (ausschnitt === null || einerlei(ausschnitt, stelle)) {
+          const r = rot[stelle];
+          const g = gruen[stelle];
+          const b = blau[stelle];
+          if (r === letztR && g === letztG && b === letztB) {
+            wert = letztWert;
+          } else {
+            const farbe = warm ? warmFarbeVon(r, b) : farbeVon(r, g, b);
+            wert = farbe === null ? 0 : farbe.wert;
+            letztR = r;
+            letztG = g;
+            letztB = b;
+            letztWert = wert;
+          }
+        } else {
+          krumm.push(punktX);
+        }
+        for (let n = 0; n < LICHTPUNKT; n++) worte[i + n] = wert;
+      }
+      for (let n = 1; n < LICHTPUNKT; n++) {
+        worte.copyWithin(zeile0 + n * breite, zeile0, zeile0 + breite);
+      }
+      for (const punktX of krumm) {
+        const spalte = zeile0 + (punktX - f.vonX) * LICHTPUNKT;
+        for (const gruppe of punktGruppen[reihe + punktX].gruppen) {
+          const i = gruppe.stelle;
+          const farbe = warm ? warmFarbeVon(rot[i], blau[i])
+            : farbeVon(rot[i], gruen[i], blau[i]);
+          if (farbe === null) continue;
+          for (const span of gruppe.spannen) {
+            const anfang = spalte + span.y * breite + span.x;
+            for (let n = 0; n < span.breite; n++) worte[anfang + n] = farbe.wert;
+          }
+        }
+      }
+    }
+  }
+
+  /* Der Weg des Browsers: zwei Puffer, zwei Zeichenaufrufe. */
+  function lagenAusPuffer(ctx, f) {
+    const x = (f.vonX * LICHTPUNKT - f.eckeX) * f.vergroesserung;
+    const y = (f.vonY * LICHTPUNKT - f.eckeY) * f.vergroesserung;
+    let gezeichnet = 0;
+    for (const warm of [false, true]) {
+      fuellePuffer(f, warm);
+      nebenZiel.putImageData(nebenBild, 0, 0);
+      ctx.globalCompositeOperation = warm ? "lighter" : "multiply";
+      ctx.drawImage(nebenBlatt, x, y,
+        nebenBreite * f.vergroesserung, nebenHoehe * f.vergroesserung);
+      gezeichnet++;
+    }
+    return gezeichnet;
+  }
+
+  /* Der Weg für ein Zeichenblatt ohne `drawImage`: ein Rechteck je
+     Lichtblock, eine Spanne je angeschnittenem Stück. */
+  function lagenAusRechtecken(ctx, f) {
+    const kante = LICHTPUNKT * f.vergroesserung;
     let gezeichnet = 0;
     let letzte = null;
 
     function zeichnePunkt(punktX, schirmY, stelle, warm) {
-      const x = (punktX * LICHTPUNKT - eckeX) * vergroesserung;
+      const x = (punktX * LICHTPUNKT - f.eckeX) * f.vergroesserung;
       const ausschnitt = punktGruppen[stelle];
-      let gleich = ausschnitt === null || ausschnitt.ganz;
-      if (ausschnitt !== null && gleich) {
-        for (const gruppe of ausschnitt.gruppen) {
-          const i = gruppe.stelle;
-          if (rot[i] !== rot[stelle] || gruen[i] !== gruen[stelle] || blau[i] !== blau[stelle]) {
-            gleich = false;
-            break;
-          }
-        }
-      }
-      if (gleich) {
-        const wort = warm ? warmwort(rot[stelle], blau[stelle])
-          : farbwort(rot[stelle], gruen[stelle], blau[stelle]);
-        if (wort === null) return;
-        if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
+      if (ausschnitt === null || einerlei(ausschnitt, stelle)) {
+        const farbe = warm ? warmFarbeVon(rot[stelle], blau[stelle])
+          : farbeVon(rot[stelle], gruen[stelle], blau[stelle]);
+        if (farbe === null) return;
+        if (farbe.wort !== letzte) { ctx.fillStyle = farbe.wort; letzte = farbe.wort; }
         ctx.fillRect(x, schirmY, kante, kante);
         gezeichnet++;
-      } else {
-        for (const gruppe of ausschnitt.gruppen) {
-          const i = gruppe.stelle;
-          const wort = warm ? warmwort(rot[i], blau[i]) : farbwort(rot[i], gruen[i], blau[i]);
-          if (wort === null) continue;
-          if (wort !== letzte) { ctx.fillStyle = wort; letzte = wort; }
-          for (const span of gruppe.spannen) {
-            ctx.fillRect(x + span.x * vergroesserung, schirmY + span.y * vergroesserung,
-              span.breite * vergroesserung, vergroesserung);
-            gezeichnet++;
-          }
+        return;
+      }
+      for (const gruppe of ausschnitt.gruppen) {
+        const i = gruppe.stelle;
+        const farbe = warm ? warmFarbeVon(rot[i], blau[i]) : farbeVon(rot[i], gruen[i], blau[i]);
+        if (farbe === null) continue;
+        if (farbe.wort !== letzte) { ctx.fillStyle = farbe.wort; letzte = farbe.wort; }
+        for (const span of gruppe.spannen) {
+          ctx.fillRect(x + span.x * f.vergroesserung, schirmY + span.y * f.vergroesserung,
+            span.breite * f.vergroesserung, f.vergroesserung);
+          gezeichnet++;
         }
       }
     }
 
-    ctx.globalCompositeOperation = "multiply";
-    for (let punktY = vonY; punktY <= bisY; punktY++) {
-      const schirmY = (punktY * LICHTPUNKT - eckeY) * vergroesserung;
-      const zeile = punktY * punkteBreite;
-      for (let punktX = vonX; punktX <= bisX; punktX++) {
-        const stelle = zeile + punktX;
-        zeichnePunkt(punktX, schirmY, stelle, false);
+    for (const warm of [false, true]) {
+      letzte = null;
+      ctx.globalCompositeOperation = warm ? "lighter" : "multiply";
+      for (let punktY = f.vonY; punktY <= f.bisY; punktY++) {
+        const schirmY = (punktY * LICHTPUNKT - f.eckeY) * f.vergroesserung;
+        const zeile = punktY * punkteBreite;
+        for (let punktX = f.vonX; punktX <= f.bisX; punktX++) {
+          zeichnePunkt(punktX, schirmY, zeile + punktX, warm);
+        }
       }
     }
+    return gezeichnet;
+  }
 
-    letzte = null;
-    ctx.globalCompositeOperation = "lighter";
-    for (let punktY = vonY; punktY <= bisY; punktY++) {
-      const schirmY = (punktY * LICHTPUNKT - eckeY) * vergroesserung;
-      const zeile = punktY * punkteBreite;
-      for (let punktX = vonX; punktX <= bisX; punktX++) {
-        const stelle = zeile + punktX;
-        zeichnePunkt(punktX, schirmY, stelle, true);
-      }
-    }
+  /* Legt die Karte über die Welt.
 
+     Zwei Lagen in fester Reihenfolge: erst "multiply" (die Welt wird
+     abgedunkelt und eingefärbt), dann "lighter" für den warmen
+     Überschuss. Umgekehrt multiplizierte die zweite Lage das eigene
+     Glühen wieder weg. Gibt die Zahl der Zeichenaufrufe auf dem
+     Hauptblatt zurück — über den Puffer zwei, über die Rechtecke eines
+     je Block. Eine Zahl, die sich messen lässt. */
+  function zeichneAuf(ctx, kamera = {}) {
+    if (!ctx || punkteBreite === 0) return 0;
+    /* Bei **jedem** Bild neu: Jedes Setzen der Blattmaße stellt die
+       Glättung zurück, und ein einziger vergessener Griff macht das
+       ganze Licht weich (Fehlerbuch D1). */
+    ctx.imageSmoothingEnabled = false;
+    const f = fensterVon(ctx, kamera);
+    if (f.bisX < f.vonX || f.bisY < f.vonY) return 0;
+    const breite = (f.bisX - f.vonX + 1) * LICHTPUNKT;
+    const hoehe = (f.bisY - f.vonY + 1) * LICHTPUNKT;
+    const gezeichnet = typeof ctx.drawImage === "function"
+      && richteNebenblattEin(ctx, breite, hoehe)
+      ? lagenAusPuffer(ctx, f) : lagenAusRechtecken(ctx, f);
     /* Zurück auf den Grundzustand. Ohne diese Zeile zeichnete alles,
        was nach dem Licht kommt, additiv — und niemand fände den
        Grund, weil die Ursache eine ganz andere Datei wäre. */
@@ -509,7 +701,11 @@ export function macheLichtwerk(karte) {
     KACHEL, LICHTPUNKT, PUNKTE_JE_FELD, STUFEN,
     setzeQuellen, rechne, helligkeitBei, lichtpunkte, zeichneAuf,
     anzahlQuellen: () => feste.length,
-    anzahlFarbwoerter: () => woerter.size
+    anzahlFarben: () => farben.size,
+    /* Nur für die Messung: die Maße des Puffers, den das letzte
+       `zeichneAuf` gefüllt hat. Ohne sie ließe sich nicht behaupten,
+       dass er wirklich in Weltbildpunkten rechnet. */
+    pufferMasse: () => ({ breite: nebenBreite, hoehe: nebenHoehe })
   };
   if (karte) richteEin(karte);
   return werk;

@@ -10,7 +10,9 @@
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    `spiel/raster.mjs`, `spiel/gitter.mjs`, `spiel/sicht.mjs`, die Kamera,
-   Licht, Partikel und Abspieler unter `runtime/` sowie `helfer.mjs`. */
+   Licht, Partikel und Abspieler unter `runtime/`, `helfer.mjs` sowie
+   `buehne-browser.mjs` — von dort kommt das Blatt, das den Pixelpuffer
+   des Lichts mitschreibt. */
 
 import { abschnitt, behaupte, gleich, nahe, tiefGleich, ende } from "./helfer.mjs";
 import { feldMitte, feldEcken, weltNachFeld, weltMasse,
@@ -21,6 +23,7 @@ import { macheKamera } from "../runtime/kamera.js";
 import { macheLichtwerk, LICHTPUNKT, aufStufen } from "../runtime/licht.js";
 import { GRUNDHELLE } from "../runtime/palette.js";
 import { machePartikelwerk } from "../runtime/partikel.js";
+import { macheBildflaeche, bildpunkt } from "./buehne-browser.mjs";
 import { macheAbspieler, TEMPO } from "../runtime/abspieler.js";
 import { spawnSync } from "node:child_process";
 
@@ -188,6 +191,35 @@ for (const rect of mitschnitt) {
 }
 gleich(ausserhalb, 0,
   "weder Abdunkelung noch additive Glut bemalen den Raum außerhalb der Hexkarte");
+
+/* Dasselbe noch einmal über den Weg, den der Browser seit dem
+   08.09.2026 wirklich geht: `runtime/licht.js` füllt je Lage einen
+   Pixelpuffer und zieht ihn mit `drawImage` aufs Blatt. Oben stehen
+   Rechtecke; darin stünde die Kontur eines Tages richtig und im Puffer
+   trotzdem falsch, und niemand sähe es. Gezählt wird deshalb dieselbe
+   Sache an den **Bildpunkten**: kein deckender Bildpunkt darf außerhalb
+   der Hexkarte liegen. */
+const pufferFlaeche = macheBildflaeche(500, 500);
+const pufferKarte = macheKarte(7, 5);
+const pufferLicht = macheLichtwerk(pufferKarte);
+pufferLicht.setzeQuellen([{ x: 1, y: 1, art: "fackel" }]).rechne(0);
+gleich(pufferLicht.zeichneAuf(pufferFlaeche), 2,
+  "über den Puffer sind es zwei Zeichenaufrufe statt tausender Spannen");
+let ausserhalbPuffer = 0;
+let innenPuffer = 0;
+for (const lage of pufferFlaeche.lagen()) {
+  for (let py = 0; py < lage.puffer.hoehe; py++) {
+    for (let px = 0; px < lage.puffer.breite; px++) {
+      if (bildpunkt(lage, px, py).a === 0) continue;
+      const feld = weltNachFeld(lage.x + px + 0.5, lage.y + py + 0.5);
+      if (konturKarte.drin(feld.x, feld.y)) innenPuffer++; else ausserhalbPuffer++;
+    }
+  }
+}
+gleich(ausserhalbPuffer, 0,
+  "auch im Pixelpuffer endet das Licht genau an der Hexkontur");
+behaupte(innenPuffer > 1000,
+  `und der Puffer ist wirklich bemalt, nicht leer (${innenPuffer} deckende Bildpunkte)`);
 
 abschnitt("Partikelkollision auf versetzter Zeile");
 for (const startY of [4, 5]) {

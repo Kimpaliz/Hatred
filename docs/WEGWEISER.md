@@ -76,7 +76,10 @@ Rechner der Wahrheit eines anderen glauben, statt sie nachzurechnen.
    sichtbaren Zwischenstand ab: Bewegung, Schaden, Sturz.
 2. `runtime/zeichnen.js` setzt das Terrain aus `runtime/granit-feld.js`,
    Wesen und Zielmarkierungen zusammen.
-3. `runtime/licht.js` legt die Lichtkarte darüber.
+3. `runtime/licht.js` legt die Lichtkarte darüber — als **zwei**
+   Zeichenaufrufe: je Lage ein Pixelpuffer, ungeglättet und ganzzahlig
+   vergrößert. Warum nicht mehr als einzelne Rechtecke, steht in der
+   Kopfnotiz der Datei.
 4. `runtime/partikel.js` streut Funken, Blut, Staub. Danach deckt der
    Zeichner ungesehene Hexfelder ab, damit auch Effekte verborgen bleiben.
 5. `runtime/start.js` und `runtime/oberflaeche.js` zeichnen Schadenszahlen,
