@@ -17,8 +17,8 @@ node werkzeuge/vorschau.mjs
 Dann <http://127.0.0.1:8145/> öffnen. Unter Windows genügt ein
 Doppelklick auf `Vorschau-starten.cmd`.
 
-Es braucht **kein** `npm install`, kein Konto und keine Installation —
-nur Node und einen Browser. Der kleine Server ist nur nötig, weil
+Es braucht keine Paketinstallation und kein Konto — nur Node ab Version 22
+und einen Browser. Mit pnpm funktioniert auch `pnpm dev`. Der Server ist nötig, weil
 Browser Module nicht von der Festplatte laden.
 
 ## Zusammen spielen
@@ -59,20 +59,43 @@ verschiedene Spiele weiterzuspielen.
 
 | Frage | Datei |
 | --- | --- |
-| Wie fange ich an? | [CLAUDE.md](CLAUDE.md) |
+| Wie fange ich als Agent an? | [AGENTS.md](AGENTS.md) |
+| Wie starte, prüfe und exportiere ich? | [docs/ENTWICKLUNG.md](docs/ENTWICKLUNG.md) |
+| Wie arbeiten mehrere Agenten zusammen? | [docs/AGENTEN.md](docs/AGENTEN.md) |
 | Was wird gebaut und warum so? | [docs/SPIEL.md](docs/SPIEL.md) |
 | Wo fasse ich für Wunsch X an? | [docs/WEGWEISER.md](docs/WEGWEISER.md) |
 | Was kommt als Nächstes, und warum in dieser Reihenfolge? | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Welche Regeln gelten? | [docs/REGELN.md](docs/REGELN.md) |
 | Welche Fehler wiederholen sich? | [docs/FEHLERBUCH.md](docs/FEHLERBUCH.md) |
 | Was wurde zuletzt geändert? | [CHANGELOG.md](CHANGELOG.md) |
+| Wo lohnt sich eine spätere Leistungsoptimierung? | [docs/LEISTUNG.md](docs/LEISTUNG.md) |
 
 ```bash
-node werkzeuge/pruefe-alles.mjs      # die ganze Prüfkette
-node werkzeuge/karte-zeigen.mjs 7    # eine erzeugte Karte als Bild in der Schale
+pnpm test          # vollständige Abnahme
+pnpm check         # nur Projektwächter
+pnpm test:game     # nur Fachprüfungen
+pnpm test:list     # alle Prüfdateien zeigen
+pnpm build         # HTML-Export nach dist/hatred.html
+pnpm map 7         # Karte der Saat 7 in der Konsole
 ```
 
 ## Keine Abhängigkeiten
 
-Kein `npm install`, kein Paket, kein fremder Dienst zur Laufzeit. Das
-Spiel besteht aus den Dateien in diesem Ordner.
+Keine Paketabhängigkeiten. Das Spiel besteht aus den Dateien in diesem Ordner.
+Die Netzwege und ihre Voraussetzungen stehen in [docs/NETZ.md](docs/NETZ.md).
+Alle pnpm-Befehle haben einen direkten Node-Aufruf; siehe Entwicklungshilfe.
+
+## Ordnerstruktur
+
+```text
+spiel/       Regeln, Welt, KI und Inhaltskataloge
+runtime/     Browserdarstellung, Eingabe und Oberfläche
+netz/        Sitzungen, Verbindungen und optionaler Vermittler
+tests/       Fachprüfungen und Prüfhilfen
+werkzeuge/   Vorschau, Export und Projektwächter
+docs/        Spielvertrag, Systemkarte und Arbeitsabläufe
+dist/        erzeugte Dateien, nicht versioniert
+```
+
+`AGENTS.md` ist der gemeinsame Einstieg; lokale Anleitungen grenzen die
+Bereiche ab. `WORKCLAIM.md` koordiniert aktive Schreibaufträge.

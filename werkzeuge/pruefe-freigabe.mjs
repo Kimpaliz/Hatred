@@ -3,14 +3,11 @@
        node werkzeuge/pruefe-freigabe.mjs
 
    Muster aus einer Freigabeprüfung, die sich bewährt hat (02.09.2026):
-   **bewusst kein Teil der
-   Kette.** Während der Entwicklung ist ein Vorlagenzustand normal —
-   diese Liste muss erst durchgehen, bevor ein Repository öffentlich
-   wird, eine Seite live geht oder ein Etikett gesetzt wird.
+   Die maschinellen Kontrollen laufen auch in der normalen Prüfkette.
 
    Sie prüft das maschinell Prüfbare und druckt am Ende die Liste
-   dessen, was nur ein Mensch prüfen kann. `pruefe-alles.mjs` lässt
-   sie absichtlich aus (Ausnahmeliste dort).
+   dessen, was nur ein Mensch prüfen kann. Ein grüner Ausgang ist keine
+   Erlaubnis zur Veröffentlichung; dafür gilt weiterhin der Nutzerauftrag.
 
    Der wichtigste Teil ist die **Historiensuche**: Ein Geheimnis, das
    je committet war, bleibt in der Git-Historie sichtbar, auch wenn es

@@ -14,8 +14,8 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `index.html` (der Einstieg) und `.github/workflows/pages.yml`
-   (dasselbe Ergebnis, nur im Netz). Ändert nichts am Spiel. */
+   `index.html` (der Einstieg), `Vorschau-starten.cmd` und
+   `tests/pruefe-vorschau.mjs` (HTTP-Prüfung). Ändert nichts am Spiel. */
 
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";

@@ -4,7 +4,8 @@
     "spiel",
     "netz",
     "runtime",
-    "werkzeuge"
+    "werkzeuge",
+    "tests"
   ],
   "endungen": [
     ".js",
@@ -24,7 +25,8 @@
     "texte": "de",
     "wortliste": "docs/WORTLISTE.md",
     "ausnahmen": [
-      "werkzeuge"
+      "werkzeuge",
+      "tests"
     ]
   },
   "kopfnotiz": {

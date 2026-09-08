@@ -1,0 +1,17 @@
+{
+  "name": "hatred",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node werkzeuge/vorschau.mjs",
+    "test": "node werkzeuge/pruefe-alles.mjs",
+    "test:game": "node werkzeuge/pruefe-alles.mjs --tests",
+    "test:list": "node werkzeuge/pruefe-alles.mjs --list",
+    "check": "node werkzeuge/pruefe-alles.mjs --checks",
+    "build": "node werkzeuge/eine-datei.mjs --nach dist/hatred.html",
+    "map": "node werkzeuge/karte-zeigen.mjs"
+  }
+}

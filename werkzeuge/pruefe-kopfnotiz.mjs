@@ -44,17 +44,17 @@
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    Allem unter `spiel/`, `netz/`, `runtime/` und `werkzeuge/` (nur
-   gelesen), `werkzeuge/helfer.mjs` (Behauptungen und Abschluss) und
+   gelesen), `tests/helfer.mjs` (Behauptungen und Abschluss) und
    `werkzeuge/pruefe-alles.mjs`, das diese Datei als eigenen Prozess
    startet. Den Wortlaut der Form trägt der Schnittstellenvertrag. */
 
 import { readdirSync, readFileSync, statSync, existsSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
+import { abschnitt, behaupte, gleich, ende } from "../tests/helfer.mjs";
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
-const ORDNER = ["spiel", "netz", "runtime", "werkzeuge"];
+const ORDNER = ["spiel", "netz", "runtime", "werkzeuge", "tests"];
 
 const TAGS = ["Regelkern", "Bild", "Netz", "Prüfwesen", "Oberfläche", "Werkzeug", "Doku"];
 const HOECHSTENS_ZEILEN = 1000;

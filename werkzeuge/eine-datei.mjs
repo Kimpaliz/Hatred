@@ -39,7 +39,7 @@
    `index.html` (der Einstieg, dessen Modulverweis gesucht wird) und
    allem unter `spiel/`, `netz/`, `runtime/`. Ändert nichts. */
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -255,6 +255,7 @@ const kopf = seite
 const rumpf = "const __teile = {};\n\n" + teile.join("\n\n");
 const ausgabe = kopf.replace(/<\/body>/i, `<script type="module">\n${rumpf}\n</script>\n</body>`);
 
+mkdirSync(dirname(resolve(ZIEL)), { recursive: true });
 writeFileSync(ZIEL, ausgabe, "utf8");
 const kb = (Buffer.byteLength(ausgabe, "utf8") / 1024).toFixed(1);
 console.log(`  ✓ ${module_.length} Module → ${ZIEL} (${kb} kB)`);

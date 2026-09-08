@@ -12,17 +12,17 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `helfer.mjs` und allen `.md` unter `docs/` (rekursiv) sowie `CLAUDE.md`,
-   `README.md`, `CHANGELOG.md`, `WORKCLAIM.md` in der Wurzel. */
+   `helfer.mjs`, Markdown in der Wurzel, docs/, .claude/ und den
+   Quellordnern. Damit werden auch die lokalen Agentenanleitungen geprüft. */
 
 import { existsSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
-import { macheMelder, liesDatei, WURZEL } from "./helfer.mjs";
+import { macheMelder, liesDatei, liesEinstellung, WURZEL } from "./helfer.mjs";
 
 const { melde, ende } = macheMelder({ still: true });
 
-const seiten = ["CLAUDE.md", "README.md", "CHANGELOG.md", "WORKCLAIM.md"]
-  .filter((d) => existsSync(join(WURZEL, d)));
+const seiten = new Set(readdirSync(WURZEL, { withFileTypes: true })
+  .filter((d) => d.isFile() && d.name.endsWith(".md")).map((d) => d.name));
 /* docs/ rekursiv: Ein Unterordner voller Verweise (etwa architecture/,
    domains/, migration/, operations/, history/) wäre sonst unsichtbar —
    in einem gewachsenen Projekt lagen 18 tote Verweise genau dort. */
@@ -30,10 +30,12 @@ const sammleDocs = (rel) => {
   for (const d of readdirSync(join(WURZEL, rel), { withFileTypes: true })) {
     const r = rel + "/" + d.name;
     if (d.isDirectory()) sammleDocs(r);
-    else if (d.name.endsWith(".md")) seiten.push(r);
+    else if (d.name.endsWith(".md")) seiten.add(r);
   }
 };
-if (existsSync(join(WURZEL, "docs"))) sammleDocs("docs");
+for (const rel of new Set(["docs", ".claude", ...liesEinstellung().quellordner])) {
+  if (existsSync(join(WURZEL, rel))) sammleDocs(rel);
+}
 
 let verweise = 0, tot = 0;
 for (const seite of seiten) {
@@ -47,7 +49,7 @@ for (const seite of seiten) {
   }
 }
 
-console.log(`  ${seiten.length} Seiten, ${verweise} Dateiverweise`);
+console.log(`  ${seiten.size} Seiten, ${verweise} Dateiverweise`);
 melde(tot === 0, "jeder Markdown-Verweis zeigt auf eine vorhandene Datei",
   `${tot} tote(r) Verweis(e)`);
 

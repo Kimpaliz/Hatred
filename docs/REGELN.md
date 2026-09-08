@@ -1,6 +1,6 @@
 # Die Regeln dieses Projekts
 
-Kurz in [CLAUDE.md](../CLAUDE.md). Hier steht die Begründung — und
+Kurz in [AGENTS.md](../AGENTS.md). Hier steht die Begründung — und
 welche Regel maschinell geprüft wird.
 
 ## 1. Nie direkt auf `main`
@@ -23,7 +23,7 @@ annehmen und die andere verwerfen.
 | Bild | `Bild` | `bild/…` | `runtime/zeichnen.js`, `licht.js`, `partikel.js`, `sprite*.js`, `palette.js`, `kamera.js`, `schrift.js` |
 | Oberfläche | `Oberfläche` | `flaeche/…` | `runtime/oberflaeche.js`, `eingabe.js`, `lobby.js`, `start.js`, `index.html` |
 | Netz | `Netz` | `netz/…` | `netz/` |
-| Prüfwesen | `Prüfwesen` | `pruef/…` | `werkzeuge/pruefe-*.mjs`, `werkzeuge/helfer.mjs` |
+| Prüfwesen | `Prüfwesen` | `pruef/…` | `tests/`, `werkzeuge/pruefe-*.mjs` |
 | Werkzeug | `Werkzeug` | `werk/…` | `werkzeuge/` ohne die Prüfungen — Vorschau, Kartenansicht, Bündler |
 | Doku | `Doku` | `doku/…` | `docs/`, alle `*.md` in der Wurzel |
 
@@ -36,11 +36,15 @@ Arbeiten mehrere Agenten gleichzeitig, hilft zusätzlich ein Präfix je
 Agent (`claude/<thema>`). Das beantwortet aber eine andere Frage — „wer"
 statt „was". Wer beides braucht, nimmt `WORKCLAIM.md` für das Wer.
 
-## 3. Nach jeder Änderung wird gefragt
+## 3. Autorisierung für Integration und Veröffentlichung
 
 Merge, Push und Veröffentlichung nur auf das ausdrückliche Ja des
 Auftraggebers. Kein „ich habe es schon mal nach main gebracht, war ja
 klein".
+
+Eine bereits erteilte Autorisierung gilt für den vereinbarten Umfang weiter.
+Lokale Änderungen erst vollständig bauen und prüfen; nicht vor jeder
+reversiblen Teiländerung dieselbe Frage wiederholen.
 
 ## 4. Alles steht im Changelog
 
@@ -50,6 +54,10 @@ Changelog-Eintrag ohne Zahl ist eine Behauptung.
 *Geprüft:* `werkzeuge/pruefe-arbeitsweise.mjs` verlangt, dass
 `CHANGELOG.md` mitgeändert wurde.
 
+Commit-Betreff nach Conventional Commits, mit deutschem Text und richtigen
+Umlauten, beispielsweise `refactor: Ordne Prüfungen und Werkzeuge`.
+Eine zugehörige Vorgangsnummer ergänzen, wenn für die Änderung eine existiert.
+
 ## 5. Workclaim vor dem Schreiben
 
 [WORKCLAIM.md](../WORKCLAIM.md) erst lesen, dann eintragen, dann
@@ -57,11 +65,14 @@ schreiben. Fremde Bereiche sind gesperrt.
 
 *Geprüft:* `werkzeuge/pruefe-workclaim.mjs`.
 
-## 6. `spiel/` und `netz/` kennen keinen Browser
+## 6. `spiel/` bleibt browserfrei und deterministisch
 
 Verboten unter `spiel/`: `window`, `document`, `canvas`, `Date`,
 `performance`, `Math.random`, `setTimeout`, `requestAnimationFrame`,
 `localStorage`. Der Zufall kommt aus `macheZufall` und wird gereicht.
+
+`netz/sitzung.mjs` erhält Sendefunktionen und bleibt transportunabhängig.
+Die Adapter in `netz/` dürfen dagegen Browser- und Node-APIs verwenden.
 
 Das ist keine Stilfrage. Daran hängt, ob vier Rechner dieselbe Runde
 bitgleich ausrechnen — und damit, ob Internet-Koop überhaupt so billig
@@ -144,8 +155,8 @@ warum ein Spiel daheim läuft und im Netz weiß bleibt.
 Ein Prüflauf im Wurzelverzeichnis findet das nie: Dort ist `/runtime/…`
 richtig. Der Beweis muss deshalb am Text hängen und nicht am Aufruf.
 
-*Geprüft:* `werkzeuge/pruefe-einstieg.mjs` für die Seite selbst und
-`werkzeuge/pruefe-app.mjs` für den Baum darunter — es verfolgt jeden
+*Geprüft:* `tests/pruefe-einstieg.mjs` für die Seite selbst und
+`tests/pruefe-app.mjs` für den Baum darunter — es verfolgt jeden
 `from "…"` vom Einstiegsskript aus, bis nichts Neues mehr kommt, und
 schlägt bei jedem Pfad an, der weder mit `./` noch mit `../` beginnt.
 
@@ -161,6 +172,10 @@ hier ein Dateiname steht, muss die Datei aufschlagen.
 node werkzeuge/pruefe-alles.mjs
 ```
 
-Sie startet jede `werkzeuge/pruefe-*.mjs` als eigenen Prozess und
-beendet sich mit 1, sobald eine rot ist. Ein roter Ausgangsstand wird
-**gemeldet**, nicht überbaut.
+Sie startet Fachprüfungen unter `tests/` und Wächter unter `werkzeuge/`
+als eigene Prozesse, auch aus Unterordnern. Nach einem Fehler laufen die
+anderen weiter; der Gesamtausgang ist dann 1. Die Arbeitsweiseprüfung läuft
+zuletzt. Ein roter Ausgangsstand wird **gemeldet**, nicht überbaut.
+
+Die Bereichsauswahl und Zuordnung stehen in [ENTWICKLUNG.md](ENTWICKLUNG.md),
+Dateibesitz und Worktrees in [AGENTEN.md](AGENTEN.md).

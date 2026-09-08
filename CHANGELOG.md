@@ -3,6 +3,65 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Projektstruktur und Einstieg für Agenten ordnen
+
+**Auftrag, wörtlich:** „Und räume da mal auf. Wie man das in einem richtigen
+spiele projekt als entwickler aufräumen würde.“ und „Und wie man es am
+ehesten für die arbeit mit agenten strukturieren würde!“
+
+Ausgangsbasis: `38479d0`. **35 Fachprüfungen und 3 Browser-Prüfhilfen** liegen
+nun unter `tests/`. Die **12 Projektwächter** bleiben mit Vorschau, Export,
+Kartenansicht und Vorgangswerkzeugen unter `werkzeuge/`. Fachbehauptungen
+und Projektkonfiguration sind in getrennten Helfern untergebracht.
+
+Der vorhandene Prüfeinstieg entdeckt beide Bereiche einschließlich Unterordnern.
+`--tests`, `--checks` und `--list` ermöglichen gezielte Läufe beziehungsweise
+eine reine Dateiliste. Ein leerer ausgewählter Bereich oder ein unbekanntes
+Argument schlägt fehl. Jede Prüfung erhält einen eigenen Prozess mit
+120 Sekunden Frist; Fehler verdecken spätere Prüfungen nicht. Die
+Arbeitsweiseprüfung läuft zuletzt. Keine bestehende Prüfung wurde entfernt.
+
+`package.json` grenzt Hatred als ES-Modulprojekt mit Node ab Version 22 vom
+Elternordner ab. **0 Paketabhängigkeiten**, eine leere pnpm-Lockdatei und die
+Befehle `dev`, `test`, `test:game`, `test:list`, `check`, `build`, `map`.
+Der Export legt fehlende Zielordner an; `pnpm build` schreibt nach `dist/`.
+EditorConfig, Git-Attribute und Ignore-Regeln vereinheitlichen neue Dateien
+und halten erzeugte Ausgaben aus dem Quellstand. Die CI prüft zusätzlich
+Pull Requests nach `main`, mit getrennter Laufgruppe je Referenz.
+
+Eine gemeinsame `AGENTS.md` und **5 lokale Bereichsanleitungen** ersetzen
+die mehrfachen, veralteten Claude-Regelkopien. Claude-Dateien verweisen auf
+dieselben Quellen. `docs/AGENTEN.md` erklärt Dateibesitz, Worktrees und
+begrenzte Übergaben; `docs/ENTWICKLUNG.md` ordnet Befehle und Prüfungen zu.
+README, Systemkarte, Regelwerk und gepflegte Prüfverweise sind nachgeführt.
+Die Plattformdokumentation unterscheidet Anbindungsabsicht und tatsächlichen
+Checkout. Die Browserfreiheit gilt präzise für `spiel/`; Netzadapter kennen
+ihre Umgebung. `docs/LEISTUNG.md` nennt Licht, KI-Wegsuche und Terrain als
+quellenbasierte Kandidaten für einen gesonderten Optimierungsauftrag.
+
+**Gemessen am 08.09.2026:** Die erweiterte Kette besteht mit **48 Prüfungen**
+in **34,7 Sekunden**. Davon prüft `tests/pruefe-pruefkette.mjs` den Runner mit
+**32 Behauptungen**; am alten Runner fallen **16 von 32**. Gegenproben für
+tote Links in der Wurzelanleitung, einer lokalen Anleitung und einem
+Claude-Profil liefern jeweils Exit 1; nach Rücknahme liefert die Verweisprüfung
+Exit 0. Sie erfasst **23 Markdown-Dateien und 66 Dateiverweise**.
+Der Kernwächter besteht mit **224 Behauptungen** und nimmt nur die Datei
+`AGENTS.md` aus: Das absichtliche Überspringen eines gleichnamigen Ordners
+fällt rot aus. Alle Gegenproben wurden zurückgenommen.
+
+`pnpm build`: **47 Module**, **892.989 Bytes**; der enthaltene Modulblock
+besteht `node --check`. Vergleich mit der Ausgangsbasis: **53 Laufzeit- und
+Startdateien** nach Git-Zeilenendennormalisierung unverändert. Bei den
+**38 verschobenen Dateien** entspricht der Inhalt exakt dem Ausgangsstand
+mit den dokumentierten Pfadanpassungen; die bestehenden Fachbehauptungen
+im Helfer sind unverändert. Keine neue Browser-, Geräte- oder Internet-Koop-
+Abnahme behauptet: Spielcode, Seiteninhalt und Gestaltung wurden nicht geändert.
+
+Zwei Codex-Teilaufträge (geerbtes Modell/Effort, ausschließlich lesend,
+je **0 Dateien** geändert) bewerteten Architektur und Werkzeugmigration und
+prüften anschließend den Diff. Codex führte alle Änderungen und die Abnahme
+im Arbeitszweig aus. Andere vorhandene Worktrees wurden nicht entfernt.
+
 ## 07.09.2026 — Gesten-Hörer von der Spieleingabe unterscheiden
 
 Die bestehende Touch-Prüfung zählt Vorlauf-Hörer gezielt am Canvas und

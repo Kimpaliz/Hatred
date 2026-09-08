@@ -34,7 +34,7 @@
    `runtime/sprite-daten.js` (die Raster und `SPIELER_FARBEN`),
    `runtime/sprites.js` (`farbeFuer`), `runtime/palette.js`
    (`bodenTon`), `spiel/gitter.mjs` (`BODEN`), und
-   `werkzeuge/pruefe-sprites.mjs`, das die Tabelle `MERKMAL` von hier
+   `tests/pruefe-sprites.mjs`, das die Tabelle `MERKMAL` von hier
    liest, damit es sie nicht ein zweites Mal gibt. Gelesen wird das
    Ergebnis von `pruefe-sprite.mjs` im Skill `pixel-werkstatt`.
 
@@ -204,7 +204,7 @@ export function dateiname(eintrag, spielerNummer = null) {
 }
 
 /* Alle Aufträge als Paare {name, auftrag} — ohne zu schreiben, damit
-   `werkzeuge/pruefe-sprites.mjs` dieselbe Rechnung prüfen kann, ohne
+   `tests/pruefe-sprites.mjs` dieselbe Rechnung prüfen kann, ohne
    Dateien anzulegen. */
 export function alleAuftraege(nurDiese = null) {
   const raus = [];

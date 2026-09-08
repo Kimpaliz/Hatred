@@ -1,93 +1,15 @@
-/* [Aufgabe: Prüfwesen] Das kleinste Prüfgerüst, das diese Kette braucht.
+/* [Aufgabe: Werkzeug] Projektpfade, Konfiguration und Wächter-Meldungen.
 
-   ── Warum kein fertiges Prüfwerkzeug ────────────────────────────────
+   ── Warum es das gibt ──────────────────────────────────────────────
 
-   Ein Testläufer aus dem Paketverzeichnis brächte hundert Dateien mit,
-   die niemand liest, und eine Version, die veraltet. Was hier gebraucht
-   wird, sind vier Dinge: eine Behauptung, ein Name, ein Zähler und ein
-   Rückgabewert für die Schale. Das sind sechzig Zeilen.
+   Werkzeuge und Projektwächter teilen dieselbe Konfiguration. Die
+   zustandsbehafteten Fachbehauptungen liegen getrennt in tests/helfer.mjs.
+   So laden operative Werkzeuge kein Fachprüfgerüst.
 
-   ── Arbeitet zusammen mit ───────────────────────────────────────────
+   ── Arbeitet zusammen mit ──────────────────────────────────────────
 
-   Jeder Datei `werkzeuge/pruefe-*.mjs` und `werkzeuge/pruefe-alles.mjs`,
-   das die Einzelprüfungen als eigene Prozesse startet. */
-
-let bestanden = 0;
-let gefallen = 0;
-const fehler = [];
-let bereich = "";
-
-export function abschnitt(name) { bereich = name; }
-
-/* Eine einzelne Behauptung. `bedingung` muss wahr sein. */
-export function behaupte(bedingung, was) {
-  if (bedingung) { bestanden++; return true; }
-  gefallen++;
-  fehler.push(`${bereich ? bereich + " → " : ""}${was}`);
-  return false;
-}
-
-export function gleich(ist, soll, was) {
-  const ok = Object.is(ist, soll);
-  return behaupte(ok, `${was}: ist ${anzeige(ist)}, soll ${anzeige(soll)}`);
-}
-
-export function nahe(ist, soll, spanne, was) {
-  const ok = Math.abs(ist - soll) <= spanne;
-  return behaupte(ok, `${was}: ist ${anzeige(ist)}, soll ${anzeige(soll)} ± ${spanne}`);
-}
-
-export function tiefGleich(ist, soll, was) {
-  const a = JSON.stringify(ist), b = JSON.stringify(soll);
-  return behaupte(a === b, `${was}:\n    ist  ${a}\n    soll ${b}`);
-}
-
-/* Erwartet, dass `fn` wirft. Ohne diese Prüfung würde eine Schutzwand,
-   die aus Versehen entfernt wurde, niemandem auffallen. */
-export function wirft(fn, was) {
-  try { fn(); } catch { return behaupte(true, was); }
-  return behaupte(false, `${was}: hat nicht geworfen`);
-}
-
-function anzeige(w) {
-  if (typeof w === "number" && !Number.isInteger(w)) return w.toFixed(4);
-  if (typeof w === "string") return `"${w}"`;
-  return String(w);
-}
-
-/* Am Ende jeder Prüfdatei. Beendet den Prozess mit 0 oder 1 — nur so
-   sieht `pruefe-alles.mjs` den Unterschied. */
-export function ende(titel) {
-  const strich = "─".repeat(Math.max(0, 58 - titel.length));
-  if (gefallen === 0) {
-    console.log(`  ✓ ${titel} ${strich} ${bestanden} Behauptungen`);
-    process.exit(0);
-  }
-  console.log(`  ✗ ${titel} ${strich} ${gefallen} von ${bestanden + gefallen} gefallen`);
-  for (const f of fehler) console.log(`      · ${f}`);
-  process.exit(1);
-}
-
-
-/* ══════════════════════════════════════════════════════════════════
-   Ab hier: das Alpha-Code-Gerüst, wörtlich aus dem Skill `alpha-code`
-   (florianfinn/claude-skills, `plugins/alpha-code/skills/alpha-code/
-   werkzeuge/helfer.mjs`).
-
-   ── Warum beides in einer Datei ────────────────────────────────────
-
-   Es sind zwei verschiedene Melder, und beide werden gebraucht. Oben
-   `behaupte`/`gleich` für die **Fachprüfungen** dieses Spiels — sie
-   behaupten über Zahlen und wollen `ist/soll` im Fehlertext. Hier
-   unten `macheMelder` für die **Wächter der Arbeitsweise**, die aus
-   dem Skill kommen und unverändert bleiben sollen, damit eine
-   Verbesserung am Skill hier ankommt.
-
-   Zwei Dateien wären sauberer getrennt, aber jeder Wächter müsste dann
-   wissen, welche er nimmt — und der Skill schreibt `./helfer.mjs`.
-   Die Namen stoßen nicht zusammen: oben `ende` als Funktion, unten
-   `ende` nur *innerhalb* des von `macheMelder` gelieferten Objekts.
-   ══════════════════════════════════════════════════════════════════ */
+   alpha-code.json, tests/helfer.mjs, vorgaenge.mjs und die Projektwächter
+   unter werkzeuge/pruefe-*.mjs. */
 
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join } from "node:path";

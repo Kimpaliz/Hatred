@@ -170,8 +170,8 @@ Sie stehen als Vorgang, nicht als Häkchen.
    Hand, eigener Vermittler, oder ein dauerhaft laufender Dienst. Der
    dritte Weg war ausgeschlossen, weil er einen *fremden* Dienst
    bedeutet hätte. Er tut es nicht: Es ist Janniks eigene
-   Dashboard-Plattform, und ihre Vorlage liegt bereits in diesem
-   Repository. Die Begründung steht in
+   Dashboard-Plattform. Die Anbindungsabsicht ist kein Nachweis einer
+   Integration in diesem Checkout. Die Bestandsgrenze steht in
    [PROJEKTGRENZE.md](PROJEKTGRENZE.md); die direkte Leitung ohne
    Server bleibt als zweiter Weg bestehen.
 2. **Wie viele Kerkertiefen** ein Lauf hat, bevor er endet.

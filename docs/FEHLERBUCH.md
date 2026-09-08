@@ -81,7 +81,7 @@ eine heile; die Größe ist kein Beweis. **Woran man es erkennt, bevor
 man hineinläuft:** Gibt es zu dem, was ein Werkzeug *erzeugt*, eine
 Prüfung, die das Erzeugte selbst anfasst? Wenn nicht, ist das Werkzeug
 ungeprüft, egal wie grün die Kette ist — sie war es hier, 36 Prüfungen
-lang. Gegenmittel steht in `werkzeuge/pruefe-einzeldatei.mjs`:
+lang. Gegenmittel steht in `tests/pruefe-einzeldatei.mjs`:
 bauen, dann `node --check` auf das Ergebnis.
 
 **C7 — Ein verschachteltes Antwortformat für Agenten schlägt fehl,

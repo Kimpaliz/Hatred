@@ -3,11 +3,11 @@
 Diese Seite beantwortet eine Frage: **Wo fasse ich an, wenn ich X
 ändern will?** Sie sagt nicht, was fertig ist (Regel 13).
 
-## Die vier Schichten
+## Die drei Laufzeitschichten
 
 ```
                  ┌──────────────────────────────────────────┐
-   Tastatur  ──► │  runtime/   Bild, Ton der Anzeige, Maus   │
+   Tastatur  ──► │  runtime/   Bild, Oberfläche, Maus        │
    Maus          │  kennt den Kern, der Kern kennt es nicht  │
                  └───────────────┬──────────────────────────┘
                                  │  Aktion  {typ, wer, …}
@@ -54,15 +54,44 @@ Rechner der Wahrheit eines anderen glauben, statt sie nachzurechnen.
 | „Die Karten sehen zu gleich aus" | `spiel/landschaft.mjs` |
 | „Der Gegner benimmt sich dumm" | `spiel/gegner-ki.mjs` |
 | „Ein Zug soll mehr Punkte haben" | `spiel/zug.mjs` → `AP_JE_ZUG` |
-| Eine neue Aktionsart | `spiel/aktionen.mjs` **und** die Ereignisliste in `docs/SPIEL.md` |
+| Eine neue Aktionsart | `spiel/aktionen.mjs`, `spiel/protokoll.mjs` und deren Nutzer in Sitzung und Abspieler |
 | Farben, Stil, Stimmung | `runtime/palette.js` — nur dort |
 | Eine Figur sieht falsch aus | `runtime/sprite-daten.js` |
 | Funken, Blut, Staub | `runtime/partikel.js` |
 | Boden, Wände, Höhenkanten | `runtime/zeichnen.js` |
+| Details der Geländeoberflächen und Randlippen | `runtime/gelaende-bild.js` |
 | Lebensbalken, Punkteanzeige, Zugleiste | `runtime/oberflaeche.js` |
+| Aktionsflächen und Tasten der unteren Leiste | `runtime/oberflaeche-leiste.js` |
+| Kameraausschnitt und Zoomstufen | `runtime/kamera.js` |
+| Zoomgesten, Vollbild und Ansichtsbuttons | `runtime/ansicht.js` |
 | „Eine Bewegung läuft zu schnell/langsam ab" | `runtime/abspieler.js` → `TEMPO` |
 | „Man kommt nicht zusammen" | `netz/sitzung.mjs`, `netz/verbindung.mjs` |
 | Die Prüfkette | `werkzeuge/pruefe-alles.mjs` |
+
+## Entwicklung ist eine eigene Verantwortung
+
+`tests/` prüft die Laufzeitschichten mit echten Regeln und ersetzten Browser-
+oder Netzschnittstellen. `werkzeuge/` enthält Vorschau, Export und Projektwächter.
+Kein Laufzeitmodul importiert aus diesen beiden Entwicklungsbereichen.
+
+Der Ablauf für eine Änderung: Einstieg und Auftrag in [AGENTS.md](../AGENTS.md),
+Dateibesitz in [AGENTEN.md](AGENTEN.md), gezielte Prüfwege in
+[ENTWICKLUNG.md](ENTWICKLUNG.md). Die lokalen Agentenanleitungen benennen die
+Grenzen direkt neben den Quellen.
+
+## Erweiterungen an großen Dateien
+
+Vor weiterer Arbeit an `spiel/aktionen.mjs`, `runtime/eingabe.js`,
+`runtime/zeichnen.js`, `runtime/lobby.js` oder `runtime/sprite-daten.js`
+die Dateigröße prüfen. Die Kopfnotizprüfung nennt die größte Datei und
+erzwingt die vereinbarte Grenze; keine zweite manuelle Größenliste pflegen.
+
+Bei einem passenden Erweiterungsauftrag an bestehenden Verantwortungen trennen:
+Aktionsprüfung und Ausführung, Browserlebenszyklus und Spielverdrahtung,
+Gelände und Wesenzeichnung. Erst Nutzer und Exporte prüfen, dann auslagern
+und den Einzeldateiexport abnehmen. Ein Ordnerumzug allein macht die Logik
+nicht verständlicher. Hinweise zur Rechenleistung stehen in
+[LEISTUNG.md](LEISTUNG.md).
 
 ## Die Reihenfolge eines Bildes
 

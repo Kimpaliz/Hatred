@@ -35,14 +35,17 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   Allem unter `spiel/` (nur gelesen, nie geändert), `werkzeuge/
+   Allem unter `spiel/` (nur gelesen, nie geändert), `tests/
    helfer.mjs` (Behauptungen und Abschluss) und `werkzeuge/
    pruefe-alles.mjs`, das diese Datei als eigenen Prozess startet. */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  readdirSync, readFileSync, statSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join, dirname, extname, relative, sep, posix, win32 } from "node:path";
 import { fileURLToPath } from "node:url";
-import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
+import { abschnitt, behaupte, gleich, ende } from "../tests/helfer.mjs";
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 const KERN = join(WURZEL, "spiel");
@@ -177,7 +180,9 @@ function sammle(ordner, aus = []) {
   for (const name of readdirSync(ordner).sort()) {
     const pfad = join(ordner, name);
     if (statSync(pfad).isDirectory()) sammle(pfad, aus);
-    else aus.push(pfad);
+    /* Nur die Datei ist Doku. Ein gleichnamiger Ordner bleibt sichtbar,
+       ebenso alle anderen fremden Dateitypen für die Prüfung unten. */
+    else if (name !== "AGENTS.md") aus.push(pfad);
   }
   return aus;
 }
@@ -249,6 +254,26 @@ function liegtUnter(ziel, wurzel, trenner = sep) {
 }
 
 /* ── 2. Die eiserne Regel ───────────────────────────────────────────*/
+/* Die Doku-Ausnahme darf keinen gleichnamigen Ordner mit Code verbergen. */
+{
+  abschnitt("Agentenanleitung und Quellensuche");
+  const probe = mkdtempSync(join(tmpdir(), "hatred-kernsuche-"));
+  try {
+    mkdirSync(join(probe, "doku"));
+    mkdirSync(join(probe, "code/AGENTS.md"), { recursive: true });
+    writeFileSync(join(probe, "doku/AGENTS.md"), "window ist hier nur ein Wort.");
+    writeFileSync(join(probe, "code/AGENTS.md/regel.mjs"), "export const wert = 1;");
+    writeFileSync(join(probe, "falsch.js"), "export const wert = 1;");
+    const gefunden = sammle(probe).map((p) => relative(probe, p).replace(/\\/g, "/"));
+    gleich(gefunden.includes("doku/AGENTS.md"), false, "nur die Anleitung wird ausgenommen");
+    behaupte(gefunden.includes("code/AGENTS.md/regel.mjs"),
+      "Code in einem gleichnamigen Verzeichnis bleibt sichtbar");
+    behaupte(gefunden.includes("falsch.js"), "andere Dateitypen bleiben für den Wächter sichtbar");
+  } finally {
+    rmSync(probe, { recursive: true, force: true });
+  }
+}
+
 const dateien = sammle(KERN);
 let geprueft = 0, zeilenGesamt = 0;
 
