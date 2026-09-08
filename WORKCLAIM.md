@@ -12,7 +12,7 @@ einzige Stelle, an der sich zwei Sitzungen sehen.
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| — | frei | — | — |
+| frei | frei | Das Zugangswort ist gewechselt; niemand schreibt. | 08.09.2026 |
 
 ## Format
 
