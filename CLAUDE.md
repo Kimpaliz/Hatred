@@ -81,8 +81,14 @@ node werkzeuge/karte-zeigen.mjs 7    # eine erzeugte Karte ansehen
 [docs/FEHLERBUCH.md](docs/FEHLERBUCH.md) — dort stehen die Fehler, die
 sich wiederholen, und woran man sie erkennt, **bevor** man hineinläuft.
 
+**Wer neu dazukommt**, liest danach
+[docs/UEBERGABE.md](docs/UEBERGABE.md): was gemessen wurde, welche
+Entscheidungen offen sind und welche Prüfung grün ist, obwohl sie nichts
+mehr misst.
+
 | Frage | Datei |
 | --- | --- |
+| Ich bin neu hier — was muss ich wissen? | [docs/UEBERGABE.md](docs/UEBERGABE.md) |
 | Welches System redet mit welchem? Wo fasse ich für Wunsch X an? | [docs/WEGWEISER.md](docs/WEGWEISER.md) |
 | Was wird gebaut und warum so? | [docs/SPIEL.md](docs/SPIEL.md) |
 | Wer arbeitet gerade woran? | [WORKCLAIM.md](WORKCLAIM.md) |
