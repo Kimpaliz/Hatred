@@ -21,6 +21,11 @@ voraussetzt.
 4. [docs/WEGWEISER.md](docs/WEGWEISER.md) und die lokale `AGENTS.md` des
    betroffenen Bereichs lesen. Nur den benötigten Kontext laden.
 
+Neue Mitarbeiter und Bearbeiter von Welt-/Gameplay-Aufträgen lesen außerdem
+[docs/UEBERGABE.md](docs/UEBERGABE.md). Jüngere Nutzerwünsche dort haben bei
+Widersprüchen Vorrang vor älteren Spielbeschreibungen. Die offenen Entscheidungen bewahren;
+Aufräumen und Integration beauftragen keine Umsetzung der nächsten Welle.
+
 ## Zuständigkeiten
 
 | Bereich | Verantwortung | Lokale Anleitung |

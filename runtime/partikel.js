@@ -61,6 +61,7 @@
 import { FARBEN } from "./palette.js";
 import { KACHEL } from "./licht.js";
 import { macheZufall } from "../spiel/zufall.mjs";
+import { feldMitte, weltNachFeld, ZEILEN_HOEHE, FELD_RADIUS } from "../spiel/raster.mjs";
 
 /* Höchstens ein halbes Feld je Teilschritt — siehe Kopfnotiz. */
 const SCHRITT_HOECHSTENS = KACHEL / 2;
@@ -169,12 +170,6 @@ export const SCHLEIM_RAMPE = [FARBEN.schleimHell, FARBEN.schleim1, FARBEN.schlei
 
 const RUNDUM = Math.PI * 2;
 
-/* Ein Feld aus einer Weltbildpunkt-Achse. Eigene Funktion, weil der
-   Fehler „durch Null geteilt" hier nie auffiele: Ein Teilchen bei
-   x = −1 gehört in Feld −1 und nicht in Feld 0, und `Math.trunc`
-   gäbe genau das Falsche. */
-const feldVon = (bildpunkt) => Math.floor(bildpunkt / KACHEL);
-
 /* Ist der Weg von einem Feld ins nächste versperrt?
 
    Zwei Gründe, und der zweite ist der, den man vergisst: Eine
@@ -265,14 +260,19 @@ export function machePartikelwerk(hoechstzahl = 2000, saat = 0x51ed2701) {
      Teilchen, das schräg auf eine Ecke trifft, sonst stecken bliebe:
      So rutscht es an der Wand entlang, statt davor zu stehen. */
   function schiebe(teilchen, dt, karte) {
-    const vonX = feldVon(teilchen.x);
-    const vonY = feldVon(teilchen.y);
+    const von = weltNachFeld(teilchen.x, teilchen.y);
     const zielX = teilchen.x + teilchen.vx * dt;
-    if (versperrt(karte, vonX, vonY, feldVon(zielX), vonY)) teilchen.vx = -teilchen.vx * PRALL;
+    const rechts = weltNachFeld(zielX, teilchen.y);
+    if (versperrt(karte, von.x, von.y, rechts.x, rechts.y)) {
+      teilchen.vx = -teilchen.vx * PRALL;
+    }
     else teilchen.x = zielX;
     const zielY = teilchen.y + teilchen.vy * dt;
-    const jetztX = feldVon(teilchen.x);
-    if (versperrt(karte, jetztX, vonY, jetztX, feldVon(zielY))) teilchen.vy = -teilchen.vy * PRALL;
+    const jetzt = weltNachFeld(teilchen.x, teilchen.y);
+    const unten = weltNachFeld(teilchen.x, zielY);
+    if (versperrt(karte, jetzt.x, jetzt.y, unten.x, unten.y)) {
+      teilchen.vy = -teilchen.vy * PRALL;
+    }
     else teilchen.y = zielY;
   }
 
@@ -345,11 +345,9 @@ export function machePartikelwerk(hoechstzahl = 2000, saat = 0x51ed2701) {
     return gezeichnet;
   }
 
-  /* Die leuchtenden Teilchen als Lichtquellen für
-     `runtime/licht.js`. **`x` und `y` sind Felder, keine
-     Bildpunkte** — die Lichtkarte rechnet in Feldern und leuchtet aus
-     der Feldmitte; deshalb das halbe Feld Abzug, sonst säße der Funke
-     im Bild ein halbes Feld weiter unten rechts als in der Welt.
+  /* Die leuchtenden Teilchen als Lichtquellen für `runtime/licht.js`.
+     `weltX`/`weltY` sind die genaue Weltposition. `x`/`y` bleiben für
+     Feldverbraucher stetige Zwischenkoordinaten derselben Hexprojektion.
 
      Die Stärke sinkt mit dem Leben: Ein verglühender Funke, der bis
      zum letzten Bild gleich hell leuchtet und dann verschwindet,
@@ -361,8 +359,10 @@ export function machePartikelwerk(hoechstzahl = 2000, saat = 0x51ed2701) {
       if (teilchen.leben <= 0 || !teilchen.leuchtet) continue;
       if (!leuchtVorrat[n]) leuchtVorrat[n] = { x: 0, y: 0, farbe: "", staerke: 0 };
       const eintrag = leuchtVorrat[n];
-      eintrag.x = teilchen.x / KACHEL - 0.5;
-      eintrag.y = teilchen.y / KACHEL - 0.5;
+      eintrag.y = (teilchen.y - FELD_RADIUS) / ZEILEN_HOEHE;
+      eintrag.x = (teilchen.x - feldMitte(0, eintrag.y).x) / KACHEL;
+      eintrag.weltX = teilchen.x;
+      eintrag.weltY = teilchen.y;
       eintrag.farbe = teilchen.farbe;
       eintrag.staerke = teilchen.staerke * (teilchen.leben / teilchen.lebenMax);
       leuchtListe.push(eintrag);

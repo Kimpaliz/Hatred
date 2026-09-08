@@ -3,7 +3,7 @@
 Ein **rundenbasierter Koop-Dungeon-Crawler** für den Browser, zu einem
 bis vier über das Internet. Dark Fantasy, exakt von oben, Pixelgrafik.
 
-Ein Raster, sechs Aktionspunkte je Zug und ein Schlachtfeld, das aus
+Ein Hexraster, sechs Aktionspunkte je Zug und ein Schlachtfeld, das aus
 **vier Höhenebenen** besteht: Wer oben steht, sieht weiter und trifft
 besser — aber hinauf kommt man nur über eine Rampe, und stoßen kann
 einen jeder.
@@ -20,6 +20,10 @@ Doppelklick auf `Vorschau-starten.cmd`.
 Es braucht keine Paketinstallation und kein Konto — nur Node ab Version 22
 und einen Browser. Mit pnpm funktioniert auch `pnpm dev`. Der Server ist nötig, weil
 Browser Module nicht von der Festplatte laden.
+
+Die [Geländevorschau](werkzeuge/topdown-vorschau.html) zeigt wahlweise
+die erzeugte Granithöhle oder eine Treppenkarte mit mehreren Ebenen.
+Rasterlinien und Fackellicht lassen sich für den Vergleich umschalten.
 
 ## Zusammen spielen
 
@@ -46,8 +50,8 @@ verschiedene Spiele weiterzuspielen.
 
 - **Vier Höhenebenen** mit Rampen, Stürzen, Sicht über niedrige Mauern
   hinweg und einem Stoß, der beides zusammenbringt
-- **Erzeugte Kerker** aus Räumen, Gängen mit Rundwegen und
-  eingerasteten Plateaus — kein Rauschfeld
+- **Scotophobias Granithöhle im Hexraster**: geschwungene Gänge,
+  Felsinseln, zusammenhängendes Granitmaterial und taktische Plateaus
 - **Aktionspunkte** statt „Bewegen plus eine Aktion": sechs Punkte,
   und die Wahl gehört dir
 - **Lichtquellen** mit farbigem, an Wänden gestopptem Abfall — und
@@ -64,6 +68,7 @@ verschiedene Spiele weiterzuspielen.
 | Wie arbeiten mehrere Agenten zusammen? | [docs/AGENTEN.md](docs/AGENTEN.md) |
 | Was wird gebaut und warum so? | [docs/SPIEL.md](docs/SPIEL.md) |
 | Wo fasse ich für Wunsch X an? | [docs/WEGWEISER.md](docs/WEGWEISER.md) |
+| Wie wird Scotophobia zum Raster? | [docs/GRANIT-RASTER.md](docs/GRANIT-RASTER.md) |
 | Was kommt als Nächstes, und warum in dieser Reihenfolge? | [docs/ROADMAP.md](docs/ROADMAP.md) |
 | Welche Regeln gelten? | [docs/REGELN.md](docs/REGELN.md) |
 | Welche Fehler wiederholen sich? | [docs/FEHLERBUCH.md](docs/FEHLERBUCH.md) |

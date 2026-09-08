@@ -61,6 +61,7 @@ import { abschnitt, behaupte, gleich, nahe, wirft, ende } from "./helfer.mjs";
 import { macheKarte } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
 import { PIXEL_JE_FELD } from "../spiel/bauart.mjs";
+import { feldEcken, weltMasse } from "../spiel/raster.mjs";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
 import { KACHEL } from "../runtime/licht.js";
 import { FARBEN } from "../runtime/palette.js";
@@ -395,21 +396,25 @@ kamera.folge(100, 100, true);
     const feldX = wuerfel.ganz(0, 199);
     const feldY = wuerfel.ganz(0, 199);
     const punkt = kamera.feldNachBild(feldX, feldY);
-    const zurueck = kamera.bildNachFeld(punkt.x, punkt.y);
+    const zurueck = kamera.bildNachFeld(punkt.x + KACHEL / 2 * kamera.vergroesserung,
+      punkt.y + KACHEL / 2 * kamera.vergroesserung);
     if (zurueck.x !== feldX || zurueck.y !== feldY) hinFehler++;
 
-    /* Und umgekehrt: Der Punkt eines beliebigen Bildschirmpunktes
-       liegt in dem Feld, das er trifft — höchstens eine Kachelkante
-       weiter links und oben, nie weiter rechts. */
+    /* Die Rückrechnung muss einen Punkt innerhalb aller sechs
+       gerichteten Kanten finden. Der Spritekasten ist keine Hexfläche. */
     const px = wuerfel.ganz(0, 1919);
     const py = wuerfel.ganz(0, 1079);
     const feld = kamera.bildNachFeld(px, py);
-    const ecke = kamera.feldNachBild(feld.x, feld.y);
-    const kante = KACHEL * kamera.vergroesserung;
-    if (ecke.x > px || ecke.x + kante <= px || ecke.y > py || ecke.y + kante <= py) herFehler++;
+    const wx = px / kamera.vergroesserung + kamera.eckeX;
+    const wy = py / kamera.vergroesserung + kamera.eckeY;
+    const ecken = feldEcken(feld.x, feld.y);
+    if (ecken.some((a, j) => {
+      const b = ecken[(j + 1) % 6];
+      return (b.x - a.x) * (wy - a.y) - (b.y - a.y) * (wx - a.x) < -1e-7;
+    })) herFehler++;
   }
-  gleich(hinFehler, 0, "1.000 Felder: bildNachFeld(feldNachBild(f)) ist wieder f");
-  gleich(herFehler, 0, "1.000 Bildpunkte: feldNachBild(bildNachFeld(p)) umschließt p");
+  gleich(hinFehler, 0, "1.000 Felder: der Mittelpunkt des gezeichneten Sprites trifft sein Hex");
+  gleich(herFehler, 0, "1.000 Bildpunkte: alle sechs Kanten des getroffenen Hex umschließen p");
 }
 
 {
@@ -472,13 +477,13 @@ abschnitt("6 · Folgen");
   gleich(kam.eckeX, 0, "links wird bei null geklemmt");
   gleich(kam.eckeY, 0, "oben wird bei null geklemmt");
   kam.folge(199, 199, true);
-  gleich(kam.eckeX, karte.breite * KACHEL - kam.sichtBreite(), "rechts wird geklemmt");
-  gleich(kam.eckeY, karte.hoehe * KACHEL - kam.sichtHoehe(), "unten wird geklemmt");
+  gleich(kam.eckeX, weltMasse(karte).breite - kam.sichtBreite(), "rechts wird geklemmt");
+  gleich(kam.eckeY, weltMasse(karte).hoehe - kam.sichtHoehe(), "unten wird geklemmt");
 
   const winzig = macheKarte(8, 8);
   const klein = macheKamera({ fensterBreite: 1920, fensterHoehe: 1080, karte: winzig });
   klein.folge(4, 4, true);
-  gleich(klein.eckeX, Math.round((8 * KACHEL - klein.sichtBreite()) / 2),
+  gleich(klein.eckeX, Math.round((weltMasse(winzig).breite - klein.sichtBreite()) / 2),
     "eine Karte kleiner als das Fenster steht mittig, nicht in der Ecke");
 }
 
@@ -488,17 +493,33 @@ abschnitt("7 · Ausschnitt");
   const kam = macheKamera({ fensterBreite: 1920, fensterHoehe: 1080, karte });
   kam.folge(100, 100, true);
   const feld = kam.sichtbareFelder();
-  const kante = KACHEL * kam.vergroesserung;
-  const beruehrt = (fx, fy) => {
-    const p = kam.feldNachBild(fx, fy);
-    return p.x + kante > 0 && p.x < kam.fensterBreite
-      && p.y + kante > 0 && p.y < kam.fensterHoehe;
-  };
-  behaupte(beruehrt(feld.vonX, feld.vonY), "das erste Feld liegt im Fenster");
-  behaupte(beruehrt(feld.bisX, feld.bisY), "das letzte Feld liegt im Fenster");
-  behaupte(!beruehrt(feld.vonX - 1, feld.vonY), "eines davor liegt draußen");
-  behaupte(!beruehrt(feld.bisX + 1, feld.bisY), "eines danach liegt draußen");
-  behaupte(!beruehrt(feld.bisX, feld.bisY + 1), "eines darunter liegt draußen");
+  /* Die Rückgabe ist ein konservativer Feldkasten: Ein Randfeld darf
+     außerhalb liegen, damit versetzte Zeilen und Spitzen nicht fehlen.
+     Deshalb gegen alle tatsächlichen Hexbegrenzungen messen und den
+     zusätzlichen Streifen auf höchstens ein Feld je Seite begrenzen. */
+  const braucht = { vonX: Infinity, vonY: Infinity, bisX: -Infinity, bisY: -Infinity };
+  for (let y = 0; y < karte.hoehe; y++) {
+    for (let x = 0; x < karte.breite; x++) {
+      const ecken = feldEcken(x, y);
+      const xs = ecken.map((e) => e.x), ys = ecken.map((e) => e.y);
+      const querDraussen = Math.max(...xs) <= kam.eckeX
+        || Math.min(...xs) >= kam.eckeX + kam.sichtBreite();
+      const hochDraussen = Math.max(...ys) <= kam.eckeY
+        || Math.min(...ys) >= kam.eckeY + kam.sichtHoehe();
+      if (querDraussen || hochDraussen) continue;
+      braucht.vonX = Math.min(braucht.vonX, x);
+      braucht.vonY = Math.min(braucht.vonY, y);
+      braucht.bisX = Math.max(braucht.bisX, x);
+      braucht.bisY = Math.max(braucht.bisY, y);
+    }
+  }
+  behaupte(Number.isFinite(braucht.vonX), "die Sichtprobe enthält tatsächlich sichtbare Hexfelder");
+  for (const name of ["vonX", "vonY", "bisX", "bisY"]) {
+    const vorzeichen = name.startsWith("von") ? 1 : -1;
+    const rand = (braucht[name] - feld[name]) * vorzeichen;
+    behaupte(rand >= 0 && rand <= 1,
+      `${name}: alle angeschnittenen Hexfelder enthalten, höchstens ein Randfeld zusätzlich`);
+  }
 
   const mitRand = kam.sichtbareFelder(2);
   gleich(mitRand.vonX, feld.vonX - 2, "der Kranz erweitert nach links");

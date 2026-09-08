@@ -10,6 +10,10 @@ bleiben. Profil zuerst, gezielte Änderung danach.
 Die Kamera begrenzt die Weltzeichnung auf ihren Ausschnitt. `runtime/start.js`
 berechnet Sicht nach Zustandsänderungen, `runtime/eingabe.js` hält erreichbare
 Felder vor, und `runtime/licht.js` speichert feste Schattenwürfe.
+Das Licht wird über zwei ungeglättete Pixelpuffer ausgegeben.
+`runtime/granit-feld.js` hält Gelände pro Feld im Speicher und verwirft
+betroffene Nachbarbereiche gezielt bei Änderungen. Diese Arbeiten nicht
+erneut als fehlende Optimierungen behandeln.
 `spiel/wegfindung.mjs` benutzt eine Prioritätswarteschlange mit stabiler
 Reihenfolge. Diese Mechanismen nicht durch bequemere Vollberechnungen ersetzen.
 
@@ -19,7 +23,7 @@ Reihenfolge. Diese Mechanismen nicht durch bequemere Vollberechnungen ersetzen.
 | --- | --- | --- |
 | [Lichtberechnung](../runtime/licht.js), `rechne()` | Unveränderte Lichtbeiträge wiederverwenden oder den benötigten Ausschnitt samt Lichtreichweite begrenzen | Zeit für feste und bewegte Quellen; identische sichtbare Farbfelder |
 | [Gegner-KI](../spiel/gegner-ki.mjs), Aktionsplanung | Erreichbarkeit und Wege innerhalb desselben Planungszustands wiederverwenden | Zahl der Wegsuchen und Entscheidungszeit; identische Aktionen und Zustandssummen |
-| [Weltzeichnung](../runtime/zeichnen.js), `bild()` | Statisches Gelände zwischenspeichern; Figuren, Flüssigkeiten, Licht und Partikel getrennt weiterzeichnen | Zeichenaufrufe und Bildzeit; identisches Bild bei Sicht-, Zoom- und Höhenwechseln |
+| [Weltzeichnung](../runtime/zeichnen.js), `bild()` | Bei größeren Karten zusammenhängende Bildabschnitte statt einzelner bereits gespeicherter Felder vergleichen | Zeichenaufrufe, Speicher und Änderungsaufwand; identisches Bild bei Sicht-, Zoom- und Höhenwechseln |
 
 Das sind anhand des Quelltexts abgeleitete Kandidaten, keine gemessenen
 Engpässe. Die Optimierung muss ihre zusätzlichen Speicher- und

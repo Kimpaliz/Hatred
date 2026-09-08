@@ -5,8 +5,11 @@ Eingaben zu Aktionen übersetzt. Keine Kampfwerte oder Spielregeln hier erfinden
 
 - `start.js` verbindet Sitzung, Eingabe, Abspieler und Bild. Keine zweite
   Animationsschleife oder zusätzliche Eingabe während laufender Ereignisse.
-- `zeichnen.js` und `gelaende-bild.js` zeichnen die Welt; `licht.js` und
-  `partikel.js` ergänzen Effekte. `palette.js` ist die Farbquelle.
+- `zeichnen.js` setzt die Welt zusammen; `granit-feld.js` zeichnet das Gelände,
+  `granit-material.js` liefert dessen Material. `palette.js` trägt UI-, Licht-
+  und Effektfarben. `licht.js` und `partikel.js` ergänzen Effekte.
+- `torwaechter.js` schaltet den Vorlauf nach Eingabe des Zugangsworts frei.
+  Zugangswort und Fingerabdruck nicht im Rahmen einer Strukturarbeit ändern.
 - `kamera.js` steuert Ausschnitt und ganzzahligen Zoom. HUD-Größe bleibt vom
   Nutzerzoom getrennt. Canvas-Glättung nach jeder Größenänderung ausschalten.
 - `ansicht.js` behandelt Zoom/Vollbild und grenzt Mehrfingergesten ab.

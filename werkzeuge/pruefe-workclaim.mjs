@@ -1,5 +1,10 @@
 /* [Aufgabe: Prüfwesen] Wer arbeitet woran — und ist das lesbar notiert?
 
+   Sie deckt `docs/REGELN.md` 5: `WORKCLAIM.md` erst lesen, dann
+   eintragen, dann schreiben — hier die Seite, die sich mechanisch
+   prüfen lässt, nämlich dass die Datei überhaupt eine verlässliche
+   Antwort geben kann.
+
    Die Regel dahinter: „Eine Workclaim-Datei ist wichtig, in der
    notiert wird, welcher Agent zurzeit an was arbeitet — und auf diese
    Bereiche darf aktuell nur mit Erlaubnis zugegriffen werden."

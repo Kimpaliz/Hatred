@@ -163,8 +163,9 @@ schlägt bei jedem Pfad an, der weder mit `./` noch mit `../` beginnt.
 **Nicht** `werkzeuge/pruefe-verweise.mjs`. Bis zum 07.09.2026 stand hier
 dieser Name, und er war falsch: Jene Datei hält Markdown-Verweise in der
 Doku gegen die Platte und sieht keinen einzigen Importpfad. Der Verweis
-selbst wird von nichts geprüft — wer eine Regel für gedeckt hält, weil
-hier ein Dateiname steht, muss die Datei aufschlagen.
+selbst wird durch `werkzeuge/pruefe-regelwerk.mjs` auf den Rückverweis in
+der Kopfnotiz geprüft. Ob der Test die Regel inhaltlich beweist, muss
+weiterhin durch Lesen und eine passende Gegenprobe beurteilt werden.
 
 ## Die ganze Kette
 
@@ -179,3 +180,17 @@ zuletzt. Ein roter Ausgangsstand wird **gemeldet**, nicht überbaut.
 
 Die Bereichsauswahl und Zuordnung stehen in [ENTWICKLUNG.md](ENTWICKLUNG.md),
 Dateibesitz und Worktrees in [AGENTEN.md](AGENTEN.md).
+
+## Wer die Nachweise bewacht
+
+Jeder Satz „*Geprüft:*" oben ist eine Behauptung, und sie wird geprüft:
+`werkzeuge/pruefe-regelwerk.mjs` hält jeden dieser Verweise gegen die
+genannte Datei. Dass es die Datei gibt, genügt nicht — sie muss in ihrer
+**Kopfnotiz** die Regelnummer zurückgeben, in der einen Form
+`docs/REGELN.md <Nummer>`. Erst diese zweite Unterschrift macht aus dem
+Verweis einen Beweis.
+
+Warum die strengere Fassung: Der Fehler unter Regel 14 (bis zum
+07.09.2026) hätte eine Prüfung, die bloß nach der Datei fragt, nicht
+gestört — `pruefe-verweise.mjs` gibt es ja. Rot wird nur, wer beide
+Seiten liest.

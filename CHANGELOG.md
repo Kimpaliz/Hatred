@@ -9,8 +9,25 @@ Jannik hat die Übernahme nach `main` und das Hochladen ausdrücklich mit
 „Ja bitte“ autorisiert. Vor dem Zusammenführen wurde `origin/main` neu
 gelesen: **d7271d0** enthält zusätzliche Änderungen gegenüber der
 Aufräumbasis **38479d0**. Der Aufräumcommit **baa58e2** wird mit diesem
-Stand verbunden; vorhandene Spieländerungen werden erhalten. Die Ergebnisse
-der Abnahme werden vor dem Hochladen hier ergänzt.
+Stand verbunden. Granitraster, Lichtpuffer, Zugangstor, neue Prüfungen und die
+Übergabe mit den jüngeren Weltbauwünschen sind erhalten. Die **6 neuen
+Fachprüfungen** liegen ebenfalls unter `tests/`; der neue Regelwerk-Wächter
+bleibt in `werkzeuge/`. Anleitungen, Prüfverweise und Leistungshinweise sind
+an diese vorhandenen Systeme angepasst. Die Weltbauwünsche werden durch
+diese Integration nicht umgesetzt oder neu entschieden.
+
+**Gemessen am 08.09.2026:** `pnpm test` besteht auf dem zusammengeführten
+Stand mit **55 Prüfungen** (**42 Fachprüfungen, 13 Projektwächter**) in
+**90,6 Sekunden**. Die Liste enthält **0 doppelte Prüfpfade**. Der Vergleich
+gegen `d7271d0` bestätigt **56 inhaltlich unveränderte Laufzeit-/Startdateien**
+nach Git-Zeilenendennormalisierung und die erhaltene Gelände-Dateilöschung.
+Die **44 verschobenen Fachdateien samt Prüfhilfen** entsprechen exakt dem
+Remote-Stand mit den dokumentierten Pfadwechseln. `pnpm build` erzeugt
+**50 Module / 909.234 Bytes**; der enthaltene Modulblock besteht
+`node --check`. `git diff --cached --check` meldet keinen Fehler.
+
+Zwei Codex-Teilaufträge prüften die neuen Prüfwege und die fachlichen
+Dokumentationsgrenzen lesend, mit je **0 eigenen Dateiänderungen**.
 
 ## 08.09.2026 — Projektstruktur und Einstieg für Agenten ordnen
 
@@ -71,6 +88,618 @@ je **0 Dateien** geändert) bewerteten Architektur und Werkzeugmigration und
 prüften anschließend den Diff. Codex führte alle Änderungen und die Abnahme
 im Arbeitszweig aus. Andere vorhandene Worktrees wurden nicht entfernt.
 
+## 08.09.2026 — Übergabe an Codex: Stand, Plan und ein Messbefehl für die Wände
+
+**Warum:** Jannik hat die Arbeit an Welle 2 unterbrochen — *„sehr gut
+schon. aber wir müssen uns über die weltgenerierung erst mal im klaren
+werden."* — und danach entschieden, an Codex zu übergeben. Eine
+Übergabe, die nur aus dem Ablageort besteht, übergibt die Dateien und
+nicht das Wissen: Was gemessen wurde, was daraus folgt und welche
+Prüfung grün ist, obwohl sie nichts mehr misst, steht in keinem
+Quelltext.
+
+**Was:**
+
+- `docs/UEBERGABE.md` ist neu. Sie enthält den Stand mit Datum, Janniks
+  Auftrag im Wortlaut, den einen Befund, an dem die ganze Welle hängt,
+  fünf offene Entscheidungen, fünf Fallen und vier lose Enden.
+- `docs/ROADMAP.md` bekommt **Welle 3** mit acht Schritten (W1 bis W8),
+  jeder mit einem Abnahmekriterium, das eine Zahl nennt und nicht eine
+  Meinung.
+- `werkzeuge/miss-wandkontrast.mjs` ist neu. Es rechnet die Zahl nach,
+  auf der die Reihenfolge der Welle 3 beruht.
+- `CLAUDE.md` bekommt einen Wegweiser auf die Übergabe — sonst findet
+  sie niemand, der neu dazukommt und zuerst `CLAUDE.md` liest.
+- `docs/FEHLERBUCH.md` bekommt die **Klasse G — Prüfungen, die nichts
+  mehr prüfen**, mit den zwei heute gemessenen Fällen: die Prüfung, die
+  eine leere Menge misst und grün bleibt, und die fest eingetragene
+  Feldkoordinate.
+- `WORKCLAIM.md` wie üblich: eingetragen, gearbeitet, freigegeben.
+- **Vorgänge #24 bis #31** sind angelegt, einer je Schritt der Welle 3,
+  jeder mit Janniks Wortlaut oben und seiner Abnahme. An **#8** steht
+  ein Nachtrag: Seine Abnahme wird durch #27 vorübergehend unwahr, und
+  #31 löst sie wieder ein.
+
+**Regel 2, ausdrücklich benannt:** Dieser Zweig ist ein `doku/…` und
+trägt trotzdem eine Datei unter `werkzeuge/`. Der Grund ist Regel 11:
+Ein Übergabedokument, dessen Kernzahl nur in einem Chatverlauf
+nachrechenbar wäre, ist genau die Behauptung, die Regel 11 verbietet.
+Das Werkzeug heißt `miss-…` und nicht `pruefe-…`, läuft also **nicht**
+in der Kette mit — es behauptet nichts, es misst.
+
+**Der Befund, gemessen** (`node werkzeuge/miss-wandkontrast.mjs`, Saat
+4711): Die Wände tragen im Bild keine eigene Auskunft. Was man heute
+sieht, macht das Licht.
+
+| Fall | Sprung Boden→Fels | Körnung im Boden | Sprung/Körnung | Felspunkt dunkler |
+| --- | --- | --- | --- | --- |
+| flach, eine Ebene | −0,34 | 5,41 | **0,06** | 51,1 % |
+| heute, alle Grenzen | 2,37 | 12,96 | **0,18** | 43,4 % |
+| heute, gleiche Ebene | 1,13 | 12,96 | **0,09** | 44,4 % |
+
+Der Sprung an einer Wandgrenze ist also sechs- bis sechzehnmal kleiner
+als das Rauschen **innerhalb** einer Bodenfläche, und seine Richtung ist
+ein Münzwurf. Zum Vergleich derselbe Blick auf das fertig gezeichnete
+Bild **mit** Licht und Nebel: Wandfelder 21,65, Bodenfelder 73,25 —
+Abstand 51,60. Der ganze Unterschied kommt aus der Beleuchtung.
+
+**Was daraus folgt und in der Roadmap steht:** Janniks Reihenfolge
+(erst flach, dann Wände) und die Messung widersprechen sich. Flach
+senkt das Verhältnis von 0,18 auf 0,06; dazwischen läge ein Zustand,
+den er nicht bedienen kann. Die Roadmap empfiehlt deshalb die Wände
+zuerst und schreibt die Begründung dazu — die Entscheidung bleibt seine
+(E1 in `docs/UEBERGABE.md`).
+
+**Nebenbei erklärt sich sein Fehlerbericht:** *„wenn ich auf karte
+klicke um mir alles anzeigen zu lassen gibt es grafikfehler und alles
+sieht komisch aus."* Der Kartenknopf nimmt den Nebel weg. Ohne Nebel
+fällt die einzige Quelle der Wanderkennung weg. Das ist kein
+Zeichenfehler, sondern derselbe Befund ungefiltert.
+
+**Wie das Werkzeug rot gemacht wurde** (Regel 10, sinngemäß — es ist
+keine Prüfung, aber eine Messung, die sich nicht bewegen kann, misst
+nichts): In einem eigenen Arbeitsbaum wurde in
+`runtime/granit-feld.js:200` der Faktor auf Wandfeldern mit 0,45
+multipliziert, der Fels also um 55 % abgedunkelt. Das Werkzeug meldete
+darauf für die flache Karte **80,9 %** statt 51,1 % und **2,97** statt
+0,06. Es bewegt sich also. Der Arbeitsbaum ist verworfen; im Projekt
+steht die Änderung nicht.
+
+Dieselbe Probe hat nebenbei die Schwelle in W1 begründet: Selbst 55 %
+Abdunklung lassen jede fünfte Kante falschherum, weil ein heller Krümel
+im Fels eine dunkle Tönung schlägt. Über 95 % kommt nur eine Kontur.
+
+**Der Stand, den die Übergabe beschreibt:** `main` auf `3ceef0c`.
+Kette auf dem eingetragenen Stand gemessen
+(`node werkzeuge/pruefe-alles.mjs`): **alle 54 Prüfungen grün, 43.978
+Behauptungen, 297,3 s**. Vorgänge #1, #2,
+#3, #6, #7, #8, #9 und #11 geschlossen; #4, #5, #10 und #12 bis #23
+offen; #24 bis #31 für die Welle 3 neu.
+
+**Was ausdrücklich nicht geändert wurde:** kein Quelltext unter
+`spiel/`, `netz/` oder `runtime/`. Diese Übergabe beschreibt den Stand,
+sie verschiebt ihn nicht. Die acht Schritte der Welle 3 sind geplant und
+nicht gebaut.
+
+## 08.09.2026 — Das Zugangswort gewechselt
+
+**Auftrag:** Der Auftraggeber hat ein anderes Wort genannt. Es steht
+hier bewusst nicht, und in keiner anderen Datei auch nicht — nur sein
+Fingerabdruck.
+
+**Was sich geändert hat:** Eine Zeile in `runtime/torwaechter.js`.
+Gerechnet wurde sie mit `node werkzeuge/zugangswort.mjs <wort>`, also
+mit derselben Funktion, die das Tor beim Öffnen benutzt — zwei getrennte
+Rechnungen wären zwei Wahrheiten.
+
+| | Wert |
+| --- | --- |
+| Länge des neuen Wortes | 11 Zeichen |
+| Runden je Rateversuch | 200.000, unverändert |
+| Dauer einer Rechnung, gemessen | 33 ms |
+| Fingerabdruck | 64 Bit, neu |
+
+**Die Prüfung, ohne die es leichtsinnig wäre:** Das Werkzeug sucht das
+Wort vor dem Rechnen wörtlich im ganzen Baum und sagt ab, wenn es schon
+dasteht — der Fall aus Fehlerbuch F1, bei dem ein Gegnername aus dem
+eigenen Katalog als Zugangswort vorgeschlagen war und 13-mal im
+ausgelieferten Code stand. Das neue Wort ist angenommen worden, also
+steht es nirgends; zusätzlich nachgemessen mit `grep -ric` über den
+ganzen Baum: **0 Treffer**. Der Wörterbuchangriff
+`node werkzeuge/zugangswort.mjs --suche` lief gegen alle Wörter des
+Ablageorts und fand es ebenfalls nicht.
+
+**Was das für die Mitspieler heißt:** Wer sich das alte Wort hat merken
+lassen, wird beim nächsten Start wieder gefragt. Gemerkt wird der
+Fingerabdruck, und der ist ein anderer geworden.
+
+**Unverändert:** Salz, Rundenzahl, die Rechnung selbst, das Tor, seine
+Prüfung. Der Riegel ist genauso stark und genauso schwach wie vorher —
+er hält Zufallsbesucher ab und sonst nichts.
+
+## 08.09.2026 — Ein Wächter über die Nachweise: jeder `*Geprüft:*`-Verweis wird gegen die genannte Datei gehalten
+
+**Warum:** Am 07.09.2026 stand unter `docs/REGELN.md` 14 („Alle
+Importpfade sind relativ") als Beweis `werkzeuge/pruefe-verweise.mjs`.
+Jene Datei hält Markdown-Verweise der Doku gegen die Platte und sieht
+**keinen einzigen** Importpfad. Die Regel war unbelegt, und weil es die
+genannte Datei gibt, fiel es rund zwei Wochen niemandem auf. Beide
+Stellen sind berichtigt — was fehlte, war der Wächter: Nichts hielt die
+Verweise gegen das, was die genannte Datei wirklich tut. **Gemessen vor
+dieser Arbeit: 9 von 10 Verweisen zeigten auf eine Prüfdatei, die ihre
+Regelnummer nirgends in der Kopfnotiz nannte.**
+
+**Was:** `werkzeuge/pruefe-regelwerk.mjs` ist neu. Sie liest jeden
+Absatz, der in `docs/REGELN.md` mit `*Geprüft:*` beginnt, und behauptet
+vier Dinge: dass jede genannte Datei existiert; dass jede genannte Datei
+in ihrer **Kopfnotiz** die Regelnummer zurückgibt; dass eine Datei, die
+unter zwei Regeln steht, **beide** Nummern nennt und keine dritte; und
+sie druckt die Zahl der Verweise, damit ein stilles Verschwinden
+auffällt. Dazu haben sieben Prüfdateien den Rückverweis bekommen — die
+achte, `pruefe-einstieg.mjs`, hatte ihn schon.
+
+**Warum nicht die naheliegende Prüfung:** „Gibt es die genannte Datei?"
+wäre am 07.09.2026 **grün** geblieben — `pruefe-verweise.mjs` gibt es
+ja. Diese Frage fängt den Tippfehler im Dateinamen, nicht die falsche
+Datei. Geprüft wird deshalb der Fall, der ohne die Arbeit falsch wäre:
+Der Verweis muss von **beiden** Seiten unterschrieben sein.
+
+**Warum nur die Kopfnotiz gelesen wird:** Eine Suche über die ganze
+Datei wäre wertlos. `pruefe-arbeitsweise.mjs` schreibt „Regel 1" seit
+jeher in ihre Meldetexte, und `pruefe-app.mjs` trug „docs/REGELN.md 14"
+in Zeile 265 mitten im Rumpf — beide wären ungeprüft durchgerutscht. Die
+Kopfnotiz ist die Stelle, an der steht, wofür eine Datei da ist.
+
+**Gemessen** (`node werkzeuge/pruefe-regelwerk.mjs`):
+
+| Was | Zahl |
+| --- | --- |
+| `*Geprüft:*`-Absätze in `docs/REGELN.md` | 9 |
+| darin genannte Verweise | 10 |
+| verschiedene Prüfdateien | 8 |
+| mehrfach genannt | `pruefe-arbeitsweise.mjs` (1 und 4), `pruefe-kopfnotiz.mjs` (7 und 8) |
+| Rückverweis vorher vorhanden | 1 von 10 |
+| Rückverweis nachher | 10 von 10 |
+
+**Drei Befunde, die dabei aufgefallen sind:**
+
+1. `pruefe-doku-status.mjs` nannte in ihrer Kopfnotiz „`docs/REGELN.md`,
+   Regel 14" — die Nummer aus dem Regelwerk des Skills, aus dem sie
+   kopiert ist. In diesem Projekt ist es Regel **13**. Berichtigt.
+2. `pruefe-sprache.mjs` verwies auf „docs/REGELN.md Regel 15". Dieses
+   Regelwerk hat 14 Regeln; gemeint ist Regel **9**. Berichtigt.
+3. Regel 6 heißt „`spiel/` und `netz/` kennen keinen Browser", ihr
+   Nachweis `pruefe-kern.mjs` liest aber **nur** `spiel/`
+   (`const KERN = join(WURZEL, "spiel")`). Die `netz/`-Hälfte der Regel
+   ist unbelegt. Das steht jetzt in der Kopfnotiz von `pruefe-kern.mjs`
+   und wird **nicht** eigenmächtig geändert: Ob die Regel enger gefasst
+   oder der Wächter ausgedehnt wird, entscheidet der Auftraggeber. Wer
+   ausdehnt, braucht zuerst eine Antwort auf das eine ausdrücklich
+   gereichte `globalThis.setTimeout` in `netz/vermittler.mjs` (eine
+   Fundstelle, `grep -n setTimeout netz/*.mjs`).
+
+**Jede Behauptung wurde zuerst rot gemacht** (Regel 10), sieben Mal
+einzeln, jedes Mal zurückgenommen:
+
+| Sabotage | Meldung |
+| --- | --- |
+| Dateiname in Regel 5 verdreht | „Regel 5 nennt `werkzeuge/pruefe-workklaim.mjs` — und die Datei liegt da" |
+| Rückverweis aus `pruefe-kern.mjs` entfernt | „`werkzeuge/pruefe-kern.mjs` steht unter Regel 6, ihre Kopfnotiz nennt `docs/REGELN.md 6` aber nicht (genannt: keine Regel)" |
+| „8" aus `pruefe-kopfnotiz.mjs` entfernt | „`werkzeuge/pruefe-kopfnotiz.mjs` deckt die Regeln 7 und 8 — ihre Kopfnotiz muss beide nennen (es fehlt: 8)" |
+| „13" in `pruefe-doku-status.mjs` zu „14" gemacht — der Fehler vom 07.09. noch einmal | „`werkzeuge/pruefe-doku-status.mjs` nennt Regel 14, steht aber nur unter Regel 13" |
+| einen Nachweis aus `docs/REGELN.md` gelöscht | „docs/REGELN.md nennt mindestens 10 Nachweise (jetzt 9)" |
+| Nachweis ohne Dateinamen | „docs/REGELN.md:58: der Nachweis nennt eine Datei in Backticks" |
+| Nachweis unter eine Überschrift ohne Nummer gesetzt | „docs/REGELN.md:160: der Nachweis steht unter einer nummerierten Regel" |
+
+Dazu die Selbstprobe: Wird das Suchmuster des Lesers verstümmelt
+(`Geprüft` → `Gepruft`), findet er nichts mehr — dann liefen alle
+Schleifen leer und die Prüfung meldete für immer grün. Sie fällt
+stattdessen mit sechs Meldungen, darunter „beide Nachweis-Absätze werden
+gefunden: ist 0, soll 2". Beim ersten Anlauf **stürzte** sie dabei ab,
+statt zu behaupten; der Ersatzwert im Leser ist genau deshalb da.
+
+**Prüfungen:** 53 → **54**. `werkzeuge/pruefe-regelwerk.mjs` ist neu (63
+Behauptungen), und `pruefe-kopfnotiz.mjs` nimmt die neue Datei von
+selbst mit (964 → 972). Behauptungen der ganzen Kette: **43.899 →
+43.970**, keine einzige ist weggefallen. Laufzeit der Kette
+(`node werkzeuge/pruefe-alles.mjs`): 283,7 s vorher, **284,0 s**
+nachher — die neue Prüfung liest neun Dateiköpfe und ein Dokument.
+
+**Zwei Dinge zum Aufpassen:** `pruefe-app.mjs` steht nach dem
+Rückverweis bei **999** von 1000 erlaubten Zeilen (`wc -l`) — die
+nächste Zeile dort erzwingt eine Teilung. Und die vier Dateien aus
+`AUS_DEM_SKILL`, die einen Rückverweis bekommen haben
+(`pruefe-arbeitsweise`, `pruefe-workclaim`, `pruefe-sprache`,
+`pruefe-doku-status`), weichen damit bewusst vom Skill ab: Eine
+Kopfnotiz, die die Regelnummer **dieses** Projekts nennt, kann nicht
+zugleich unveränderter Fremdcode bleiben.
+
+**Zweig und Ausnahme:** Der Zweig `pruef/regelwerk` fasst `docs/` mit
+an, obwohl das nach `docs/REGELN.md` 2 auf `doku/…` gehörte. Die übliche
+Ausnahme greift: Regel und Prüfung werden nur zusammen grün — der
+Wächter liest `docs/REGELN.md`, und ohne den erklärenden Absatz dort
+wüsste niemand, warum die Kopfnotizen eine Nummer tragen. Ebenso
+gehören die vier neuen Einträge in `docs/FEHLERBUCH.md` (C8, C9, C10
+und die neue Klasse F) dazu: Sie halten fest, woran man diese Fehler
+erkennt, **bevor** man hineinläuft.
+
+## 08.09.2026 — Das Licht als gebündelter Pixelpuffer: zwei Zeichenaufrufe statt 57.374
+
+**Warum:** Der Zweig hatte sein Urteil über sich selbst im Eintrag
+darunter schon stehen: *„Der aktuelle Canvas-Zeichenweg des Lichts ist
+für die volle Übersicht zu langsam und muss beim Lichtumbau durch einen
+gebündelten Pixelpuffer ersetzt werden."* `runtime/licht.js` rief für
+**jeden** Lichtpunkt im Fenster ein eigenes `ctx.fillRect` — und das
+zweimal, einmal für die abdunkelnde und einmal für die glühende Lage.
+Bei voller Übersicht sind das Zehntausende Aufrufe je Bild, jeder mit
+einer Farbzeichenkette davor.
+
+**Was:** `zeichneAuf` füllt jetzt je Lage **einen** Pixelpuffer — eine
+Schleife über ein `Uint32Array`, kein Zeichenaufruf —, legt ihn mit
+`putImageData` auf ein Nebenzeichenblatt und zieht ihn mit `drawImage`
+ganzzahlig vergrößert aufs Hauptblatt. Das Nebenblatt kommt über
+`OffscreenCanvas` beziehungsweise `canvas.ownerDocument`, genau wie in
+`runtime/granit-feld.js`, und wird nur neu gemacht, wenn sich das
+sichtbare Rechteck ändert.
+
+**Warum in Weltbildpunkten und nicht in Lichtpunkten:** Ein 4×4-Block
+gehört an einer Hexgrenze zwei Sechsecken; `besitzerSpannen` malt dort
+seit dem Rasterumbau einzelne Pixelspannen, damit kein Licht um die
+Wand herumläuft. In Lichtpunktauflösung hätten diese Spannen keinen Ort
+mehr. Der Puffer ist deshalb so groß wie der sichtbare Ausschnitt in
+**Weltbildpunkten**; hochskaliert wird erst beim `drawImage`.
+
+**Gemessen — Zeichenaufrufe** (`node werkzeuge/pruefe-licht-puffer.mjs`):
+
+| Ausschnitt | vorher | nachher |
+| --- | --- | --- |
+| 1280×720, Vergrößerung 1, 60×46 Felder, 42 Fackeln | 57.374 Rechtecke | 2 |
+| 480×240, Vergrößerung 3, 32×24 Felder, 1 Fackel | 1.716 Rechtecke | 2 |
+
+**Gemessen — Bilder je Sekunde**, im echten Chromium über Playwright,
+Fenster 1280×720, Zugangswort tippen → „Allein spielen" → „Losgehen",
+dann `requestAnimationFrame` über 3 Sekunden gezählt. Fünf Läufe je
+Stand, abwechselnd auf demselben Rechner gemessen (Mittel, in Klammern
+der Median):
+
+| Stand | Standardzoom (2×) | ganz herausgezoomt (1×) |
+| --- | --- | --- |
+| `main` | 22,6 (22,9) | 11,8 (11,7) |
+| dieser Zweig vorher | 11,2 (11,1) | 5,8 (6,2) |
+| dieser Zweig nachher | **20,4** (19,2) | **11,9** (10,9) |
+
+Ganz herausgezoomt ist das Ziel erreicht: der Zweig liegt wieder auf der
+Höhe von `main` (11,9 gegen 11,8). Bei Standardzoom fehlen **rund zehn
+Prozent** — 20,4 gegen 22,6. Das wird hier nicht schöngeredet: Der Rest
+liegt nicht mehr am Licht. Ein CPU-Profil des laufenden Spiels bei
+voller Übersicht (`Profiler` über das DevTools-Protokoll, 4 Sekunden,
+12.455 Proben) verteilt sich jetzt so: `fillRect` 47,6 %, davon nichts
+mehr aus dem Licht, sondern aus `deckeUngesehenes`/`fuelleHex` in
+`runtime/zeichnen.js` und dem Rückfallweg des Geländes; das ganze Licht
+zusammen (Puffer füllen, `putImageData`, `drawImage`) sind 19 %. Vorher
+lag `fillRect` bei 66,4 % und das Licht allein bei rund 15 % obendrauf.
+
+**Das Bild ist dasselbe geblieben, und das ist bewiesen** (Regel 12):
+`werkzeuge/pruefe-licht-puffer.mjs`, Abschnitt 2, malt dieselbe Szene
+einmal über den Rechteckweg und einmal über den Puffer und vergleicht
+**je Lage Bildpunkt für Bildpunkt**: 61.141 bemalte Bildpunkte,
+**0 Abweichungen**. Kein Rundungsunterschied, kein einziger Punkt.
+Möglich ist das, weil beide Wege dieselbe Farbtabelle benutzen — ein
+Eintrag trägt die Zeichenkette *und* den gepackten 32-Bit-Wert. Zwei
+getrennte Vorräte wären zwei Wahrheiten.
+
+Diese Prüfung läuft in Node und damit gegen ein Ersatzblatt; die
+Bytefolge im Speicher, der Alphakanal und die Mischregeln von
+„multiply" und „lighter" kennt aber nur ein echter Browser. Deshalb
+dieselbe Probe noch einmal **im laufenden Chromium**, mit einem
+Messskript unter `/tmp` (Fehlerbuch C2): `runtime/licht.js` zeichnet auf
+zwei gleich vorbemalte Blätter, eines mit `drawImage` und eines ohne
+(also über die Rechtecke), danach werden beide mit `getImageData`
+verglichen. 46.800 Bildpunkte, davon 44.494 vom Licht verändert,
+**0 Abweichungen**, größter Kanalunterschied 0 — bei 2 gegen 5.161
+Zeichenaufrufen.
+
+**Warum der Rechteckweg stehen bleibt:** Ein Zeichenblatt ohne
+`drawImage` bekommt weiterhin einzelne Rechtecke — derselbe Aufbau wie
+in `runtime/granit-feld.js`. An den einzelnen Aufrufen misst
+`werkzeuge/pruefe-bild.mjs`, was an einem Pixelpuffer gar nicht mehr zu
+sehen wäre: dass jede Kante auf ganzen Bildpunkten liegt. Die Brücke
+oben hält beide Wege zusammen; ohne sie prüfte die Kette einen Weg, den
+der Browser nie geht (Fehlerbuch C5).
+
+**Prüfungen:** 52 → **53**. `werkzeuge/pruefe-licht-puffer.mjs` ist neu
+(37 Behauptungen), `werkzeuge/pruefe-raster-projektion.mjs` bekommt
+dieselbe Konturprüfung noch einmal an den Bildpunkten des Puffers
+(+3), und `pruefe-kopfnotiz.mjs` prüft die neue Datei von selbst mit
+(+8). Behauptungen der ganzen Kette: **43.851 → 43.899**, keine einzige
+ist ersatzlos weggefallen; `pruefe-bild.mjs` behauptet unverändert 170
+Dinge — die Zählung „so viele Farbzeichenketten" heißt dort jetzt „so
+viele Farben", und ihre schärfere Fassung „so viele verschiedene
+Farbwerte **im Puffer**" steht in der neuen Datei.
+
+**Jede neue Prüfung wurde zuerst rot gemacht** (Regel 10), sieben Mal
+einzeln, jedes Mal zurückgenommen: `drawImage` vom Blatt genommen
+(16 von 29 gefallen) · `imageSmoothingEnabled = false` entfernt (2) ·
+`drawImage` einen Bildpunkt zu breit gezogen (2, „ist 3,0061, soll 3") ·
+die warme Lage zweimal gezeichnet (4) · angeschnittene Lichtblöcke als
+ein Stück gemalt (1: „multiply bei 0,5: Rechteck rgb(182,146,73) gegen
+Puffer rgb(36,36,36)") · Alpha 128 statt 255 (1: 27.034 halbe
+Bildpunkte) · dieselbe Sabotage gegen die Konturprüfung in
+`pruefe-raster-projektion.mjs` (1: 1.522 Bildpunkte außerhalb der
+Hexkarte).
+
+**Geändert wurden** (Regel 2, Zweig `bild/licht-puffer`):
+`runtime/licht.js` gehört diesem Zweig. Dazu die Prüfseite, ohne die
+die Kette nichts mehr sähe — `werkzeuge/buehne-browser.mjs` bekommt mit
+`macheBildflaeche` ein Blatt, das `putImageData` und `drawImage`
+mitschreibt und den Puffer **kopiert** (das Licht füllt für die zweite
+Lage denselben Speicher noch einmal); `werkzeuge/pruefe-bild.mjs`
+(Umbenennung `anzahlFarbwoerter` → `anzahlFarben`),
+`werkzeuge/pruefe-raster-projektion.mjs` und die neue
+`werkzeuge/pruefe-licht-puffer.mjs`. `docs/WEGWEISER.md` nennt jetzt die
+zwei Zeichenaufrufe.
+
+**Nicht angefasst:** die Lichtrechnung selbst — `rechne`,
+`setzeQuellen`, `helligkeitBei`, `lichtpunkte`, `aufStufen`,
+`flackerFaktor`, `besitzerSpannen` und `macheSichtfeld` stehen Zeile für
+Zeile wie vorher. Acht Stufen, Farbmischung, Grundhelle und der warme
+Zuschlag sind unverändert. `spiel/` und `netz/` wurden nicht berührt.
+
+**Offen:** Bei Standardzoom bleibt der Zweig rund zehn Prozent hinter
+`main`. Der Rest steckt im Zeichenweg des Geländes und des Sichtnebels
+(`runtime/zeichnen.js`, `deckeUngesehenes` und `fuelleHex` malen je
+Hexfeld eine Rechteckzeile). Das ist eine eigene Arbeit und wurde hier
+bewusst nicht angefangen — Umbau und Inhalt bleiben getrennt.
+
+## 08.09.2026 — Granithöhle als senkrechtes Hexfeld, zusammenhängende Treppen
+
+**Zwischenstand zur Branch-Übernahme, 08.09.2026:** Auf ausdrücklichen
+Auftrag wird dieser Stand abgeschlossen. Die anschließend angefragte
+vollständige Übernahme von Scotophobias Sicht- und Lichtsystem ist
+noch offen. Das enthaltene Licht verwendet Hatreds bisherige Formeln
+mit korrigierter Hexgeometrie und Schattenabdeckung.
+
+**Abschlussprüfung, 08.09.2026:** Die vollständige Kette prüfte 52
+Programme in 86,8 Sekunden. 51 bestanden unmittelbar; der Dokumentationswächter
+verlangte das vorhandene Datum direkt in der Statuszeile. Nach dieser
+Textkorrektur bestand auch dessen gezielter Wiederholungslauf.
+
+**Offener Leistungsbefund, 08.09.2026:** Im lokalen Chrome-Test über
+30 Bilder der vollständigen Höhle lag der Median ohne Licht bei
+7,7 ms, mit 42 Fackeln bei 987,9 ms; die beleuchtete Treppenkarte lag
+bei 8,3 ms. Es entstehen keine neuen Materialpuffer. Der aktuelle
+Canvas-Zeichenweg des Lichts ist für die volle Übersicht zu langsam
+und muss beim Lichtumbau durch einen gebündelten Pixelpuffer ersetzt
+werden. Diese Messung belegt ausdrücklich keine ausreichende Bildrate.
+
+**Warum:** Der Auftrag verlangt ausdrücklich Scotophobias Granithöhle,
+ein bleibendes Raster, exakt senkrechten Blick und zusammenpassende
+Treppen. Die bisherige Darstellung verband sechs Bewegungsrichtungen
+mit quadratischen Bildkoordinaten, Wandvorderseiten und wiederholten
+Kachelmustern. Der neue Geländeaufbau ersetzt diesen Zeichenweg.
+
+**Quelle:** Hatred wurde gegen GitHub-Stand `0f576bf` geprüft. Die
+Granithöhle wurde aus dem Quellstand `d3460e9` gelesen. Raum- und
+Gangformeln, Verzerrung, Inseln und Standardparameter (`sector=215`,
+`corr=1.15`) bestimmen nun die Höhle. 24 feste Distanzproben aus der
+Quelle prüfen diese Übernahme unabhängig von der lokalen Installation.
+Das Granit-, Boden- und Geröllmaterial wird an Weltpixeln ausgewertet.
+
+**Aufbau:** `spiel/raster.mjs` liefert die gemeinsame Hexgeometrie für
+Erzeugung, Kamera, Auswahl, Licht und Partikel. Wände und Höhen werden
+an denselben Mitten abgetastet. Höhen verschieben keine Bildschirmorte.
+`runtime/granit-material.js` trägt die Quelloberflächen;
+`runtime/granit-feld.js` berechnet Materialrelief, Normalen,
+Umgebungsverdeckung und Höhenkonturen. Der alte Geländehelfer entfällt.
+`runtime/zeichnen.js` setzt gespeicherte Flächen, Gegenstände, Wesen,
+Licht und Partikel zusammen; ungesehene Hexfelder werden zuletzt verdeckt.
+
+**Treppen:** Eine weltweite Trittphase verbindet passende Nachbarläufe
+in allen sechs Richtungen. Innere Wangen entfallen. Gesperrte Ziele,
+falsche Höhen und unpassende Richtungen behalten ihre Klippenkontur.
+Die Kontur einer Seitenklippe darf nicht in den offenen Anschluss ragen.
+
+**Regeladapter:** Vier taktische Ebenen bleiben erhalten. Vor dem Wasser
+wird ein trockener Startbereich reserviert. Normalerweise wird danach
+ein trockener Start gesucht; falls das unmöglich ist, wird jedes
+betroffene Becken vollständig geleert. Zier blockiert die Starts nicht.
+Boden-, Hallen- und Zierproben verwenden dieselben Weltkoordinaten.
+Die Weltfassung im Netz-Handschlag steigt auf 2.
+
+**Rechenaufwand:** Transparente Feldbilder werden wiederverwendet und
+ungeglättet vergrößert. 4.096 gespeicherte Felder reichen für die ganze
+Standardkarte mit 2.240 Feldern; zweimaliges Zeichnen braucht weiterhin
+nur 2.240 Materialberechnungen. Drei Nachbarringe erkennen Änderungen.
+Die Prüfung umfasst auch 5.120 Felder und verlangt begrenzten Speicher.
+
+**Prüfungen:** Alte Vorgaben für Südflanken und Schachbrettboden wurden
+durch tatsächliche Pixelvergleiche ersetzt. Kern-, Netz-, Eingabe- und
+Erreichbarkeitsprüfungen bleiben bestehen. Material: 622 Behauptungen;
+Terrain: 17.953; Rasterprojektion: 9.863; Weltzeichner: 88. Ungültige
+oder zu große Weltkoordinaten dürfen die Rückrechnung nicht blockieren.
+Ein Gitterpixel, den Nachbarterrain übermalte, wird durch eine eigene
+Prüfung gegen das vollständige Sprite abgesichert.
+Die Lichtprüfung besteht 170 Behauptungen: Gemischte 4×4-Blöcke
+verwenden getrennte Beiträge je Hexbesitzer. Die Gegenprobe meldete
+zuvor 37–65 fremde Lichtpixel hinter einer Wand, danach keine.
+
+Die natürliche Kampf- und Beckenverteilung wird weiter berichtet.
+Die alte Mindestzahl zufälliger Begegnungen wurde durch vier feste
+Kampfpaare auf vier unabhängigen Spielständen ergänzt: 32 Angriffe,
+25 Schadensereignisse, vier Heilereignisse und keine Summenabweichung.
+Vier kontrollierte Senken prüfen Becken auf allen Höhen. Der Bericht
+über 30 unveränderte Saaten nennt 19 mehrstufig nasse und eine trockene Karte.
+Die Generatorprüfung besteht 324 Behauptungen. Ein kontrolliertes
+Becken mit 316 Bodenfeldern erzwingt den Startfallback; für ein bis
+vier Spieler muss die gesamte Senke trocken sein, nicht nur ihr Start.
+
+**Rotnachweise:** Veränderte Quellsektorgröße, verändertes Granitmaterial,
+verschobene Hexzeilen, fehlender Endnebel, falsche Treppenverbindungen,
+übermalte Sprites und ungültige Koordinaten lassen die jeweiligen
+Prüfungen fallen. Ausgeschaltete Treffer und Wasser nur auf Ebene 0
+lassen die kontrollierten Kampf- und Beckenprüfungen fallen.
+
+**Sichtprobe:** `werkzeuge/topdown-vorschau.html` verwendet den echten
+Spielzeichner und zeigt wahlweise Höhle oder Treppenkarte. Im lokalen
+Chrome-Lauf am 08.09.2026 wurden Spielstart, Zoom hinein/zurück und
+ein Mausklick vom Feld (50,28) nach (47,21) mit AP-Verbrauch ausgeführt.
+Desktop 1.440 × 900 und schmale Ansicht 915 × 412 lieferten keine
+JavaScript-Fehler. Architektur und Prüfbefehle stehen in
+[docs/GRANIT-RASTER.md](docs/GRANIT-RASTER.md); README, Spielbeschreibung
+und Wegweiser wurden an den neuen Aufbau angepasst.
+
+## 07.09.2026 — Ein Wort vor dem Vorlauf: der Torwächter
+
+**Auftrag, wörtlich:** *„main schuetzen so das nur ich und freunde das
+spiel spielen koennen"* — und Jannik hat aus vier Möglichkeiten
+ausdrücklich die gewählt, die ihm vorher als die **schwächste**
+beschrieben worden ist: ein Zugangswort im Spiel selbst. Ihm ist gesagt
+worden, dass das kein echter Schutz ist, weil alles, was der Browser
+prüft, auch im Browser steht. Er will es trotzdem. Also ist es so gut
+gebaut, wie ein Riegel sein kann — und in der Doku steht ohne
+Beschönigung, was er ist und was nicht.
+
+**Für Jannik:** Wer die Seite aufruft, sieht zuerst eine Seite mit einem
+Feld: *„Tipp das Wort ein, das du von ihm bekommen hast."* Stimmt das
+Wort, kommt der gewohnte Vorlauf, und der Browser merkt sich das — beim
+nächsten Mal wird nicht wieder gefragt. Groß oder klein geschrieben ist
+egal, Leerzeichen vorn und hinten auch. Ein falsches Wort gibt einen
+ruhigen Satz und lässt das Getippte stehen. Das Wort wechseln kannst du
+selbst:
+
+```bash
+node werkzeuge/zugangswort.mjs <neues wort>
+```
+
+Das Werkzeug druckt die eine Zeile, die in `runtime/torwaechter.js`
+ausgetauscht wird, und sagt in einem Satz, was du damit tust.
+
+### Was der Riegel ist — und was nicht
+
+Der Fingerabdruck des Wortes wird **mit ausgeliefert**; wer die Seite
+öffnet, kann ihn lesen. Er lässt sich mit genug Rechenzeit
+durchprobieren. Er hält den Zufallsbesucher ab, der die Adresse
+aufgeschnappt hat, und sonst nichts. Echter Schutz bräuchte einen
+Server, der das Wort prüft und das Spiel erst danach herausgibt — und
+einen Server will dieses Projekt ausdrücklich nicht (CLAUDE.md,
+„Ausdrücklich nicht gefordert"). Der ganze Absatz steht ausführlich in
+der Kopfnotiz von `runtime/torwaechter.js`.
+
+### Was gemessen wurde
+
+| Was | Wert | Befehl |
+| --- | --- | --- |
+| Runden je Versuch | **200.000** | `node werkzeuge/pruefe-torwaechter.mjs` |
+| Ein Rateversuch | **26,6 ms** | dito |
+| 200.000 Runden gegen 2.000 Runden | **70-fache** Dauer | dito |
+| Ein Wörterbuch mit 500.000 Wörtern | **3,7 Stunden** | dito |
+| Wörterbuchangriff auf die Tor-Dateien | **711 Wörter in 22,3 s**, kein Treffer | dito |
+| Wörterbuchangriff auf den **ganzen** Baum | **11.471 Wörter in 335,6 s** (29,3 ms je Versuch), kein Treffer | `node werkzeuge/zugangswort.mjs --suche` |
+| Behauptungen der neuen Prüfung | **106** | `node werkzeuge/pruefe-torwaechter.mjs` |
+| Neue Zeilen | 587 (`torwaechter.js`), 247 (`zugangswort.mjs`), 677 (Prüfung) | `wc -l` |
+| Behauptungen der Kette | **12.636 → 12.767** | `node werkzeuge/pruefe-alles.mjs` |
+| Prüfungen der Kette | **43 → 44** | dito |
+
+### Der Fund, der die ganze Arbeit gerechtfertigt hat
+
+Als Zugangswort war ein Wort vorgegeben, das **dreizehnmal im
+Repository stand** — der Name einer Figur aus dem eigenen Katalog. Kein
+Mensch hat das bemerkt; die erste vollständige Suche hat es in 337,8
+Sekunden gefunden und beim Namen genannt:
+
+```
+  11455 Wörter in 337.8 s (29.5 ms je Versuch)
+  ✗ Das Zugangswort steht im Repository:
+```
+
+Damit war es keins: Der Katalog wird mit ausgeliefert, und wer die
+Wörter dieses Baums der Reihe nach gegen das Tor hält, hat es in einer
+knappen Viertelstunde. Das Wort ist deshalb **nicht genommen** worden;
+im Tor steht der Fingerabdruck eines Wortes, das in keiner Datei
+vorkommt, und Jannik bekommt es außerhalb des Repositorys gesagt.
+Wechseln kann er es jederzeit mit dem Werkzeug.
+
+Und weil derselbe Fehler jedem wieder passieren kann, sucht
+`werkzeuge/zugangswort.mjs` jetzt **vor** dem Rechnen: Beim Wechseln des
+Wortes ist es genau einmal im Klartext da, und dann ist eine wörtliche
+Suche in Millisekunden erledigt statt in fünfeinhalb Minuten. Wer ein
+Wort nimmt, das schon dasteht, bekommt keine Zeile zum Austauschen,
+sondern die Fundstelle.
+
+### Wie das Wort geprüft wird
+
+`runtime/torwaechter.js` trägt **nur einen Fingerabdruck**, nie das
+Wort. Er entsteht aus FNV-1a über (Salz + Wort), **200.000 Mal
+wiederholt** — reines JavaScript mit `Math.imul` und XOR, ohne
+`crypto.subtle`: Das Spiel soll auch als einzelne Datei von der
+Festplatte laufen (`file://`), und dort gibt der Browser die Web-Krypto
+nicht heraus. Zwei Ströme mit verschiedenen Anfangswerten ergeben 64
+Bit. Verglichen wird in **konstanter Zeit** — alle Stellen werden
+durchlaufen, in der Schleife steht weder `break` noch `return`.
+
+Gemerkt wird im Browser (`localStorage`) **nicht das Wort, sondern der
+Fingerabdruck**: Wer den Speicher ausliest, hat genau das, was ohnehin
+im Quelltext steht. Jeder Zugriff steht in `try`/`catch`, und zwar schon
+der Zugriff selbst — im privaten Fenster wirft bereits
+`globalThis.localStorage`, nicht erst `getItem`.
+
+### Die wichtigste Behauptung: das Wort steht in keiner Datei
+
+`werkzeuge/pruefe-torwaechter.mjs` sucht nicht nach dem Wort — es kennt
+es nicht. Es hält **jedes Wort des Baums gegen das Tor**: Öffnet eines,
+steht es im Repository. Geprüft werden bei jedem Lauf die Wörter, die es
+**nur** in den Dateien gibt, in denen vom Tor die Rede ist (711 Stück,
+gemessen am 07.09.2026 — die Zahl wächst mit jeder Notiz, die vom Tor
+spricht) —
+genau dort landet ein Versehen. Vom Changelog zählt nur die oberste
+Notiz; jede war einmal die oberste und ist dabei geprüft worden.
+`node werkzeuge/zugangswort.mjs --suche` nimmt den ganzen Baum. Dass das
+Minuten dauert, ist kein Mangel: Es **ist** ein Wörterbuchangriff auf
+das eigene Tor, und dass er Minuten braucht statt Sekunden, ist der
+Beweis, dass die Runden wirken.
+
+### Jede Behauptung war zuerst rot
+
+**Einmal war es von selbst rot, und das zählt am meisten:** Der
+Wörterbuchangriff über den ganzen Baum hat das vorgegebene Zugangswort
+gefunden (siehe oben). Dazu **sechsundzwanzig** absichtliche Fehler,
+jeder einzeln eingebaut, angeschlagen gesehen und zurückgenommen — unter
+anderem: `wortStimmt` gibt immer
+`true` (12 Behauptungen fallen, darunter *„keins der 12 naheliegenden
+Wörter öffnet das Tor: ist 12, soll 0"*); der Fingerabdruck wird auf den
+eines Wortes gesetzt, das im Baum steht (*„kein Wort der Tor-Dateien
+öffnet das Tor — «zugangswort» in WORKCLAIM.md"*); eine statt 200.000
+Runden (*„200.000 Runden dauern 0-mal so lange wie 2.000"*); ein
+`return` in der Vergleichsschleife (*„genau ein `return`: ist 2, soll
+1"*); `try`/`catch` um den Speicher entfernt (*„ist «WIRFT: Zugriff auf
+Website-Daten verweigert», soll false"*); der Knopf auf 24 Bildpunkte
+(*„die Fläche «eintreten» ist 24 Bildpunkte hoch, nötig sind 48"*); und
+die neue Absage des Werkzeugs abgeschaltet (*„ein Wort, das schon im
+Baum steht, wird abgelehnt"*).
+
+Zwei Funde kamen aus diesen Rotläufen selbst und sind behoben: Die
+Prüfung **stürzte ab**, statt den Fund zu melden — und eine abgestürzte
+Prüfung druckt keine einzige ihrer Behauptungen, auch nicht die
+gefallene (Fehlerbuch C5). Und die Durchsicht des Speichers stand
+**vor** dem Öffnen des Tores; ein Tor, das nebenher das Wort selbst
+hinterlegt, wäre nicht aufgefallen.
+
+### Was sonst noch geändert wurde, und warum
+
+`runtime/start.js` baut den Vorlauf jetzt erst, wenn das Tor offen ist
+(vorher unbedingt); Zeiger, Tastatur, Einfügen und Größenänderung gehen
+an das Tor, solange es zu ist. `werkzeuge/buehne-browser.mjs` bekommt
+`torSchonOffen()` — den Browser eines Mitspielers, der das Wort schon
+einmal getippt hat. `pruefe-app.mjs`, `pruefe-einstieg.mjs` und
+`pruefe-tippen.mjs` rufen es einmal auf: Sie messen den Vorlauf und das
+Spiel dahinter, nicht das Tor, und ohne den zweiten Start gäbe es für
+sie gar keinen Vorlauf mehr. Das ist die übliche Ausnahme zu Regel 2
+(Prüfdateien dürfen mit) und steht deshalb hier. `index.html` und
+`docs/WEGWEISER.md` bekommen je einen Verweis auf die neue Datei.
+
+**Kette auf diesem Stand: 44 von 44 grün in 86,9 s** (vorher 43 in 66,0 s;
+die neue Prüfung braucht 23,3 s, davon 22,3 s für den Wörterbuchangriff
+auf das eigene Tor).
 ## 07.09.2026 — Gesten-Hörer von der Spieleingabe unterscheiden
 
 Die bestehende Touch-Prüfung zählt Vorlauf-Hörer gezielt am Canvas und

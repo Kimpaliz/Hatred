@@ -42,6 +42,8 @@ mit `pnpm test:list`.
 | Inhalte | `pruefe-katalog`, `pruefe-sprites`, `pruefe-protokoll` |
 | Bild und Gelände | `pruefe-zeichnen`, `pruefe-gelaende-bild`, `pruefe-koernung`, `pruefe-bild` |
 | Kamera und Ansichtsleiste | `pruefe-kamera-zoom`, `pruefe-ansicht`, `pruefe-schrift` |
+| Granit und Projektion | `pruefe-granit-feld`, `pruefe-granit-generator`, `pruefe-granit-material`, `pruefe-raster-projektion` |
+| Lichtpuffer und Zugang | `pruefe-licht-puffer`, `pruefe-torwaechter` |
 | UI und Eingabe | `pruefe-oberflaeche`, `pruefe-felder`, `pruefe-eingabe`, `pruefe-tippen` |
 | Lobby und Browserstart | `pruefe-vorlauf`, `pruefe-einstieg`, `pruefe-app` |
 | Koop und Vermittlung | `pruefe-netz`, `pruefe-leitung` |

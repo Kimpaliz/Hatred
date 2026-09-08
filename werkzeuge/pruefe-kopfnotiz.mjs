@@ -3,6 +3,11 @@
 
    ── Warum es das gibt / Warum so ───────────────────────────────────
 
+   Sie deckt zwei Regeln: `docs/REGELN.md` 7 (jede Quelldatei trägt die
+   Kopfnotiz mit Tag, Begründung und „Arbeitet zusammen mit") und
+   `docs/REGELN.md` 8 (die zwei Maße). Beide hängen an derselben
+   Dateiliste, deshalb stehen sie in einer Prüfung.
+
    Die Kopfnotiz ist in diesem Projekt kein Schmuck, sondern die einzige
    Stelle, an der die **Begründung** einer Datei steht. Wer sie
    weglässt, hinterlässt Code, den in drei Monaten niemand mehr ändern
@@ -22,7 +27,7 @@
    · Kein Bericht ohne Begründung: mindestens ein Abschnitt mit der
      `──`-Überschrift, bevor die Nachbardateien aufgezählt werden.
 
-   Dazu die zwei Maße aus dem Vertrag: keine Datei über 1000 Zeilen,
+   Die zwei Maße aus `docs/REGELN.md` 8: keine Datei über 1000 Zeilen,
    keine Zeile über 100 Zeichen. **Zeichen, nicht Bytes** — „ö" ist in
    UTF-8 zwei Bytes, und in einer deutschen Datei zählte man sich sonst
    um bis zu ein Viertel reich. Ausgenommen ist eine Zeile, die nur

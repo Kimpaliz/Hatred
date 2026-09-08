@@ -3,6 +3,10 @@
 
    ── Warum es das gibt / Warum so ───────────────────────────────────
 
+   Sie deckt `docs/REGELN.md` 6: die verbotenen Umgebungszugriffe und
+   die Einfuhrgrenze von `spiel/`. Netzadapter dürfen ihre Browser-
+   oder Node-Umgebung kennen und gehören nicht zu dieser Regelgrenze.
+
    An dieser einen Regel hängt der Netz-Koop. Steht irgendwo unter
    `spiel/` eine Uhr, ein Fenster oder ein ungesäter Würfel, rechnen
    zwei Rechner dieselbe Runde verschieden — und zwar nicht sofort und

@@ -61,6 +61,17 @@ import { SCHRITT, macheAblage, macheSpiel, starte } from "../runtime/start.js";
    und nicht über `start.js` durchgereicht — ein Durchreichen wäre eine
    zweite Wahrheit über seinen Ort. */
 import { TEMPO, macheAbspieler } from "../runtime/abspieler.js";
+import { torSchonOffen } from "./buehne-browser.mjs";
+
+/* Der Browser eines Mitspielers, der schon einmal drin war: Seit dem
+   07.09.2026 steht vor dem Vorlauf der Torwächter
+   (`runtime/torwaechter.js`), und ohne das Zugangswort entsteht die
+   Lobby gar nicht erst. Diese Prüfung misst den Vorlauf und was
+   dahinter kommt, nicht das Tor — also bekommt sie den zweiten Start,
+   den jeder Mitspieler nach dem ersten hat. Das Tor selbst prüft
+   `tests/pruefe-torwaechter.mjs`. */
+torSchonOffen();
+
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -748,8 +759,10 @@ function listeOrdner(ordner) {
   const dateien = [...listeOrdner("runtime"), ...listeOrdner("netz"), "sw.js"];
   behaupte(dateien.length > 15, `${dateien.length} Dateien durchsucht`);
   const gefunden = dateien.filter((d) => /Math\.random/.test(ohneKommentare(liesWurzel(d))));
-  behaupte(/Math\.random/.test(liesWurzel("runtime/zeichnen.js")),
-    "runtime/zeichnen.js nennt Math.random - im Kommentar, und das zählt nicht");
+  behaupte(!/Math\.random/.test(ohneKommentare("/* Math.random() */")),
+    "ein Wurf im Kommentar zählt nicht als zweite Zufallsquelle");
+  behaupte(/Math\.random/.test(ohneKommentare("const wert = Math.random();")),
+    "ein tatsächlicher Wurf außerhalb eines Kommentars wird gefunden");
   gleich(gefunden.join(", "), "runtime/start.js",
     "Math.random steht in genau einer Datei unter runtime/, netz/ und sw.js");
 }

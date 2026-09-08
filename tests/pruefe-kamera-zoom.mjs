@@ -23,6 +23,7 @@ import { abschnitt, behaupte, gleich, ende } from "./helfer.mjs";
 import { macheKamera, vergroesserungFuer } from "../runtime/kamera.js";
 import { KACHEL } from "../runtime/licht.js";
 import { macheKarte } from "../spiel/gitter.mjs";
+import { weltMasse } from "../spiel/raster.mjs";
 
 const FENSTER = [[412, 915], [915, 412], [801, 603], [1920, 1080], [9000, 7000]];
 const karte = macheKarte(120, 120);
@@ -90,7 +91,9 @@ let umkehrungen = 0;
 for (let stufe = 1; stufe <= 12; stufe++) {
   kamera.setzeZoom(stufe);
   kamera.folge(60, 60, true);
-  const mitte = kamera.feldNachBild(60.5, 60.5);
+  const anker = kamera.feldNachBild(60, 60);
+  const mitte = { x: anker.x + KACHEL / 2 * stufe,
+    y: anker.y + KACHEL / 2 * stufe };
   behaupte(Math.abs(mitte.x - kamera.fensterBreite / 2) <= stufe,
     `Stufe ${stufe}: die gefolgte Figur bleibt waagerecht in der Mitte`);
   behaupte(Math.abs(mitte.y - kamera.fensterHoehe / 2) <= stufe,
@@ -104,11 +107,12 @@ for (let stufe = 1; stufe <= 12; stufe++) {
       `Stufe ${stufe}: die Kameralage ist ganzzahlig`);
     for (const [fx, fy] of [[x, y], [1, 1], [60, 60], [118, 118]]) {
       const bild = kamera.feldNachBild(fx, fy);
-      const zurueck = kamera.bildNachFeld(bild.x + stufe, bild.y + stufe);
+      const zurueck = kamera.bildNachFeld(bild.x + KACHEL / 2 * stufe,
+        bild.y + KACHEL / 2 * stufe);
       gleich(zurueck.x, fx, `Stufe ${stufe}: Feldspalte kommt nach dem Zoom zurück`);
       gleich(zurueck.y, fy, `Stufe ${stufe}: Feldzeile kommt nach dem Zoom zurück`);
       behaupte(Number.isInteger(bild.x) && Number.isInteger(bild.y),
-        `Stufe ${stufe}: die gezeichnete Feldecke bleibt ganzzahlig`);
+        `Stufe ${stufe}: der gezeichnete Spriteanker bleibt ganzzahlig`);
       umkehrungen++;
     }
   }
@@ -143,15 +147,17 @@ abschnitt("Zoom: weiches Folgen und Rütteln bleiben im selben Weltbezug");
 abschnitt("Zoom: kleine Karte und unberührte Spielwerte");
 {
   const klein = macheKarte(8, 6);
+  const masse = weltMasse(klein);
   const probe = macheKamera({ karte: klein, fensterBreite: 801, fensterHoehe: 603 });
   for (const stufe of [1, 2, 4, 12]) {
     probe.setzeZoom(stufe);
-    const bild = probe.feldNachBild(4, 3);
-    if (probe.sichtBreite() >= klein.breite * KACHEL) {
-      behaupte(Math.abs(bild.x - 801 / 2) <= stufe, "eine kleine Karte bleibt waagerecht mittig");
+    if (probe.sichtBreite() >= masse.breite) {
+      const mitte = (masse.breite / 2 - probe.eckeX) * stufe;
+      behaupte(Math.abs(mitte - 801 / 2) <= stufe, "eine kleine Karte bleibt waagerecht mittig");
     }
-    if (probe.sichtHoehe() >= klein.hoehe * KACHEL) {
-      behaupte(Math.abs(bild.y - 603 / 2) <= stufe, "eine kleine Karte bleibt senkrecht mittig");
+    if (probe.sichtHoehe() >= masse.hoehe) {
+      const mitte = (masse.hoehe / 2 - probe.eckeY) * stufe;
+      behaupte(Math.abs(mitte - 603 / 2) <= stufe, "eine kleine Karte bleibt senkrecht mittig");
     }
   }
   gleich(karte.summe(), summe, "alle Zoomoperationen lassen sämtliche Kartenfelder unverändert");

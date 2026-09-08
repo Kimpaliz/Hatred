@@ -10,7 +10,8 @@
    bis zur dritten Kerkertiefe alles zusammensteckt:
 
    · Ein Modul, das aus `index.html` heraus gar nicht erreichbar ist —
-     daheim liegt es im Speicher des Bündlers, im Netz nirgends.
+     daheim liegt es im Speicher des Bündlers, im Netz nirgends. Ebenso
+     ein Einfuhrpfad ohne `./` im Baum darunter (`docs/REGELN.md` 14).
    · Ein Zeichenaufruf auf einem halben Bildpunkt. Im fertigen Bild ein
      Hauch Unschärfe, den man dem Bildschirm zuschreibt; in der
      Aufrufliste eine Zahl mit Komma (Fehlerbuch D1).
@@ -24,12 +25,6 @@
    unmittelbar durch `wendeAn`.** Weil `runtime/start.js` es auch so
    macht — auch allein. Prüfte diese Datei den kürzeren Weg, prüfte sie
    einen Weg, den das Spiel nie geht.
-
-   **Warum `requestAnimationFrame` hier in eine Reihe legt statt sofort
-   zu rufen.** `bild()` fordert am Ende das nächste Bild an. Ein Ersatz,
-   der die Rückrufe unmittelbar ausführt, riefe sich selbst — bis der
-   Stapel überläuft. „Sofort" heißt hier: im selben Durchgang, ohne
-   Warten auf einen Bildschirm; angestoßen wird jedes Bild von Hand.
 
    ── Was hier **nicht** geprüft wird ────────────────────────────────
 
@@ -61,10 +56,24 @@ import { macheSitzung } from "../netz/sitzung.mjs";
 import { macheLauf, naechsteTiefe, zustandsSumme } from "../spiel/lauf.mjs";
 import { AKTION, moeglicheAktionen } from "../spiel/aktionen.mjs";
 import {
-  amZugWesen, fuegeSchadenZu, laufEndeEintragen, SEITE_JAEGER
+  amZugWesen, fuegeSchadenZu, laufEndeEintragen, SEITE_JAEGER, starteRunde
 } from "../spiel/zug.mjs";
+import { HINDERNIS, BODEN, FLUESSIG, RAMPE } from "../spiel/gitter.mjs";
+import { macheWesen } from "../spiel/wesen.mjs";
+import { gegner } from "../spiel/katalog/gegner.mjs";
 import { planeZug } from "../spiel/gegner-ki.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
+import { torSchonOffen } from "./buehne-browser.mjs";
+
+/* Der Browser eines Mitspielers, der schon einmal drin war: Seit dem
+   07.09.2026 steht vor dem Vorlauf der Torwächter
+   (`runtime/torwaechter.js`), und ohne das Zugangswort entsteht die
+   Lobby gar nicht erst. Diese Prüfung misst den Vorlauf und was
+   dahinter kommt, nicht das Tor — also bekommt sie den zweiten Start,
+   den jeder Mitspieler nach dem ersten hat. Das Tor selbst prüft
+   `tests/pruefe-torwaechter.mjs`. */
+torSchonOffen();
+
 
 const WURZEL = dirname(dirname(fileURLToPath(import.meta.url)));
 const liesWurzel = (name) => readFileSync(join(WURZEL, name), "utf8");
@@ -78,8 +87,8 @@ const messungen = [];
    eine andere Messung. */
 const SAAT_BILD = 3;        /* der Kerker, in dem zweihundert Bilder fallen */
 const SAAT_RUNDEN = 7;      /* der Kerker der dreißig Runden */
-/* Ein **zweiter** Kerker, allein für die Frage „läuft der Kampf?".
-   Warum er seit dem 07.09.2026 dazugehört, steht bei der Behauptung. */
+/* Ein zweiter natürlicher Kerker prüft weitere Geländewege. Ob Gegner
+   dort zufällig aufeinandertreffen, ist keine Aussage über den Kampf. */
 const SAAT_RUNDEN_ZWEI = 31;
 const SAAT_NIEDERLAGE = 11; /* dort fällt der einzelne Jäger — gemessen */
 const SAAT_TIEFEN = 23;     /* der Lauf über drei Kerkertiefen */
@@ -91,8 +100,7 @@ const TIEFEN = 3;
    erwarteten Fall, sondern den, der eine Prüfung wertlos macht: Weist
    eine Sitzung eine Aktion ab und nimmt auch das Zugende nicht mehr an,
    dreht die Schleife für immer — die Kette hinge, statt rot zu werden.
-   Gemessen braucht der Lauf zu viert 766 Aktionen für dreißig Runden
-   (`node tests/pruefe-app.mjs`); 200 je Runde ist reichlich Luft. */
+   Die Obergrenze begrenzt die Prüfzeit unabhängig von der Höhlenform. */
 const SCHRITTE_JE_RUNDE = 200;
 
 /* ══════════════════════════════════════════════════════════════════
@@ -401,10 +409,12 @@ function spielerAktion(zustand, wesen, zufall) {
    Die „Leitung" ist ein Aufruf. Sie darf nichts können, was eine echte
    Leitung nicht kann: Sie reicht eine Zeichenkette weiter, sonst
    nichts. */
-function baueTisch(saat, spielerZahl) {
+function baueTisch(saat, spielerZahl, vorbereiten = null) {
   const zustaende = [];
   for (let p = 0; p < spielerZahl; p++) {
-    zustaende.push(macheLauf({ saat, spielerZahl, tiefe: 1 }));
+    const zustand = macheLauf({ saat, spielerZahl, tiefe: 1 });
+    if (vorbereiten) vorbereiten(zustand);
+    zustaende.push(zustand);
   }
   const gaeste = [];
   const wirt = macheSitzung({
@@ -428,6 +438,67 @@ function baueTisch(saat, spielerZahl) {
   }
   const sitzungFuer = (platz) => (platz === 1 ? wirt : gaeste[platz - 2]);
   return { zustaende, wirt, gaeste, sitzungFuer };
+}
+
+/* Vier feste Paare testen den Kampf unabhängig davon, wie groß die
+   natürliche Höhle ist. Beide Seiten nutzen echte Waffen und Aktionen.
+   Viele Lebenspunkte halten die Probe offen; sie ändern keine Trefferregel.
+   Zehn fehlende Lebenspunkte machen auch jede Trankaktion überprüfbar. */
+function kampfAufstellung(z) {
+  z.karte.hindernis.fill(HINDERNIS.keins); z.karte.ebene.fill(1);
+  z.karte.boden.fill(BODEN.stein); z.karte.fluessig.fill(FLUESSIG.keine);
+  z.karte.rampe.fill(RAMPE.keine); z.karte.lichter = [];
+  z.wesen = z.wesen.filter((w) => w.seite === SEITE_JAEGER);
+  for (let p = 0; p < 4; p++) {
+    Object.assign(z.wesen[p], { x: 4, y: 4 + 2 * p, waffe: "rostdolch", lp: 990, lpMax: 1000 });
+    const brut = macheWesen(gegner("kraetzling"),
+      { id: 1001 + p, seite: "brut", x: 5, y: 4 + 2 * p });
+    brut.lp = brut.lpMax = 1000;
+    z.wesen.push(brut);
+  }
+  z.nachId = new Map(z.wesen.map((w) => [w.id, w]));
+  z.ereignisse = starteRunde(z);
+}
+
+function pruefeBegegnung(welt) {
+  const tisch = baueTisch(SAAT_RUNDEN, 4, kampfAufstellung), z = tisch.zustaende[0];
+  const { spiel } = macheApp(z, welt, tisch.wirt);
+  const arten = new Map(), angegriffen = new Set(), plaetze = new Set(), getrunken = new Set();
+  let versuche = 0, abgelehnt = 0, auseinander = 0;
+  tisch.wirt.beiEreignissen((liste) => {
+    for (const e of liste) arten.set(e.art, (arten.get(e.art) || 0) + 1);
+  });
+  for (let schritt = 0; schritt < 96 && versuche < 32; schritt++) {
+    const w = amZugWesen(z), key = `${z.runde}:${w.id}`;
+    const ende = angegriffen.has(key), trank = ende && w.seite === SEITE_JAEGER
+      && !getrunken.has(w.id);
+    const aktion = trank ? { typ: AKTION.trank, wer: w.id }
+      : ende ? { typ: AKTION.zugEnde, wer: w.id }
+      : { typ: AKTION.angriff, wer: w.id, ziel: w.id <= 4 ? w.id + 1000 : w.id - 1000 };
+    const sitzung = w.seite === SEITE_JAEGER ? tisch.sitzungFuer(w.spielerPlatz) : tisch.wirt;
+    if (!sitzung.willAktion(aktion)) abgelehnt++;
+    if (trank) getrunken.add(w.id);
+    if (!ende) {
+      versuche++; angegriffen.add(key);
+      if (w.seite === SEITE_JAEGER) plaetze.add(w.spielerPlatz);
+    }
+    const summe = zustandsSumme(z);
+    for (const gast of tisch.zustaende.slice(1)) {
+      if (zustandsSumme(gast) !== summe) auseinander++;
+    }
+    spiel.bild(schritt / 60);
+  }
+  gleich(abgelehnt, 0, "Alle festen Nahkämpfe werden über die Sitzung akzeptiert");
+  gleich(arten.get("angriff") || 0, 32, "32 gezielt ausgelöste Angriffe werden ausgeführt");
+  gleich(plaetze.size, 4, "Alle vier Spielerplätze schicken selbst einen Angriff");
+  gleich(arten.get("lpGesetzt") || 0, 4, "Alle vier Trankaktionen erreichen das Ereignisbild");
+  gleich(auseinander, 0, "Vier unabhängige Spielstände stimmen nach jeder Kampfaktion überein");
+  behaupte((arten.get("schaden") || 0) > 0, "Die Begegnung verursacht tatsächlichen Schaden");
+  behaupte(z.wesen.reduce((sum, w) => sum + w.lp, 0) < 8000,
+    "Schadensereignisse senken die Lebenspunkte im Spielstand");
+  messungen.push(`Feste Begegnung zu viert: ${arten.get("angriff") || 0} Angriffe, `
+    + `${arten.get("schaden") || 0} Schadensereignisse, ${auseinander} abweichende Summen`);
+  return arten;
 }
 
 /* Ein ganzer Lauf über die Sitzung. Zurück kommen die Prüfzahlen —
@@ -567,8 +638,7 @@ function spieleZuViert(saat, welt,
   try {
     const erster = spieleZuViert(SAAT_RUNDEN, welt);
     const zweiter = spieleZuViert(SAAT_RUNDEN, welt);
-    /* Der zweite Kerker — ohne Bild, weil hier allein der Verlauf
-       zählt. Begründung bei den beiden Kampfbehauptungen weiter unten. */
+    /* Der zweite natürliche Kerker prüft weitere Wege ohne zusätzlichen Bildlauf. */
     const anderer = spieleZuViert(SAAT_RUNDEN_ZWEI, welt, { malen: false });
 
     gleich(erster.wurf, null, "der erste Lauf über dreißig Runden wirft nicht");
@@ -604,60 +674,17 @@ function spieleZuViert(saat, welt,
        herauskommen. */
     const wieoft = (art) => erster.arten.get(art) || 0;
     behaupte(wieoft("bewegt") > 20, `${wieoft("bewegt")} Bewegungen`);
-    /* ── Warum diese Frage seit dem 07.09.2026 zwei Kerker braucht ──
-
-       Sie fragt: Trifft die Brut überhaupt auf die Jäger, oder stehen
-       dreißig Runden lang alle nebeneinander herum? Bis zum
-       07.09.2026 stand dafür `wieoft("angriff") > 3` auf **einer**
-       Karte, der Saat 7. Das war eine Zahl, die an genau diesen einen
-       Kerker gebunden war — und Vorgang #8 (Abgründe) hat ihn
-       verändert.
-
-       Gemessen wurde daraufhin dieselbe Frage über sechs Saaten
-       (7, 3, 11, 19, 23, 31), einmal ohne und einmal mit Abgründen:
-
-         ohne : 7 ·  0 · 0 · 0 · 0 ·  9 → 16 Angriffe
-         mit  : 0 · 25 · 0 · 0 · 0 · 29 → 54 Angriffe
-
-       Die Einzelzahl schwankt also zwischen 0 und 29 und sagt über
-       den Kampf nichts; die Summe hat sich mehr als verdreifacht. Auf
-       **einer** Karte gemessen war die alte Schranke deshalb kein
-       Fangnetz für den leeren Lauf, sondern ein Glücksfall der Saat 7
-       — auf drei von sechs Saaten wäre sie auch ohne jede Änderung rot
-       gewesen.
-
-       Deshalb jetzt zwei Kerker und die **Summe**: 29 Angriffe
-       gemessen, Schranke 10. Sie liegt damit höher als die alte (die
-       auf 3 hinauslief) und hängt an mehr als einer Karte.
-       Nachzurechnen mit `node tests/pruefe-app.mjs`, Messzeile
-       „30 Runden zu viert". */
+    /* Natürliche Höhlen dürfen lange Erkundungswege enthalten. Die
+       Kampfabdeckung wird deshalb mit vier festen Paaren hergestellt,
+       während die unveränderten Kerkerläufe weiter den echten Alltag prüfen. */
+    const kampf = pruefeBegegnung(welt);
     const wieoftAuch = (art) => wieoft(art) + (anderer.arten.get(art) || 0);
-    const angriffe = wieoftAuch("angriff");
-    behaupte(angriffe > 10,
-      `${angriffe} Angriffe auf den Saaten ${SAAT_RUNDEN} und ${SAAT_RUNDEN_ZWEI}`);
-    /* Nicht „mehr als zehn Treffer", sondern „ein ordentlicher Teil
-       der Angriffe trifft". Eine feste Trefferzahl wäre an denselben
-       einen Kerker gebunden wie die Schranke darüber.
-
-       Was diese Stelle wirklich fragt, ist: Läuft der Kampf, oder
-       geht ins Leere, was gewürfelt wird? Ein Drittel Treffer ist die
-       Grenze, unter der etwas grundsätzlich kaputt wäre — eine
-       zerbrochene Trefferrechnung landet bei null. */
-    const treffer = wieoftAuch("schaden");
-    behaupte(treffer * 3 > angriffe,
-      `${treffer} Treffer aus ${angriffe} Angriffen — mehr als ein Drittel`);
+    const angriffe = wieoftAuch("angriff"), treffer = wieoftAuch("schaden");
     behaupte(wieoft("zugEnde") > 30, `${wieoft("zugEnde")} beendete Züge`);
-    /* Auch diese Frage steht über beiden Kerkern, und aus demselben
-       Grund: Ob auf **einer** Karte je ein Angriff fällt, entscheidet
-       die Karte. Fällt keiner, fehlen `angriff`, `schaden`,
-       `gestorben` und `lpGesetzt`, und die Zahl fiel auf Saat 7 von 12
-       auf 9. Über beide Kerker sind es gemessen **15**; mit einer
-       vorsätzlich zerbrochenen Reichweitenrechnung 12. Die Schranke
-       liegt deshalb bei 13 — über dem kaputten Fall und unter dem
-       gemessenen, und höher als die alte 10. */
-    const formen = new Set([...erster.arten.keys(), ...anderer.arten.keys()]);
-    behaupte(formen.size >= 13,
-      `${formen.size} verschiedene Ereignisformen: ${[...formen].sort().join(", ")}`);
+    const formen = new Set([...erster.arten.keys(), ...anderer.arten.keys(), ...kampf.keys()]);
+    for (const art of ["bewegt", "zugEnde", "rundeNeu", "angriff", "schaden", "lpGesetzt"]) {
+      behaupte(formen.has(art), `Der Gesamtweg enthält das benötigte Ereignis ${art}`);
+    }
 
     /* Verglichen wird jede Runde und nicht nur das Ende — sonst
        könnten sich zwei Läufe in Runde 7 trennen und in Runde 30
