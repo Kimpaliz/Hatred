@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Projektstruktur und Agenten-Einstieg am 08.09.2026 lokal geprüft. | 08.09.2026 |
+| Integration von origin/main, docs/, Agentenanleitungen, tests/, werkzeuge/, CHANGELOG.md | Codex (Leitstand, integration/project-structure) | Freigegebenen Aufräumstand mit d7271d0 zusammenführen und geprüft nach main hochladen. | 08.09.2026 |
 
 ## Format
 

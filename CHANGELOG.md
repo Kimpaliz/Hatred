@@ -3,6 +3,15 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Integration der Projektstruktur mit dem GitHub-Stand
+
+Jannik hat die Übernahme nach `main` und das Hochladen ausdrücklich mit
+„Ja bitte“ autorisiert. Vor dem Zusammenführen wurde `origin/main` neu
+gelesen: **d7271d0** enthält zusätzliche Änderungen gegenüber der
+Aufräumbasis **38479d0**. Der Aufräumcommit **baa58e2** wird mit diesem
+Stand verbunden; vorhandene Spieländerungen werden erhalten. Die Ergebnisse
+der Abnahme werden vor dem Hochladen hier ergänzt.
+
 ## 08.09.2026 — Projektstruktur und Einstieg für Agenten ordnen
 
 **Auftrag, wörtlich:** „Und räume da mal auf. Wie man das in einem richtigen
