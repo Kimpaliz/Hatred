@@ -3,6 +3,42 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Das Zugangswort gewechselt
+
+**Auftrag:** Der Auftraggeber hat ein anderes Wort genannt. Es steht
+hier bewusst nicht, und in keiner anderen Datei auch nicht — nur sein
+Fingerabdruck.
+
+**Was sich geändert hat:** Eine Zeile in `runtime/torwaechter.js`.
+Gerechnet wurde sie mit `node werkzeuge/zugangswort.mjs <wort>`, also
+mit derselben Funktion, die das Tor beim Öffnen benutzt — zwei getrennte
+Rechnungen wären zwei Wahrheiten.
+
+| | Wert |
+| --- | --- |
+| Länge des neuen Wortes | 11 Zeichen |
+| Runden je Rateversuch | 200.000, unverändert |
+| Dauer einer Rechnung, gemessen | 33 ms |
+| Fingerabdruck | 64 Bit, neu |
+
+**Die Prüfung, ohne die es leichtsinnig wäre:** Das Werkzeug sucht das
+Wort vor dem Rechnen wörtlich im ganzen Baum und sagt ab, wenn es schon
+dasteht — der Fall aus Fehlerbuch F1, bei dem ein Gegnername aus dem
+eigenen Katalog als Zugangswort vorgeschlagen war und 13-mal im
+ausgelieferten Code stand. Das neue Wort ist angenommen worden, also
+steht es nirgends; zusätzlich nachgemessen mit `grep -ric` über den
+ganzen Baum: **0 Treffer**. Der Wörterbuchangriff
+`node werkzeuge/zugangswort.mjs --suche` lief gegen alle Wörter des
+Ablageorts und fand es ebenfalls nicht.
+
+**Was das für die Mitspieler heißt:** Wer sich das alte Wort hat merken
+lassen, wird beim nächsten Start wieder gefragt. Gemerkt wird der
+Fingerabdruck, und der ist ein anderer geworden.
+
+**Unverändert:** Salz, Rundenzahl, die Rechnung selbst, das Tor, seine
+Prüfung. Der Riegel ist genauso stark und genauso schwach wie vorher —
+er hält Zufallsbesucher ab und sonst nichts.
+
 ## 08.09.2026 — Ein Wächter über die Nachweise: jeder `*Geprüft:*`-Verweis wird gegen die genannte Datei gehalten
 
 **Warum:** Am 07.09.2026 stand unter `docs/REGELN.md` 14 („Alle

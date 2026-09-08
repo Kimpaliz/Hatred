@@ -127,7 +127,7 @@ export const RUNDEN = 200000;
    was davon im Repository steht. Neu gerechnet wird er mit
    `node werkzeuge/zugangswort.mjs <neues wort>`; das Werkzeug druckt
    genau diese Zeile zum Austauschen. */
-export const FINGERABDRUCK = "1a143e45b781e7e4";
+export const FINGERABDRUCK = "1d826745ee8ab9c4";
 
 /* Unter diesem Namen liegt der Fingerabdruck im Browser, wenn das Tor
    einmal offen war. */
