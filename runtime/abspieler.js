@@ -31,14 +31,14 @@
 
    `runtime/start.js` (legt Ereignisse hinein und fragt `schau` ab),
    `runtime/partikel.js` (`SCHLEIM_RAMPE`, und das Teilchenwerk, das
-   hier gefüttert wird), `runtime/licht.js` (`KACHEL`),
+   hier gefüttert wird), `spiel/raster.mjs` (gemeinsame Feldmitten),
    `runtime/palette.js` (`FARBEN`), `runtime/oberflaeche.js`
    (`satzVon` — der Lauftext), `runtime/sprites.js` (`richtungAus`),
    `spiel/zug.mjs` (`wesenMitId`), `spiel/wesen.mjs` (`ruestungVon`),
    `werkzeuge/pruefe-einstieg.mjs` (misst hierüber). */
 
 import { FARBEN } from "./palette.js";
-import { KACHEL } from "./licht.js";
+import { feldMitte, FELD_BREITE } from "../spiel/raster.mjs";
 import { SCHLEIM_RAMPE } from "./partikel.js";
 import { satzVon } from "./oberflaeche.js";
 import { richtungAus } from "./sprites.js";
@@ -66,6 +66,16 @@ export const SCHADEN_TEILCHEN = {
 /* Ereignisse, die keinen Satz im Lauftext bekommen. */
 export const STILLE_EREIGNISSE = new Set(["pause", "apGesetzt", "seiteDran", "ebeneGewechselt"]);
 
+/* Ein Stoß kann mehrere Zeilen überspringen. In Weltpunkten bleibt
+   seine Bahn gerade; lineare Versatzkoordinaten würden zickzack laufen. */
+function zwischenFeld(a, b, anteil) {
+  const von = feldMitte(a.x, a.y);
+  const nach = feldMitte(b.x, b.y);
+  const y = a.y + (b.y - a.y) * anteil;
+  const weltX = von.x + (nach.x - von.x) * anteil;
+  return { x: (weltX - feldMitte(0, y).x) / FELD_BREITE, y };
+}
+
 /* ── Der Abspieler ──────────────────────────────────────────────────
 
    Er hält die Ereignisse aus dem Kern in einer Reihe und arbeitet sie
@@ -86,10 +96,9 @@ export function macheAbspieler({
   const zahlen = [];
   let laufend = null;
 
-  const kachelMitte = (feld) => feld * KACHEL + KACHEL / 2;
-
   function wirf(art, x, y, opts = {}) {
-    if (partikelwerk) partikelwerk.stosseAus(art, kachelMitte(x), kachelMitte(y), opts);
+    const mitte = feldMitte(x, y);
+    if (partikelwerk) partikelwerk.stosseAus(art, mitte.x, mitte.y, opts);
   }
 
   function ruettle(staerke, dauer) {
@@ -243,17 +252,18 @@ export function macheAbspieler({
       const teil = stelle - i;
       const a = laufend.pfad[i];
       const b = laufend.pfad[Math.min(i + 1, laufend.pfad.length - 1)];
-      anzeige.set(laufend.wer, { x: a.x + (b.x - a.x) * teil, y: a.y + (b.y - a.y) * teil });
-      blicke.set(laufend.wer, richtungAus(b.x - a.x, b.y - a.y));
+      anzeige.set(laufend.wer, zwischenFeld(a, b, teil));
+      const von = feldMitte(a.x, a.y);
+      const nach = feldMitte(b.x, b.y);
+      blicke.set(laufend.wer, richtungAus(nach.x - von.x, nach.y - von.y));
       return;
     }
     if (laufend.von && laufend.nach) {
       const anteil = laufend.dauer > 0 ? Math.min(1, alter / laufend.dauer) : 1;
-      const x = laufend.von.x + (laufend.nach.x - laufend.von.x) * anteil;
-      const y = laufend.von.y + (laufend.nach.y - laufend.von.y) * anteil;
-      anzeige.set(laufend.wer, { x, y });
-      blicke.set(laufend.wer,
-        richtungAus(laufend.nach.x - laufend.von.x, laufend.nach.y - laufend.von.y));
+      anzeige.set(laufend.wer, zwischenFeld(laufend.von, laufend.nach, anteil));
+      const von = feldMitte(laufend.von.x, laufend.von.y);
+      const nach = feldMitte(laufend.nach.x, laufend.nach.y);
+      blicke.set(laufend.wer, richtungAus(nach.x - von.x, nach.y - von.y));
     }
   }
 

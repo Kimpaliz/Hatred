@@ -3,6 +3,231 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Das Licht als gebündelter Pixelpuffer: zwei Zeichenaufrufe statt 57.374
+
+**Warum:** Der Zweig hatte sein Urteil über sich selbst im Eintrag
+darunter schon stehen: *„Der aktuelle Canvas-Zeichenweg des Lichts ist
+für die volle Übersicht zu langsam und muss beim Lichtumbau durch einen
+gebündelten Pixelpuffer ersetzt werden."* `runtime/licht.js` rief für
+**jeden** Lichtpunkt im Fenster ein eigenes `ctx.fillRect` — und das
+zweimal, einmal für die abdunkelnde und einmal für die glühende Lage.
+Bei voller Übersicht sind das Zehntausende Aufrufe je Bild, jeder mit
+einer Farbzeichenkette davor.
+
+**Was:** `zeichneAuf` füllt jetzt je Lage **einen** Pixelpuffer — eine
+Schleife über ein `Uint32Array`, kein Zeichenaufruf —, legt ihn mit
+`putImageData` auf ein Nebenzeichenblatt und zieht ihn mit `drawImage`
+ganzzahlig vergrößert aufs Hauptblatt. Das Nebenblatt kommt über
+`OffscreenCanvas` beziehungsweise `canvas.ownerDocument`, genau wie in
+`runtime/granit-feld.js`, und wird nur neu gemacht, wenn sich das
+sichtbare Rechteck ändert.
+
+**Warum in Weltbildpunkten und nicht in Lichtpunkten:** Ein 4×4-Block
+gehört an einer Hexgrenze zwei Sechsecken; `besitzerSpannen` malt dort
+seit dem Rasterumbau einzelne Pixelspannen, damit kein Licht um die
+Wand herumläuft. In Lichtpunktauflösung hätten diese Spannen keinen Ort
+mehr. Der Puffer ist deshalb so groß wie der sichtbare Ausschnitt in
+**Weltbildpunkten**; hochskaliert wird erst beim `drawImage`.
+
+**Gemessen — Zeichenaufrufe** (`node werkzeuge/pruefe-licht-puffer.mjs`):
+
+| Ausschnitt | vorher | nachher |
+| --- | --- | --- |
+| 1280×720, Vergrößerung 1, 60×46 Felder, 42 Fackeln | 57.374 Rechtecke | 2 |
+| 480×240, Vergrößerung 3, 32×24 Felder, 1 Fackel | 1.716 Rechtecke | 2 |
+
+**Gemessen — Bilder je Sekunde**, im echten Chromium über Playwright,
+Fenster 1280×720, Zugangswort tippen → „Allein spielen" → „Losgehen",
+dann `requestAnimationFrame` über 3 Sekunden gezählt. Fünf Läufe je
+Stand, abwechselnd auf demselben Rechner gemessen (Mittel, in Klammern
+der Median):
+
+| Stand | Standardzoom (2×) | ganz herausgezoomt (1×) |
+| --- | --- | --- |
+| `main` | 22,6 (22,9) | 11,8 (11,7) |
+| dieser Zweig vorher | 11,2 (11,1) | 5,8 (6,2) |
+| dieser Zweig nachher | **20,4** (19,2) | **11,9** (10,9) |
+
+Ganz herausgezoomt ist das Ziel erreicht: der Zweig liegt wieder auf der
+Höhe von `main` (11,9 gegen 11,8). Bei Standardzoom fehlen **rund zehn
+Prozent** — 20,4 gegen 22,6. Das wird hier nicht schöngeredet: Der Rest
+liegt nicht mehr am Licht. Ein CPU-Profil des laufenden Spiels bei
+voller Übersicht (`Profiler` über das DevTools-Protokoll, 4 Sekunden,
+12.455 Proben) verteilt sich jetzt so: `fillRect` 47,6 %, davon nichts
+mehr aus dem Licht, sondern aus `deckeUngesehenes`/`fuelleHex` in
+`runtime/zeichnen.js` und dem Rückfallweg des Geländes; das ganze Licht
+zusammen (Puffer füllen, `putImageData`, `drawImage`) sind 19 %. Vorher
+lag `fillRect` bei 66,4 % und das Licht allein bei rund 15 % obendrauf.
+
+**Das Bild ist dasselbe geblieben, und das ist bewiesen** (Regel 12):
+`werkzeuge/pruefe-licht-puffer.mjs`, Abschnitt 2, malt dieselbe Szene
+einmal über den Rechteckweg und einmal über den Puffer und vergleicht
+**je Lage Bildpunkt für Bildpunkt**: 61.141 bemalte Bildpunkte,
+**0 Abweichungen**. Kein Rundungsunterschied, kein einziger Punkt.
+Möglich ist das, weil beide Wege dieselbe Farbtabelle benutzen — ein
+Eintrag trägt die Zeichenkette *und* den gepackten 32-Bit-Wert. Zwei
+getrennte Vorräte wären zwei Wahrheiten.
+
+Diese Prüfung läuft in Node und damit gegen ein Ersatzblatt; die
+Bytefolge im Speicher, der Alphakanal und die Mischregeln von
+„multiply" und „lighter" kennt aber nur ein echter Browser. Deshalb
+dieselbe Probe noch einmal **im laufenden Chromium**, mit einem
+Messskript unter `/tmp` (Fehlerbuch C2): `runtime/licht.js` zeichnet auf
+zwei gleich vorbemalte Blätter, eines mit `drawImage` und eines ohne
+(also über die Rechtecke), danach werden beide mit `getImageData`
+verglichen. 46.800 Bildpunkte, davon 44.494 vom Licht verändert,
+**0 Abweichungen**, größter Kanalunterschied 0 — bei 2 gegen 5.161
+Zeichenaufrufen.
+
+**Warum der Rechteckweg stehen bleibt:** Ein Zeichenblatt ohne
+`drawImage` bekommt weiterhin einzelne Rechtecke — derselbe Aufbau wie
+in `runtime/granit-feld.js`. An den einzelnen Aufrufen misst
+`werkzeuge/pruefe-bild.mjs`, was an einem Pixelpuffer gar nicht mehr zu
+sehen wäre: dass jede Kante auf ganzen Bildpunkten liegt. Die Brücke
+oben hält beide Wege zusammen; ohne sie prüfte die Kette einen Weg, den
+der Browser nie geht (Fehlerbuch C5).
+
+**Prüfungen:** 52 → **53**. `werkzeuge/pruefe-licht-puffer.mjs` ist neu
+(37 Behauptungen), `werkzeuge/pruefe-raster-projektion.mjs` bekommt
+dieselbe Konturprüfung noch einmal an den Bildpunkten des Puffers
+(+3), und `pruefe-kopfnotiz.mjs` prüft die neue Datei von selbst mit
+(+8). Behauptungen der ganzen Kette: **43.851 → 43.899**, keine einzige
+ist ersatzlos weggefallen; `pruefe-bild.mjs` behauptet unverändert 170
+Dinge — die Zählung „so viele Farbzeichenketten" heißt dort jetzt „so
+viele Farben", und ihre schärfere Fassung „so viele verschiedene
+Farbwerte **im Puffer**" steht in der neuen Datei.
+
+**Jede neue Prüfung wurde zuerst rot gemacht** (Regel 10), sieben Mal
+einzeln, jedes Mal zurückgenommen: `drawImage` vom Blatt genommen
+(16 von 29 gefallen) · `imageSmoothingEnabled = false` entfernt (2) ·
+`drawImage` einen Bildpunkt zu breit gezogen (2, „ist 3,0061, soll 3") ·
+die warme Lage zweimal gezeichnet (4) · angeschnittene Lichtblöcke als
+ein Stück gemalt (1: „multiply bei 0,5: Rechteck rgb(182,146,73) gegen
+Puffer rgb(36,36,36)") · Alpha 128 statt 255 (1: 27.034 halbe
+Bildpunkte) · dieselbe Sabotage gegen die Konturprüfung in
+`pruefe-raster-projektion.mjs` (1: 1.522 Bildpunkte außerhalb der
+Hexkarte).
+
+**Geändert wurden** (Regel 2, Zweig `bild/licht-puffer`):
+`runtime/licht.js` gehört diesem Zweig. Dazu die Prüfseite, ohne die
+die Kette nichts mehr sähe — `werkzeuge/buehne-browser.mjs` bekommt mit
+`macheBildflaeche` ein Blatt, das `putImageData` und `drawImage`
+mitschreibt und den Puffer **kopiert** (das Licht füllt für die zweite
+Lage denselben Speicher noch einmal); `werkzeuge/pruefe-bild.mjs`
+(Umbenennung `anzahlFarbwoerter` → `anzahlFarben`),
+`werkzeuge/pruefe-raster-projektion.mjs` und die neue
+`werkzeuge/pruefe-licht-puffer.mjs`. `docs/WEGWEISER.md` nennt jetzt die
+zwei Zeichenaufrufe.
+
+**Nicht angefasst:** die Lichtrechnung selbst — `rechne`,
+`setzeQuellen`, `helligkeitBei`, `lichtpunkte`, `aufStufen`,
+`flackerFaktor`, `besitzerSpannen` und `macheSichtfeld` stehen Zeile für
+Zeile wie vorher. Acht Stufen, Farbmischung, Grundhelle und der warme
+Zuschlag sind unverändert. `spiel/` und `netz/` wurden nicht berührt.
+
+**Offen:** Bei Standardzoom bleibt der Zweig rund zehn Prozent hinter
+`main`. Der Rest steckt im Zeichenweg des Geländes und des Sichtnebels
+(`runtime/zeichnen.js`, `deckeUngesehenes` und `fuelleHex` malen je
+Hexfeld eine Rechteckzeile). Das ist eine eigene Arbeit und wurde hier
+bewusst nicht angefangen — Umbau und Inhalt bleiben getrennt.
+
+## 08.09.2026 — Granithöhle als senkrechtes Hexfeld, zusammenhängende Treppen
+
+**Zwischenstand zur Branch-Übernahme, 08.09.2026:** Auf ausdrücklichen
+Auftrag wird dieser Stand abgeschlossen. Die anschließend angefragte
+vollständige Übernahme von Scotophobias Sicht- und Lichtsystem ist
+noch offen. Das enthaltene Licht verwendet Hatreds bisherige Formeln
+mit korrigierter Hexgeometrie und Schattenabdeckung.
+
+**Abschlussprüfung, 08.09.2026:** Die vollständige Kette prüfte 52
+Programme in 86,8 Sekunden. 51 bestanden unmittelbar; der Dokumentationswächter
+verlangte das vorhandene Datum direkt in der Statuszeile. Nach dieser
+Textkorrektur bestand auch dessen gezielter Wiederholungslauf.
+
+**Offener Leistungsbefund, 08.09.2026:** Im lokalen Chrome-Test über
+30 Bilder der vollständigen Höhle lag der Median ohne Licht bei
+7,7 ms, mit 42 Fackeln bei 987,9 ms; die beleuchtete Treppenkarte lag
+bei 8,3 ms. Es entstehen keine neuen Materialpuffer. Der aktuelle
+Canvas-Zeichenweg des Lichts ist für die volle Übersicht zu langsam
+und muss beim Lichtumbau durch einen gebündelten Pixelpuffer ersetzt
+werden. Diese Messung belegt ausdrücklich keine ausreichende Bildrate.
+
+**Warum:** Der Auftrag verlangt ausdrücklich Scotophobias Granithöhle,
+ein bleibendes Raster, exakt senkrechten Blick und zusammenpassende
+Treppen. Die bisherige Darstellung verband sechs Bewegungsrichtungen
+mit quadratischen Bildkoordinaten, Wandvorderseiten und wiederholten
+Kachelmustern. Der neue Geländeaufbau ersetzt diesen Zeichenweg.
+
+**Quelle:** Hatred wurde gegen GitHub-Stand `0f576bf` geprüft. Die
+Granithöhle wurde aus dem Quellstand `d3460e9` gelesen. Raum- und
+Gangformeln, Verzerrung, Inseln und Standardparameter (`sector=215`,
+`corr=1.15`) bestimmen nun die Höhle. 24 feste Distanzproben aus der
+Quelle prüfen diese Übernahme unabhängig von der lokalen Installation.
+Das Granit-, Boden- und Geröllmaterial wird an Weltpixeln ausgewertet.
+
+**Aufbau:** `spiel/raster.mjs` liefert die gemeinsame Hexgeometrie für
+Erzeugung, Kamera, Auswahl, Licht und Partikel. Wände und Höhen werden
+an denselben Mitten abgetastet. Höhen verschieben keine Bildschirmorte.
+`runtime/granit-material.js` trägt die Quelloberflächen;
+`runtime/granit-feld.js` berechnet Materialrelief, Normalen,
+Umgebungsverdeckung und Höhenkonturen. Der alte Geländehelfer entfällt.
+`runtime/zeichnen.js` setzt gespeicherte Flächen, Gegenstände, Wesen,
+Licht und Partikel zusammen; ungesehene Hexfelder werden zuletzt verdeckt.
+
+**Treppen:** Eine weltweite Trittphase verbindet passende Nachbarläufe
+in allen sechs Richtungen. Innere Wangen entfallen. Gesperrte Ziele,
+falsche Höhen und unpassende Richtungen behalten ihre Klippenkontur.
+Die Kontur einer Seitenklippe darf nicht in den offenen Anschluss ragen.
+
+**Regeladapter:** Vier taktische Ebenen bleiben erhalten. Vor dem Wasser
+wird ein trockener Startbereich reserviert. Normalerweise wird danach
+ein trockener Start gesucht; falls das unmöglich ist, wird jedes
+betroffene Becken vollständig geleert. Zier blockiert die Starts nicht.
+Boden-, Hallen- und Zierproben verwenden dieselben Weltkoordinaten.
+Die Weltfassung im Netz-Handschlag steigt auf 2.
+
+**Rechenaufwand:** Transparente Feldbilder werden wiederverwendet und
+ungeglättet vergrößert. 4.096 gespeicherte Felder reichen für die ganze
+Standardkarte mit 2.240 Feldern; zweimaliges Zeichnen braucht weiterhin
+nur 2.240 Materialberechnungen. Drei Nachbarringe erkennen Änderungen.
+Die Prüfung umfasst auch 5.120 Felder und verlangt begrenzten Speicher.
+
+**Prüfungen:** Alte Vorgaben für Südflanken und Schachbrettboden wurden
+durch tatsächliche Pixelvergleiche ersetzt. Kern-, Netz-, Eingabe- und
+Erreichbarkeitsprüfungen bleiben bestehen. Material: 622 Behauptungen;
+Terrain: 17.953; Rasterprojektion: 9.863; Weltzeichner: 88. Ungültige
+oder zu große Weltkoordinaten dürfen die Rückrechnung nicht blockieren.
+Ein Gitterpixel, den Nachbarterrain übermalte, wird durch eine eigene
+Prüfung gegen das vollständige Sprite abgesichert.
+Die Lichtprüfung besteht 170 Behauptungen: Gemischte 4×4-Blöcke
+verwenden getrennte Beiträge je Hexbesitzer. Die Gegenprobe meldete
+zuvor 37–65 fremde Lichtpixel hinter einer Wand, danach keine.
+
+Die natürliche Kampf- und Beckenverteilung wird weiter berichtet.
+Die alte Mindestzahl zufälliger Begegnungen wurde durch vier feste
+Kampfpaare auf vier unabhängigen Spielständen ergänzt: 32 Angriffe,
+25 Schadensereignisse, vier Heilereignisse und keine Summenabweichung.
+Vier kontrollierte Senken prüfen Becken auf allen Höhen. Der Bericht
+über 30 unveränderte Saaten nennt 19 mehrstufig nasse und eine trockene Karte.
+Die Generatorprüfung besteht 324 Behauptungen. Ein kontrolliertes
+Becken mit 316 Bodenfeldern erzwingt den Startfallback; für ein bis
+vier Spieler muss die gesamte Senke trocken sein, nicht nur ihr Start.
+
+**Rotnachweise:** Veränderte Quellsektorgröße, verändertes Granitmaterial,
+verschobene Hexzeilen, fehlender Endnebel, falsche Treppenverbindungen,
+übermalte Sprites und ungültige Koordinaten lassen die jeweiligen
+Prüfungen fallen. Ausgeschaltete Treffer und Wasser nur auf Ebene 0
+lassen die kontrollierten Kampf- und Beckenprüfungen fallen.
+
+**Sichtprobe:** `werkzeuge/topdown-vorschau.html` verwendet den echten
+Spielzeichner und zeigt wahlweise Höhle oder Treppenkarte. Im lokalen
+Chrome-Lauf am 08.09.2026 wurden Spielstart, Zoom hinein/zurück und
+ein Mausklick vom Feld (50,28) nach (47,21) mit AP-Verbrauch ausgeführt.
+Desktop 1.440 × 900 und schmale Ansicht 915 × 412 lieferten keine
+JavaScript-Fehler. Architektur und Prüfbefehle stehen in
+[docs/GRANIT-RASTER.md](docs/GRANIT-RASTER.md); README, Spielbeschreibung
+und Wegweiser wurden an den neuen Aufbau angepasst.
+
 ## 07.09.2026 — Ein Wort vor dem Vorlauf: der Torwächter
 
 **Auftrag, wörtlich:** *„main schuetzen so das nur ich und freunde das

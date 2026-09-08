@@ -16,10 +16,14 @@ Dazu drei Entscheidungen aus dem Gespräch vom 06.09.2026:
 | Wie spielt ihr zusammen? | **Sofort übers Internet** |
 | Wie fühlt sich ein Zug an? | **Aktionspunkte** |
 
-Das Bild, auf das er zeigt, ist ein Kerkerbild: schwarze Tiefe ringsum,
-ein warmer Fackelkreis, blaue und grüne Leuchtpfützen, eine große rote
-Blutlache, harte weiße Spießreihen an der Wand, alles rechtwinklig und
-exakt von oben. Daraus folgt fast der ganze Bildteil dieses Dokuments.
+Präzisierung vom 08.09.2026: Die Grafik und Höhlenerzeugung sollen
+Scotophobia (Granithöhle) übernehmen. Der Blick muss exakt senkrecht
+sein, Treppen müssen zusammenpassen, Wände und Ebenen lesbar bleiben.
+Das zuvor gewählte Hexraster bleibt die Grundlage. Der frühere
+Kerkerlook mit einzelnen Wandblöcken ist damit abgelöst.
+
+Die Übertragung von Quellformeln auf spielbare Rasterfelder beschreibt
+[GRANIT-RASTER.md](GRANIT-RASTER.md).
 
 ---
 
@@ -69,12 +73,11 @@ Entscheidungen, die vorher nicht existierten: Von oben sieht man weiter
 und trifft besser, aber hinauf kommt man nur über eine Rampe und das
 kostet doppelt. Wer oben steht, kann gestoßen werden.
 
-**Vier Ebenen**, nicht mehr: Auf einem exakt von oben gesehenen Bild gibt
-es keine Perspektive. Die Höhe kann nur über drei Mittel erzählt werden —
-Grundhelligkeit, harte Schattenkante nach unten, helle Oberkante. Bei
-mehr als vier Stufen laufen die Helligkeiten so eng zusammen, dass das
-Auge sie nicht mehr trennt (gemessen in `runtime/palette.js`: schon bei
-vier Stufen liegen die engsten Nachbarn 14 von 255 auseinander).
+**Vier Ebenen** bleiben die taktische Vorgabe. Die Kamera verschiebt
+höhere Felder nicht. Unterschiedliche Materialhelligkeit, helle Säume
+auf der höheren Seite und dunkle Konturen auf der niedrigeren Seite
+zeigen die Höhe entlang aller sechs Feldkanten. Eine echte Verbindung
+über eine Treppe unterbricht diese Kontur.
 
 | Ebene | was sie ist |
 | --- | --- |
@@ -92,34 +95,28 @@ Zwei Aktionspunkte, ein Feld Schub — und wer dabei zwei Ebenen fällt,
 nimmt Schaden und verliert seinen Rest-Zug. Ohne den Stoß wären Höhen
 nur ein Trefferbonus; mit ihm sind sie eine Gefahr, auf die man achtet.
 
-## 4. Warum „richtige Landschaftsgenerierung" nicht Rauschen heißt
+## 4. Wie die Granithöhle zum Schlachtfeld wird
 
-Ein Rauschfeld in Wände und Böden zu übersetzen ist in zwanzig Zeilen
-gemacht und sieht nach zwanzig Zeilen aus: Es gibt keine Räume, keine
-Türen, keine Absicht. Ein Kerker braucht Absicht.
+`spiel/welt-feld.mjs` erzeugt Scotophobias kontinuierliches Distanzfeld:
+Räume, geschwungene Gänge, verformter Fels und Inseln. Danach macht
+`spiel/landschaft.mjs` daraus eine endliche taktische Karte:
 
-`spiel/landschaft.mjs` baut deshalb in Schritten, die man einzeln
-ansehen kann (`node werkzeuge/karte-zeigen.mjs`):
+1. Neun Proben um jede Hexmitte entscheiden über Fels oder freien Boden.
+2. Das Höhenfeld wird an denselben Hexmitten gelesen und bereinigt.
+3. Rampen verbinden die Plateaus; unerreichbare Restflächen werden bereinigt.
+4. Abgründe, geschlossene Wasserbecken, trockene Startfelder, Boden,
+   Zier und Licht werden aus dieser spielbaren Karte abgeleitet.
+5. Der Ausgang wird mit den tatsächlichen Bewegungsregeln erreichbar platziert.
 
-1. **Räume** durch fortgesetzte Teilung — Halle, Gruft, Kammer,
-   Brunnen, Altarraum, Eingang, Ausgang.
-2. **Gänge** als minimal aufspannender Baum über die Raummitten, *plus*
-   ein Fünftel Zusatzverbindungen. Ein reiner Baum hat genau einen Weg
-   zwischen zwei Räumen — dann kann man nie umgehen und nie umgangen
-   werden, und jede Begegnung ist ein Flur.
-3. **Höhen** aus einem Rauschfeld, aber **an den Raumgrenzen
-   eingerastet**: ein Raum hat eine Grundebene. Sonst sähen die
-   Plateaukanten aus wie Rauschen statt wie Bauwerk.
-4. **Rampen** an jeder Ebenengrenze, die sonst zwei Bereiche trennt.
-5. **Erreichbarkeit** wird mit den *echten* Höhenregeln nachgeflutet —
-   nicht mit einer vereinfachten Kopie. Eine Karte, auf der der Ausgang
-   nicht erreichbar ist, ist kein Schönheitsfehler, sondern ein
-   unspielbarer Lauf.
-6. Flüssigkeiten, Zier, Lichter, Startfelder, Ausgang.
+Die kontinuierliche Form bleibt die Quelle. Begehbarkeit, Sicht und
+Höhenwechsel werden ausschließlich auf der fertigen Rasterkarte entschieden.
 
 ## 5. Warum das Bild so aussieht wie es aussieht
 
-Aus dem Bild, das Jannik geschickt hat, sind vier Dinge übernommen:
+Die Granithöhle gibt das Material vor: Granitkorn, Adern, Geröll am
+Wandfuß und unregelmäßiges Bodenrelief werden in Weltkoordinaten
+berechnet. Sie wiederholen sich nicht an jeder Feldkante. Dazu kommen
+die Anforderungen an die taktische Darstellung:
 
 - **Schwarz ist wirklich schwarz.** Was kein Licht bekommt, verschwindet
   fast — aber nicht ganz (`GRUNDHELLE = 0.16`), weil ein taktisches
