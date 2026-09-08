@@ -3,6 +3,99 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Übergabe an Codex: Stand, Plan und ein Messbefehl für die Wände
+
+**Warum:** Jannik hat die Arbeit an Welle 2 unterbrochen — *„sehr gut
+schon. aber wir müssen uns über die weltgenerierung erst mal im klaren
+werden."* — und danach entschieden, an Codex zu übergeben. Eine
+Übergabe, die nur aus dem Ablageort besteht, übergibt die Dateien und
+nicht das Wissen: Was gemessen wurde, was daraus folgt und welche
+Prüfung grün ist, obwohl sie nichts mehr misst, steht in keinem
+Quelltext.
+
+**Was:**
+
+- `docs/UEBERGABE.md` ist neu. Sie enthält den Stand mit Datum, Janniks
+  Auftrag im Wortlaut, den einen Befund, an dem die ganze Welle hängt,
+  fünf offene Entscheidungen, fünf Fallen und vier lose Enden.
+- `docs/ROADMAP.md` bekommt **Welle 3** mit acht Schritten (W1 bis W8),
+  jeder mit einem Abnahmekriterium, das eine Zahl nennt und nicht eine
+  Meinung.
+- `werkzeuge/miss-wandkontrast.mjs` ist neu. Es rechnet die Zahl nach,
+  auf der die Reihenfolge der Welle 3 beruht.
+- `CLAUDE.md` bekommt einen Wegweiser auf die Übergabe — sonst findet
+  sie niemand, der neu dazukommt und zuerst `CLAUDE.md` liest.
+- `docs/FEHLERBUCH.md` bekommt die **Klasse G — Prüfungen, die nichts
+  mehr prüfen**, mit den zwei heute gemessenen Fällen: die Prüfung, die
+  eine leere Menge misst und grün bleibt, und die fest eingetragene
+  Feldkoordinate.
+- `WORKCLAIM.md` wie üblich: eingetragen, gearbeitet, freigegeben.
+- **Vorgänge #24 bis #31** sind angelegt, einer je Schritt der Welle 3,
+  jeder mit Janniks Wortlaut oben und seiner Abnahme. An **#8** steht
+  ein Nachtrag: Seine Abnahme wird durch #27 vorübergehend unwahr, und
+  #31 löst sie wieder ein.
+
+**Regel 2, ausdrücklich benannt:** Dieser Zweig ist ein `doku/…` und
+trägt trotzdem eine Datei unter `werkzeuge/`. Der Grund ist Regel 11:
+Ein Übergabedokument, dessen Kernzahl nur in einem Chatverlauf
+nachrechenbar wäre, ist genau die Behauptung, die Regel 11 verbietet.
+Das Werkzeug heißt `miss-…` und nicht `pruefe-…`, läuft also **nicht**
+in der Kette mit — es behauptet nichts, es misst.
+
+**Der Befund, gemessen** (`node werkzeuge/miss-wandkontrast.mjs`, Saat
+4711): Die Wände tragen im Bild keine eigene Auskunft. Was man heute
+sieht, macht das Licht.
+
+| Fall | Sprung Boden→Fels | Körnung im Boden | Sprung/Körnung | Felspunkt dunkler |
+| --- | --- | --- | --- | --- |
+| flach, eine Ebene | −0,34 | 5,41 | **0,06** | 51,1 % |
+| heute, alle Grenzen | 2,37 | 12,96 | **0,18** | 43,4 % |
+| heute, gleiche Ebene | 1,13 | 12,96 | **0,09** | 44,4 % |
+
+Der Sprung an einer Wandgrenze ist also sechs- bis sechzehnmal kleiner
+als das Rauschen **innerhalb** einer Bodenfläche, und seine Richtung ist
+ein Münzwurf. Zum Vergleich derselbe Blick auf das fertig gezeichnete
+Bild **mit** Licht und Nebel: Wandfelder 21,65, Bodenfelder 73,25 —
+Abstand 51,60. Der ganze Unterschied kommt aus der Beleuchtung.
+
+**Was daraus folgt und in der Roadmap steht:** Janniks Reihenfolge
+(erst flach, dann Wände) und die Messung widersprechen sich. Flach
+senkt das Verhältnis von 0,18 auf 0,06; dazwischen läge ein Zustand,
+den er nicht bedienen kann. Die Roadmap empfiehlt deshalb die Wände
+zuerst und schreibt die Begründung dazu — die Entscheidung bleibt seine
+(E1 in `docs/UEBERGABE.md`).
+
+**Nebenbei erklärt sich sein Fehlerbericht:** *„wenn ich auf karte
+klicke um mir alles anzeigen zu lassen gibt es grafikfehler und alles
+sieht komisch aus."* Der Kartenknopf nimmt den Nebel weg. Ohne Nebel
+fällt die einzige Quelle der Wanderkennung weg. Das ist kein
+Zeichenfehler, sondern derselbe Befund ungefiltert.
+
+**Wie das Werkzeug rot gemacht wurde** (Regel 10, sinngemäß — es ist
+keine Prüfung, aber eine Messung, die sich nicht bewegen kann, misst
+nichts): In einem eigenen Arbeitsbaum wurde in
+`runtime/granit-feld.js:200` der Faktor auf Wandfeldern mit 0,45
+multipliziert, der Fels also um 55 % abgedunkelt. Das Werkzeug meldete
+darauf für die flache Karte **80,9 %** statt 51,1 % und **2,97** statt
+0,06. Es bewegt sich also. Der Arbeitsbaum ist verworfen; im Projekt
+steht die Änderung nicht.
+
+Dieselbe Probe hat nebenbei die Schwelle in W1 begründet: Selbst 55 %
+Abdunklung lassen jede fünfte Kante falschherum, weil ein heller Krümel
+im Fels eine dunkle Tönung schlägt. Über 95 % kommt nur eine Kontur.
+
+**Der Stand, den die Übergabe beschreibt:** `main` auf `3ceef0c`.
+Kette auf dem eingetragenen Stand gemessen
+(`node werkzeuge/pruefe-alles.mjs`): **alle 54 Prüfungen grün, 43.978
+Behauptungen, 297,3 s**. Vorgänge #1, #2,
+#3, #6, #7, #8, #9 und #11 geschlossen; #4, #5, #10 und #12 bis #23
+offen; #24 bis #31 für die Welle 3 neu.
+
+**Was ausdrücklich nicht geändert wurde:** kein Quelltext unter
+`spiel/`, `netz/` oder `runtime/`. Diese Übergabe beschreibt den Stand,
+sie verschiebt ihn nicht. Die acht Schritte der Welle 3 sind geplant und
+nicht gebaut.
+
 ## 08.09.2026 — Das Zugangswort gewechselt
 
 **Auftrag:** Der Auftraggeber hat ein anderes Wort genannt. Es steht
