@@ -3,6 +3,15 @@
 
    ── Warum es das gibt / Warum so ───────────────────────────────────
 
+   Sie deckt `docs/REGELN.md` 6, und zwar dessen `spiel/`-Hälfte: die
+   Liste der verbotenen Wörter und die Einfuhrgrenze. Die Überschrift
+   jener Regel nennt auch `netz/` — gelesen wird hier nur `spiel/`
+   (`KERN` weiter unten). Für `netz/` gibt es diesen Wächter also
+   nicht; wer ihn dorthin ausdehnt, braucht zuerst eine Antwort auf das
+   ausdrücklich gereichte `globalThis.setTimeout` in
+   `netz/vermittler.mjs` (eine Fundstelle, gemessen am 08.09.2026 mit
+   `grep -n setTimeout netz/*.mjs`).
+
    An dieser einen Regel hängt der Netz-Koop. Steht irgendwo unter
    `spiel/` eine Uhr, ein Fenster oder ein ungesäter Würfel, rechnen
    zwei Rechner dieselbe Runde verschieden — und zwar nicht sofort und

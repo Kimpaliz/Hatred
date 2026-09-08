@@ -103,6 +103,44 @@ neue Modulform ein. Danach die Einzeldatei bauen und zerteilen lassen,
 nicht nur die Kette laufen lassen. Jedes Musterwerkzeug braucht die
 Stelle, an der es zugibt, dass es etwas nicht verstanden hat.
 
+**C8 — Ein „*Geprüft:*"-Verweis zeigt auf eine Datei, die etwas ganz
+anderes prüft.** Unter Regel 14 („Alle Importpfade sind relativ") stand
+als Beweis `pruefe-verweise.mjs`. Jene Datei hält Markdown-Verweise der
+Doku gegen die Platte und sieht **keinen einzigen** Importpfad. Die
+Regel war damit unbelegt — und weil es die genannte Datei gibt und ihr
+Name plausibel klingt, stand das rund zwei Wochen unbemerkt da (Befund
+vom 07.09.2026). Dieselbe Fehlannahme stand ein zweites Mal im Kopf von
+`.github/workflows/pages.yml`.
+**Woran man es erkennt, bevor man hineinläuft:** Die genannte Datei
+aufschlagen und nach dem **Gegenstand** der Regel suchen. Steht er nicht
+drin, ist die Regel unbelegt; ein Dateiname beweist nichts.
+*Prüfung:* `pruefe-regelwerk.mjs`. Sie fragt ausdrücklich **nicht**, ob
+es die Datei gibt — das wäre am 07.09.2026 grün geblieben —, sondern ob
+die Datei in ihrer **Kopfnotiz** die Regelnummer zurückgibt.
+
+**C9 — Eine Zahl aus einem Lauf ist keine Messung.** Am 08.09.2026 ergab
+ein einzelner Bildratenlauf für dieselbe Änderung **+9 Prozent**, fünf
+abwechselnde Läufe für genau dieselbe Änderung **+82 Prozent**. Beide
+Zahlen waren echt gemessen; die erste war die Tagesform der Maschine.
+*Deshalb:* Stände **abwechselnd** messen (a, b, a, b, …), nie erst alle
+a und dann alle b — sonst misst man den Lastverlauf des Rechners.
+Median nehmen, Spanne und Zahl der Läufe mitschreiben. Die Tabelle im
+Changelog-Eintrag vom 08.09.2026 („Licht als gebündelter Pixelpuffer")
+zeigt die Form.
+*Anzeichen:* Eine Verbesserung, die sich beim zweiten Nachmessen
+halbiert oder verdoppelt.
+
+**C10 — Eine Ausgabe, die durch `tail` läuft, ist bis zum Ende des
+Befehls unsichtbar.** `tail` muss das Ende kennen und puffert deshalb,
+bis der Strom schließt. Am 08.09.2026 lief ein Messlauf eine halbe
+Stunde, ohne dass jemand sah, dass er längst hing — die Kette druckt je
+Prüfung eine Zeile, und keine davon kam an.
+*Deshalb:* Lange Läufe in eine Datei schreiben und die Datei nebenher
+ansehen: `<befehl> > /tmp/lauf.txt 2>&1; echo "code=$?"`, dazwischen
+`tail /tmp/lauf.txt`. Dieselbe Zeile löst auch C1.
+*Anzeichen:* Ein Befehl „arbeitet" minutenlang, ohne eine einzige Zeile
+zu liefern, obwohl das Werkzeug sonst laufend welche druckt.
+
 ## Klasse D — Bild
 
 **D1 — Halbe Bildpunkte.** Sobald eine Figur auf `x = 12.5` gezeichnet
@@ -139,3 +177,23 @@ verloren.
 **E3 — Wacht löst nicht mitten in der Bewegung aus.** Der Fall, den man
 beim ersten Bauen vergisst: Die Bewegung wird Feld für Feld
 abgearbeitet, und nach **jedem** Feld wird geprüft.
+
+## Klasse F — Geheimnisse und Ausgeliefertes
+
+**F1 — Ein Zugangswort, das im eigenen Ablageort steht.** Am 07.09.2026
+war „grubenhund" als Wort für das Tor vorgeschlagen — der Name eines
+Gegners aus dem eigenen Katalog. Er steht zwölfmal in neun Dateien
+(gemessen am 08.09.2026 mit `grep -roi grubenhund . | wc -l` und
+`grep -ril grubenhund . | wc -l`), mehrere davon werden an den Browser
+ausgeliefert. Ein Wörterbuchangriff, der **nur** die Wörter des eigenen
+Baums durchprobiert, hätte das Wort in einer Viertelstunde gefunden —
+gegen ein Tor, das mit 200.000 Runden rechnet und deshalb sicher aussah.
+**Woran man es erkennt, bevor man hineinläuft:** Das Wort **vor** dem
+Rechnen im Baum suchen, und zwar wörtlich statt über Fingerabdrücke —
+das kostet Millisekunden statt Minuten und ist genauer.
+*Gegenmittel:* `werkzeuge/zugangswort.mjs` tut genau das. Wer ein Wort
+nimmt, das schon dasteht, bekommt keine Zeile zum Austauschen, sondern
+eine Absage mit der Fundstelle; `--suche` fährt den ganzen Angriff
+einmal vor.
+*Anzeichen:* Das Wort „fühlt sich passend an" — es kommt aus der
+Fachsprache des Projekts. Genau das ist der Fehler.

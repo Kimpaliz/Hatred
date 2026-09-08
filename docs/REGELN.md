@@ -164,3 +164,17 @@ node werkzeuge/pruefe-alles.mjs
 Sie startet jede `werkzeuge/pruefe-*.mjs` als eigenen Prozess und
 beendet sich mit 1, sobald eine rot ist. Ein roter Ausgangsstand wird
 **gemeldet**, nicht überbaut.
+
+## Wer die Nachweise bewacht
+
+Jeder Satz „*Geprüft:*" oben ist eine Behauptung, und sie wird geprüft:
+`werkzeuge/pruefe-regelwerk.mjs` hält jeden dieser Verweise gegen die
+genannte Datei. Dass es die Datei gibt, genügt nicht — sie muss in ihrer
+**Kopfnotiz** die Regelnummer zurückgeben, in der einen Form
+`docs/REGELN.md <Nummer>`. Erst diese zweite Unterschrift macht aus dem
+Verweis einen Beweis.
+
+Warum die strengere Fassung: Der Fehler unter Regel 14 (bis zum
+07.09.2026) hätte eine Prüfung, die bloß nach der Datei fragt, nicht
+gestört — `pruefe-verweise.mjs` gibt es ja. Rot wird nur, wer beide
+Seiten liest.

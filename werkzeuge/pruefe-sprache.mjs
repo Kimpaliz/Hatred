@@ -1,5 +1,11 @@
 /* [Aufgabe: Prüfwesen] Die Sprachtrennung, so wie das Projekt sie gewählt hat.
 
+   Sie deckt `docs/REGELN.md` 9 — beide Hälften, aber **über die
+   Wortliste**: die Sprache der Bezeichner und das Verbot der
+   Ersatzschreibung `ae oe ue ss` in Texten für Menschen. Was nicht in
+   `docs/WORTLISTE.md` steht, sieht sie nicht; genau darum wächst die
+   Liste (siehe unten).
+
    Fast jedes gemischtsprachige Projekt trennt irgendwann zwischen
    **Bezeichnern** (Variablen, Funktionen, Datei- und Zweignamen) und
    **Texten** (Kommentare, Doku, Nutzertexte). Der Fehler ist nie die
@@ -57,7 +63,7 @@ const sprache = liesEinstellung().sprache;
 
 if (!sprache) {
   console.log("  keine `sprache` in alpha-code.json — Prüfung übersprungen");
-  console.log("    (Sprachtrennung ist eine Projektentscheidung, siehe docs/REGELN.md Regel 15)");
+  console.log("    (Sprachtrennung ist eine Projektentscheidung, siehe docs/REGELN.md 9)");
   melde(true, "Sprachtrennung nicht eingerichtet (bewusst)");
   ende();
 }

@@ -3,6 +3,112 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 08.09.2026 — Ein Wächter über die Nachweise: jeder `*Geprüft:*`-Verweis wird gegen die genannte Datei gehalten
+
+**Warum:** Am 07.09.2026 stand unter `docs/REGELN.md` 14 („Alle
+Importpfade sind relativ") als Beweis `werkzeuge/pruefe-verweise.mjs`.
+Jene Datei hält Markdown-Verweise der Doku gegen die Platte und sieht
+**keinen einzigen** Importpfad. Die Regel war unbelegt, und weil es die
+genannte Datei gibt, fiel es rund zwei Wochen niemandem auf. Beide
+Stellen sind berichtigt — was fehlte, war der Wächter: Nichts hielt die
+Verweise gegen das, was die genannte Datei wirklich tut. **Gemessen vor
+dieser Arbeit: 9 von 10 Verweisen zeigten auf eine Prüfdatei, die ihre
+Regelnummer nirgends in der Kopfnotiz nannte.**
+
+**Was:** `werkzeuge/pruefe-regelwerk.mjs` ist neu. Sie liest jeden
+Absatz, der in `docs/REGELN.md` mit `*Geprüft:*` beginnt, und behauptet
+vier Dinge: dass jede genannte Datei existiert; dass jede genannte Datei
+in ihrer **Kopfnotiz** die Regelnummer zurückgibt; dass eine Datei, die
+unter zwei Regeln steht, **beide** Nummern nennt und keine dritte; und
+sie druckt die Zahl der Verweise, damit ein stilles Verschwinden
+auffällt. Dazu haben sieben Prüfdateien den Rückverweis bekommen — die
+achte, `pruefe-einstieg.mjs`, hatte ihn schon.
+
+**Warum nicht die naheliegende Prüfung:** „Gibt es die genannte Datei?"
+wäre am 07.09.2026 **grün** geblieben — `pruefe-verweise.mjs` gibt es
+ja. Diese Frage fängt den Tippfehler im Dateinamen, nicht die falsche
+Datei. Geprüft wird deshalb der Fall, der ohne die Arbeit falsch wäre:
+Der Verweis muss von **beiden** Seiten unterschrieben sein.
+
+**Warum nur die Kopfnotiz gelesen wird:** Eine Suche über die ganze
+Datei wäre wertlos. `pruefe-arbeitsweise.mjs` schreibt „Regel 1" seit
+jeher in ihre Meldetexte, und `pruefe-app.mjs` trug „docs/REGELN.md 14"
+in Zeile 265 mitten im Rumpf — beide wären ungeprüft durchgerutscht. Die
+Kopfnotiz ist die Stelle, an der steht, wofür eine Datei da ist.
+
+**Gemessen** (`node werkzeuge/pruefe-regelwerk.mjs`):
+
+| Was | Zahl |
+| --- | --- |
+| `*Geprüft:*`-Absätze in `docs/REGELN.md` | 9 |
+| darin genannte Verweise | 10 |
+| verschiedene Prüfdateien | 8 |
+| mehrfach genannt | `pruefe-arbeitsweise.mjs` (1 und 4), `pruefe-kopfnotiz.mjs` (7 und 8) |
+| Rückverweis vorher vorhanden | 1 von 10 |
+| Rückverweis nachher | 10 von 10 |
+
+**Drei Befunde, die dabei aufgefallen sind:**
+
+1. `pruefe-doku-status.mjs` nannte in ihrer Kopfnotiz „`docs/REGELN.md`,
+   Regel 14" — die Nummer aus dem Regelwerk des Skills, aus dem sie
+   kopiert ist. In diesem Projekt ist es Regel **13**. Berichtigt.
+2. `pruefe-sprache.mjs` verwies auf „docs/REGELN.md Regel 15". Dieses
+   Regelwerk hat 14 Regeln; gemeint ist Regel **9**. Berichtigt.
+3. Regel 6 heißt „`spiel/` und `netz/` kennen keinen Browser", ihr
+   Nachweis `pruefe-kern.mjs` liest aber **nur** `spiel/`
+   (`const KERN = join(WURZEL, "spiel")`). Die `netz/`-Hälfte der Regel
+   ist unbelegt. Das steht jetzt in der Kopfnotiz von `pruefe-kern.mjs`
+   und wird **nicht** eigenmächtig geändert: Ob die Regel enger gefasst
+   oder der Wächter ausgedehnt wird, entscheidet der Auftraggeber. Wer
+   ausdehnt, braucht zuerst eine Antwort auf das eine ausdrücklich
+   gereichte `globalThis.setTimeout` in `netz/vermittler.mjs` (eine
+   Fundstelle, `grep -n setTimeout netz/*.mjs`).
+
+**Jede Behauptung wurde zuerst rot gemacht** (Regel 10), sieben Mal
+einzeln, jedes Mal zurückgenommen:
+
+| Sabotage | Meldung |
+| --- | --- |
+| Dateiname in Regel 5 verdreht | „Regel 5 nennt `werkzeuge/pruefe-workklaim.mjs` — und die Datei liegt da" |
+| Rückverweis aus `pruefe-kern.mjs` entfernt | „`werkzeuge/pruefe-kern.mjs` steht unter Regel 6, ihre Kopfnotiz nennt `docs/REGELN.md 6` aber nicht (genannt: keine Regel)" |
+| „8" aus `pruefe-kopfnotiz.mjs` entfernt | „`werkzeuge/pruefe-kopfnotiz.mjs` deckt die Regeln 7 und 8 — ihre Kopfnotiz muss beide nennen (es fehlt: 8)" |
+| „13" in `pruefe-doku-status.mjs` zu „14" gemacht — der Fehler vom 07.09. noch einmal | „`werkzeuge/pruefe-doku-status.mjs` nennt Regel 14, steht aber nur unter Regel 13" |
+| einen Nachweis aus `docs/REGELN.md` gelöscht | „docs/REGELN.md nennt mindestens 10 Nachweise (jetzt 9)" |
+| Nachweis ohne Dateinamen | „docs/REGELN.md:58: der Nachweis nennt eine Datei in Backticks" |
+| Nachweis unter eine Überschrift ohne Nummer gesetzt | „docs/REGELN.md:160: der Nachweis steht unter einer nummerierten Regel" |
+
+Dazu die Selbstprobe: Wird das Suchmuster des Lesers verstümmelt
+(`Geprüft` → `Gepruft`), findet er nichts mehr — dann liefen alle
+Schleifen leer und die Prüfung meldete für immer grün. Sie fällt
+stattdessen mit sechs Meldungen, darunter „beide Nachweis-Absätze werden
+gefunden: ist 0, soll 2". Beim ersten Anlauf **stürzte** sie dabei ab,
+statt zu behaupten; der Ersatzwert im Leser ist genau deshalb da.
+
+**Prüfungen:** 53 → **54**. `werkzeuge/pruefe-regelwerk.mjs` ist neu (63
+Behauptungen), und `pruefe-kopfnotiz.mjs` nimmt die neue Datei von
+selbst mit (964 → 972). Behauptungen der ganzen Kette: **43.899 →
+43.970**, keine einzige ist weggefallen. Laufzeit der Kette
+(`node werkzeuge/pruefe-alles.mjs`): 283,7 s vorher, **284,0 s**
+nachher — die neue Prüfung liest neun Dateiköpfe und ein Dokument.
+
+**Zwei Dinge zum Aufpassen:** `pruefe-app.mjs` steht nach dem
+Rückverweis bei **999** von 1000 erlaubten Zeilen (`wc -l`) — die
+nächste Zeile dort erzwingt eine Teilung. Und die vier Dateien aus
+`AUS_DEM_SKILL`, die einen Rückverweis bekommen haben
+(`pruefe-arbeitsweise`, `pruefe-workclaim`, `pruefe-sprache`,
+`pruefe-doku-status`), weichen damit bewusst vom Skill ab: Eine
+Kopfnotiz, die die Regelnummer **dieses** Projekts nennt, kann nicht
+zugleich unveränderter Fremdcode bleiben.
+
+**Zweig und Ausnahme:** Der Zweig `pruef/regelwerk` fasst `docs/` mit
+an, obwohl das nach `docs/REGELN.md` 2 auf `doku/…` gehörte. Die übliche
+Ausnahme greift: Regel und Prüfung werden nur zusammen grün — der
+Wächter liest `docs/REGELN.md`, und ohne den erklärenden Absatz dort
+wüsste niemand, warum die Kopfnotizen eine Nummer tragen. Ebenso
+gehören die vier neuen Einträge in `docs/FEHLERBUCH.md` (C8, C9, C10
+und die neue Klasse F) dazu: Sie halten fest, woran man diese Fehler
+erkennt, **bevor** man hineinläuft.
+
 ## 08.09.2026 — Das Licht als gebündelter Pixelpuffer: zwei Zeichenaufrufe statt 57.374
 
 **Warum:** Der Zweig hatte sein Urteil über sich selbst im Eintrag

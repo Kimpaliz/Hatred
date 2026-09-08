@@ -1,6 +1,7 @@
 /* [Aufgabe: Prüfwesen] Kein Fortschritt in der Doku.
 
-   Die Regel: **Ein Dokument behauptet nie den aktuellen Zustand.**
+   Sie deckt `docs/REGELN.md` 13. Die Regel: **Ein Dokument behauptet
+   nie den aktuellen Zustand.**
    „ist live", „noch offen", „erledigt", „nächster Schritt" und ein
    Häkchen an einem Plan-Schritt sind dieselbe Aussage in
    verschiedener Länge — und sie veraltet **lautlos**. Niemand merkt
@@ -41,7 +42,9 @@
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
-   `helfer.mjs` (Melder, Projektwurzel) und `docs/REGELN.md`, Regel 14.
+   `helfer.mjs` (Melder, Projektwurzel) und `docs/REGELN.md` 13. An
+   dieser Stelle stand bis zum 08.09.2026 „Regel 14" — die Nummer aus
+   dem Regelwerk, aus dem diese Datei kopiert ist, nicht aus diesem.
    Sie liest **nur** Markdown unter `docs/`, nicht den Quelltext:
    Ein Kommentar im Code, der einen Zustand beschreibt, steht neben
    dem Code und wird mit ihm geändert. */

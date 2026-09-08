@@ -1,6 +1,7 @@
 /* [Aufgabe: Prüfwesen] Prüft die Arbeitsregeln, die sich mechanisch prüfen lassen.
 
-   Die Regeln stehen in `docs/REGELN.md`:
+   Sie deckt `docs/REGELN.md` 1 (nie direkt auf dem Hauptzweig) und
+   `docs/REGELN.md` 4 (jede Änderung steht im Changelog):
 
      1 · Niemals direkt auf den Hauptzweig — jede Änderung entsteht auf
          einem Zweig.

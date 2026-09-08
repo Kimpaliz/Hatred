@@ -10,7 +10,8 @@
    bis zur dritten Kerkertiefe alles zusammensteckt:
 
    · Ein Modul, das aus `index.html` heraus gar nicht erreichbar ist —
-     daheim liegt es im Speicher des Bündlers, im Netz nirgends.
+     daheim liegt es im Speicher des Bündlers, im Netz nirgends. Ebenso
+     ein Einfuhrpfad ohne `./` im Baum darunter (`docs/REGELN.md` 14).
    · Ein Zeichenaufruf auf einem halben Bildpunkt. Im fertigen Bild ein
      Hauch Unschärfe, den man dem Bildschirm zuschreibt; in der
      Aufrufliste eine Zahl mit Komma (Fehlerbuch D1).
