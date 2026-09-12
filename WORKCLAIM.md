@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Entscheidung E6 steht im Vertrag und in der Roadmap (W9–W14); niemand schreibt. | 12.09.2026 |
+| frei | frei | W9 (Feld 32 im Bild) und der Umbau des Farbwort-Speichers liegen auf `bild/feld-32`; niemand schreibt. | 12.09.2026 |
 
 ## Format
 

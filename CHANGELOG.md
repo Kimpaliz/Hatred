@@ -3,6 +3,156 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — W9: Ein Feld ist im Bild 32 Bildpunkte breit, die Welt bleibt bei 16
+
+**Janniks Entscheidung, wörtlich** (Vorgang #33, Punkt 3): *„3 ja"* —
+das Feld wird von 16 auf 32 Bildpunkte. Die Abnahme aus
+`docs/ROADMAP.md` (Vorgang #34): *„Ein Feld ist im Bild 32 Bildpunkte
+breit. `karte.summe()` und `zustandsSumme()` sind vor und nach dem Umbau
+byteweise gleich über 20 Saaten und 40 Runden; die Kette bleibt grün."*
+
+**Warum nicht einfach `PIXEL_JE_FELD = 32`:** Die 16 ist die Einheit des
+Welterzeugers, nicht nur des Bildes. Blind verdoppelt (Probe in einem
+eigenen Arbeitsbaum) ändert sich `karte.summe()` auf jeder Saat, und
+`tests/pruefe-lauf.mjs`, `pruefe-ki.mjs` und `pruefe-abgrund.mjs` werden
+rot — die Räume sind dann halb so viele Felder breit. Das wäre ein
+anderes Spiel und ein anderes Netzprotokoll, nicht ein feineres Bild.
+
+**Was jetzt da ist — ein Bildmaßstab in `runtime/`, die Welt unberührt:**
+
+- `runtime/granit-feld.js`: `export const FEIN = 2` — Abtastpunkte je
+  Weltpunkt und Achse. Der Puffer eines Feldes hat `FEIN²`-mal so viele
+  Punkte (`bildBreite`, `bildHoehe`); der Kasten in Weltpunkten
+  (`x0`, `y0`, `breite`, `hoehe`) bleibt, wie er war, damit Kamera und
+  Anklicken nichts merken. Nur das Materialrauschen wird fein abgetastet;
+  Wandabstand und Feldzugehörigkeit werden je Weltpunkt gerechnet und
+  für die vier Abtastpunkte darin wiederverwendet — der Abstand ist ein
+  Distanzfeld mit Steigung 1, der Unterschied läge unter einem halben
+  Weltpunkt.
+- Zwei Blätter je Feld: das feine bei gerader Vergrößerung (jeder
+  Abtastpunkt bekommt ganze Bildschirmpunkte), das grobe — jeder
+  FEIN-te Punkt — bei ungerader. Kein halber Bildpunkt (Fehlerbuch D1).
+- `runtime/kamera.js`: Die selbstgewählte Vergrößerung ist das größte
+  Vielfache von `FEIN`, das die Mindestkante von 21 Feldern noch
+  hineinlässt; passt kein Vielfaches, bleibt es bei 1.
+- Der Rechteckweg (Prüfbretter ohne `drawImage`) zeichnet weiterhin
+  einen Punkt je Weltpunkt — er nimmt jeden FEIN-ten Abtastpunkt.
+
+**Beweis, dass die Welt unberührt ist:**
+
+- `git diff dcc9812 -- spiel/ netz/` ist leer.
+- `karte.summe()` über 20 Saaten (56 × 40, zwei Spieler): 20 von 20
+  gleich, vorher gegen nachher.
+- `zustandsSumme()` nach jeder von 40 Runden auf 20 Saaten, ein
+  Spieler, über die Sitzung wie in `tests/pruefe-app.mjs`: 20 von 20
+  Saaten Zeile für Zeile gleich, Prüfzahl über alle Rundensummen
+  `b3bb09f0` vorher wie nachher (15 Läufe erreichen die 40 Runden, fünf
+  enden früher — auf beiden Ständen an derselben Stelle).
+
+**Und was man davon sieht** — gemessen über 444 Bodenfelder der Karte
+(Saat 4711):
+
+| | 16 | 32 |
+| --- | --- | --- |
+| verschiedene Farben je Bodenfeld | 42,7 | **74,8** |
+| Helligkeitsschritt zum Nachbarpunkt | 9,99 | **7,10** |
+
+Ein Feld trägt also 75 % mehr Farbstufen, und der Schritt von einem
+gezeichneten Punkt zum nächsten ist **kleiner** — die Körnung wird
+feiner, nicht gröber. Das ist die Antwort auf die Frage aus #34, ob das
+Rauschen je Welt- oder je Bildpunkt abgetastet wird: je Bildpunkt, und
+genau deshalb ist mehr Zeichnung im Feld statt derselben, nur größer
+gemalten.
+
+**Die Abnahmen von W1 und W2 halten auf dem feinen Puffer** — gemessen mit
+`node werkzeuge/miss-wandkontrast.mjs`, das jetzt den feinen Puffer liest
+und die Naht in feinen Punkten sucht:
+
+| Flach, Wände ein Feld dick | 16 (vorher) | 32 (nachher) | Schranke |
+| --- | --- | --- | --- |
+| Vorzeichen: Fels dunkler | 99,7 % | **96,7 %** | ≥ 95 % |
+| Sprung Boden→Fels | −20,40 | **−14,23** | negativ |
+| Sprung durch Körnung | 3,43 | **2,76** | ≥ 1,5 |
+| Körper-Luft | +28,80 | **+29,00** | > 0 |
+
+| Helligkeit je Felstiefe | 16 (vorher) | 32 (nachher) |
+| --- | --- | --- |
+| 1 | 23,57 | **23,57** |
+| 2 | 15,26 | **15,25** |
+| 3 | 10,75 | **10,75** |
+| 4+ | 7,78 | **7,76** |
+
+Der Körper des Felsens ist derselbe (P90 gegen P10 über ganze Felder),
+der Sprung an der Naht ist kleiner. Geändert hat sich dort die
+Abtastung — die Messlatte sucht die Naht jetzt in feinen Punkten, also
+dichter an der Kante —, nicht der Fels. Alle vier Schranken halten, die
+Tiefe fällt weiter streng monoton.
+
+**Was der Zoom jetzt tut** (`vergroesserungFuer`, Karte 56 × 40):
+
+| Fenster | 16 (vorher) | 32 (nachher) | Sicht in Feldern |
+| --- | --- | --- | --- |
+| 640 × 360 | 1 | 1 | 40 × 26 |
+| 1280 × 720 | 2 | 2 | 40 × 26 |
+| 1366 × 768 | 2 | 2 | 42,7 × 27,7 |
+| 1920 × 1080 | 3 | **2** | 40 × 26 → **60 × 39** |
+| 2560 × 1440 | 4 | 4 | 40 × 26 |
+| 3840 × 2160 | 6 | 6 | 40 × 26 |
+
+Nur Full HD ändert sich: Statt Stufe 3 (ungerade, grober Puffer) nimmt
+die Kamera Stufe 2 mit dem feinen Puffer und zeigt fast die ganze Karte
+(56 × 40). Wer näher heran will, dreht von Hand auf 4 — auch fein. Bei
+Stufe 1 (640 × 360) sieht das Bild aus wie bisher: ein Punkt je
+Weltpunkt.
+
+**Was es kostet:** Der Bau aller 2.240 Feldpuffer der Standardkarte
+(Saat 4711), Median aus vier Läufen, zweimal abwechselnd gemessen
+(Fehlerbuch C9): **1.402 / 1.356 ms → 3.846 / 3.910 ms**, das
+2,8-Fache. Viermal so viele Abtastpunkte des Materialrauschens kosten
+viermal so viel Rauschen; ein erster Stand, der auch Wandabstand und
+Feldzugehörigkeit je Abtastpunkt rechnete, lag beim 3,3-Fachen. Das
+trifft den ersten Blick auf ein neues Feld, nicht jedes Bild: Der
+Puffer wird je Feld einmal gebaut und wiederverwendet.
+
+Und der Rechteckweg zählt mehr Rechtecke, gemessen mit
+`node werkzeuge/miss-bildabdruck.mjs`: 640 × 360, Saat 3: 4.680.806 →
+**4.918.850** (+5,1 %) — benachbarte Weltpunkte unterscheiden sich öfter,
+also verschmelzen weniger zu einem Streifen. Full HD, Saat 3: 4.680.806
+→ **7.668.779**, weil die Kamera dort jetzt Vergrößerung 2 statt 3 wählt
+und einen größeren Ausschnitt zeigt. Die Prüfzahlen ändern sich in allen
+vier Fällen — das ist ein Inhalt, kein Umbau, und soll so sein.
+
+`tests/pruefe-app.mjs` mit Stoppuhr: 121,1 / 118,2 s vorher, **133,3 /
+135,0 s** mit dem feinen Puffer allein — über der 120-s-Schranke der
+Kette. Mit dem Umbau des Farbwort-Speichers (Eintrag darunter) **93,3 /
+94,1 s**. Die Schranke bleibt.
+
+**Erst rot (Regel 10):** Nach `FEIN = 2` schlugen
+`tests/pruefe-granit-feld.mjs` (Puffer-Schrittweite) und
+`tests/pruefe-koernung.mjs` an — die Pins sehen den Umbau. Danach
+wurden sie auf den feinen Puffer gesetzt, nicht gelockert:
+
+- `tests/pruefe-granit-feld.mjs`, 21 Stellen: Schleifen über
+  `bildBreite`/`bildHoehe`, Weltkoordinate `(px + 0,5) / fein`, die
+  Innenprüfung über alle `fein²` Unterproben eines Weltpunkts, der
+  Browserblock bei Vergrößerung 2 mit dem erwarteten `drawImage`-Maß
+  `[5, 9, breite · 2, hoehe · 2]`.
+- `tests/pruefe-koernung.mjs` liest jeden FEIN-ten Punkt — so, wie die
+  Bühne zeichnet.
+- `tests/pruefe-schrift.mjs`: Der Full-HD-Pin erwartet jetzt die
+  Zoomregel selbst (`passt − passt % FEIN`) statt der festen 3.
+- `werkzeuge/miss-wandkontrast.mjs` ist fein-fähig (`bildVon` liefert
+  `fein`, Schlüssel und Nahtsuche in feinen Punkten); die Selbstprobe
+  (Idealbild → 100 %) bleibt grün.
+
+**Regel 2, benannt:** `werkzeuge/miss-wandkontrast.mjs` ist `werk/` und
+wurde auf dem Zweig `bild/feld-32` angepasst — ohne die Anpassung könnte
+es den feinen Puffer nicht messen, und die Tabelle oben gäbe es nicht.
+
+**Was nicht geändert wurde:** `spiel/` und `netz/` byteweise; keine
+Flanke (das ist W10, #35); die veröffentlichte Seite ist nicht neu
+gebaut — Regel 3.
+
 ## 12.09.2026 — Umbau ohne Bildänderung: der Farbwort-Speicher sucht nicht mehr mit Zeichenketten
 
 **Warum:** `tests/pruefe-app.mjs` ist die längste Prüfung der Kette, und

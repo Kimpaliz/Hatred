@@ -31,8 +31,12 @@ for (const art of [HINDERNIS.keins, HINDERNIS.wand]) {
   const feld = macheGranitFeld({ kasten() {}, ton: (f) => f }).feldDaten(karte, 6, 6);
   let gleichViele = 0, falsch = 0;
   const farben = new Set();
+  /* Die Bühne kennt nur fillRect und Weltpunkte; gezeichnet wird dort
+     der grobe Weg — ein Abtastpunkt je Weltpunkt. Verglichen wird
+     deshalb der Puffer in derselben Projektion (jeder fein-te Punkt). */
+  const s = feld.fein;
   for (let y = 0; y < feld.hoehe; y++) for (let x = 0; x < feld.breite; x++) {
-    const wert = feld.pixel[y * feld.breite + x];
+    const wert = feld.pixel[(y * s) * feld.bildBreite + x * s];
     if (!wert) continue;
     const ist = p.weltPixel(feld.x0 + x, feld.y0 + y);
     if (ist === farbe(wert)) gleichViele++; else falsch++;

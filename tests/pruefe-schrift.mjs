@@ -57,6 +57,7 @@
    `werkzeuge/pruefe-alles.mjs`, das diese Datei als eigenen Prozess
    startet. */
 
+import { FEIN } from "../runtime/granit-feld.js";
 import { abschnitt, behaupte, gleich, nahe, wirft, ende } from "./helfer.mjs";
 import { macheKarte } from "../spiel/gitter.mjs";
 import { macheZufall } from "../spiel/zufall.mjs";
@@ -366,8 +367,12 @@ wirft(() => macheKamera({ fensterBreite: 800, fensterHoehe: 600 }),
   gleich(krumm, 0, "1.000 Fenstergrößen: die Vergrößerung ist immer eine ganze Zahl");
   gleich(zuKlein, 0, "1.000 Fenstergrößen: die Vergrößerung ist nie kleiner als 1");
   gleich(zuWenig, 0, `1.000 Fenstergrößen: es passen immer ${MINDEST_FELDER} Felder hinein`);
-  gleich(vergroesserungFuer(1920, 1080), Math.floor(1080 / MINDEST_KANTE),
-    "1920×1080 ergibt die gemessene Vergrößerung");
+  /* Seit E6 (12.09.2026) nimmt die Automatik die größte Stufe, die ein
+     Vielfaches von FEIN ist — nur dann bekommt jeder feine Abtastpunkt
+     gleich viele Bildschirmpunkte. Full HD: 3 passt, 2 ist die Stufe. */
+  const passt = Math.floor(1080 / MINDEST_KANTE);
+  gleich(vergroesserungFuer(1920, 1080), passt - (passt % FEIN),
+    "1920×1080 ergibt die größte gerade Vergrößerung, die hineinpasst");
   gleich(vergroesserungFuer(100, 80), 1, "ein winziges Fenster bekommt 1, nicht 0");
 }
 
