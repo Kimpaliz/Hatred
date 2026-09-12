@@ -1,7 +1,10 @@
 # Hatred
 
 Ein **rundenbasierter Koop-Dungeon-Crawler** für den Browser, zu einem
-bis vier über das Internet. Dark Fantasy, exakt von oben, Pixelgrafik.
+bis vier über das Internet. Dark Fantasy, Pixelgrafik, Blick von oben
+und leicht gekippt: Man sieht die Oberseite jedes Feldes und die
+Südflanke von allem, was höher ist (Entscheidung vom 12.09.2026,
+[docs/SPIEL.md](docs/SPIEL.md)).
 
 Ein Hexraster, sechs Aktionspunkte je Zug und ein Schlachtfeld, das aus
 **vier Höhenebenen** besteht: Wer oben steht, sieht weiter und trifft

@@ -61,6 +61,7 @@ Rechner der Wahrheit eines anderen glauben, statt sie nachzurechnen.
 | Eine Figur sieht falsch aus | `runtime/sprite-daten.js` |
 | Funken, Blut, Staub | `runtime/partikel.js` |
 | Boden, Wände, Höhenkanten, Treppenanschlüsse | `runtime/granit-feld.js` |
+| „Wie viele Bildpunkte hat ein Feld?" | zwei Zahlen, nicht eine: `runtime/granit-feld.js` → `FEIN` (nur das Bild), `spiel/bauart.mjs` → `PIXEL_JE_FELD` (die Welt, und damit Spiel, Prüfzahl und Netz) |
 | Zeichenreihenfolge und Sichtnebel | `runtime/zeichnen.js` |
 | Höhle und Treppen visuell vergleichen | `werkzeuge/topdown-vorschau.html` |
 | Lebensbalken, Punkteanzeige, Zugleiste | `runtime/oberflaeche.js` |

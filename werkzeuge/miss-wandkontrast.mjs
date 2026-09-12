@@ -141,23 +141,25 @@ function flacheKarte(dick, kante = 24, saat = 4711) {
 function bildVon(karte, x0, y0, x1, y1, malerErsatz = null) {
   const granit = macheGranitFeld({ kasten() {}, ton: (h) => h });
   const punkte = new Map(), besitzer = new Map(), felder = new Map();
-  let konturHell = 0, konturDunkel = 0;
+  let konturHell = 0, konturDunkel = 0, fein = 1;
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       if (!karte.drin(x, y)) continue;
       const f = granit.feldDaten(karte, x, y);
+      fein = f.fein;
       const wandHier = karte.hindernisBei(x, y) === HINDERNIS.wand;
       let summe = 0, zahl = 0;
       for (const rolle of f.rollen) {
         if (rolle === 3) konturHell++;
         else if (rolle === 4) konturDunkel++;
       }
-      for (let py = 0; py < f.hoehe; py++) {
-        for (let px = 0; px < f.breite; px++) {
-          const roh = f.pixel[py * f.breite + px];
+      for (let py = 0; py < f.bildHoehe; py++) {
+        for (let px = 0; px < f.bildBreite; px++) {
+          const roh = f.pixel[py * f.bildBreite + px];
           if (!roh) continue;
           const wert = malerErsatz ? malerErsatz(wandHier) : HELL(roh);
-          const schluessel = (f.x0 + px) + "," + (f.y0 + py);
+          /* Schlüssel in Bildpunkten: Welt mal FEIN. */
+          const schluessel = (f.x0 * f.fein + px) + "," + (f.y0 * f.fein + py);
           punkte.set(schluessel, wert);
           besitzer.set(schluessel, x + "," + y);
           summe += wert;
@@ -167,14 +169,14 @@ function bildVon(karte, x0, y0, x1, y1, malerErsatz = null) {
       if (zahl) felder.set(x + "," + y, summe / zahl);
     }
   }
-  return { punkte, besitzer, felder, konturHell, konturDunkel, granit };
+  return { punkte, besitzer, felder, konturHell, konturDunkel, granit, fein };
 }
 
 /* Von der Naht aus in eine Richtung laufen, bis ein Bildpunkt auftaucht,
    der wirklich dem gesuchten Feld gehört. Gibt null zurück, wenn keiner
    in Reichweite liegt — der Aufrufer zählt das als Auslassung. */
 function suchePunkt(bild, mx, my, ux, uy, feld) {
-  for (let schritt = 0; schritt <= SUCHWEITE; schritt++) {
+  for (let schritt = 0; schritt <= SUCHWEITE * bild.fein; schritt++) {
     const sx = Math.round(mx + ux * schritt), sy = Math.round(my + uy * schritt);
     const schluessel = sx + "," + sy;
     if (bild.besitzer.get(schluessel) === feld) return bild.punkte.get(schluessel);
@@ -190,7 +192,8 @@ function grenze(bild, x, y, nx, ny, wandHier) {
   const laenge = Math.hypot(q.x - p.x, q.y - p.y);
   if (!laenge) return null;
   const ux = (q.x - p.x) / laenge, uy = (q.y - p.y) / laenge;
-  const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2;
+  /* Die Naht in Bildpunkten: Weltmitte mal FEIN. */
+  const mx = (p.x + q.x) / 2 * bild.fein, my = (p.y + q.y) / 2 * bild.fein;
   const felsFeld = wandHier ? x + "," + y : nx + "," + ny;
   const bodenFeld = wandHier ? nx + "," + ny : x + "," + y;
   const zumFels = wandHier ? -1 : 1;
@@ -236,12 +239,13 @@ function messe(karte, x0, y0, x1, y1, nurGleicheEbene = false, malerErsatz = nul
     for (let x = x0; x < x1; x++) {
       if (!karte.drin(x, y) || istWand(x, y)) continue;
       const f = bild.granit.feldDaten(karte, x, y);
-      for (let py = 0; py < f.hoehe; py++) {
-        for (let px = 0; px < f.breite; px++) {
-          const hier = f.pixel[py * f.breite + px];
+      const bb = f.bildBreite, bh = f.bildHoehe;
+      for (let py = 0; py < bh; py++) {
+        for (let px = 0; px < bb; px++) {
+          const hier = f.pixel[py * bb + px];
           if (!hier) continue;
-          const rechts = px + 1 < f.breite ? f.pixel[py * f.breite + px + 1] : 0;
-          const unten = py + 1 < f.hoehe ? f.pixel[(py + 1) * f.breite + px] : 0;
+          const rechts = px + 1 < bb ? f.pixel[py * bb + px + 1] : 0;
+          const unten = py + 1 < bh ? f.pixel[(py + 1) * bb + px] : 0;
           if (rechts) rauschen.push(Math.abs(HELL(hier) - HELL(rechts)));
           if (unten) rauschen.push(Math.abs(HELL(hier) - HELL(unten)));
         }

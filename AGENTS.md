@@ -70,5 +70,9 @@ Claude über das vorhandene `claude.cmd` nur mit benanntem Mehrwert einsetzen.
 
 Merge, Push, Veröffentlichung und externe Nachrichten benötigen ausdrückliche
 Autorisierung. Eine bereits erteilte Autorisierung gilt im vereinbarten Umfang
-weiter. Beim Abschluss Dateien, Prüfungen und Einschränkungen nennen und den
-eigenen Workclaim freigeben.
+weiter. **Für `main` liegt seit dem 12.09.2026 eine Dauerfreigabe vor**, gebunden
+an sieben nachprüfbare Bedingungen in [docs/REGELN.md](docs/REGELN.md) 3 — im
+Zweifel wird gefragt. Veröffentlichen, Zweige löschen, Geschichte umschreiben
+und Nachrichten nach außen sind davon ausgenommen — vier Ausnahmen, wie in
+docs/REGELN.md 3. Beim Abschluss Dateien, Prüfungen und Einschränkungen
+nennen und den eigenen Workclaim freigeben.

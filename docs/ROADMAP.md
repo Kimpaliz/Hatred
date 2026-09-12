@@ -450,13 +450,18 @@ Bei `abgrund` sank die Gesamtzahl von 124 auf 122 — zwei Behauptungen
 sind lautlos verschwunden. Das klingt beruhigend und ist es nicht: Es
 heißt, dass die Prüfkette einen Umbau dieser Größe fast nicht bemerkt.
 
-## W8 — Höhen zurück
+## W8 — Höhen zurück, mit Flanken
 
 Vorgang: #31
 **Abnahme:** Die Abnahme von #8 gilt wieder (zwei Ebenen mit Becken und
 Abgrund je Karte), **und** das Verhältnis aus W1 bleibt über seiner
 Schwelle — die Wände dürfen ihre Erkennbarkeit nicht wieder an die Höhe
-abgeben.
+abgeben — **und** jede Etagenkante trägt ihre Flanke aus W10.
+
+*Seit dem 12.09.2026 gehört hierher auch die Flanke:* Höhen kommen nicht
+so zurück, wie sie waren (Ein-Bildpunkt-Konturen an sechs Kanten),
+sondern mit der Südseite aus Entscheidung E6. W10 baut die Flanke am
+Fels, wo sie sich heute schon messen lässt; W8 bringt sie an die Etage.
 
 *Warum zuletzt:* Janniks Reihenfolge, wörtlich: *„dann erst fangen wir
 mit unterschiedlichen höhen an."*
@@ -466,3 +471,97 @@ weg. Ein Lauf, der heute 40 Runden hält, endet flach in Runde 27 mit
 Niederlage (`node tests/pruefe-lauf.mjs`). Diese Prüfung wird nicht
 entschärft — entweder nimmt Jannik die härtere Balance an (Entscheidung
 **E5**), oder der Kampf bekommt einen Ausgleich.
+
+---
+
+# Welle 3b — Der gekippte Blick, Entscheidung E6 vom 12.09.2026
+
+Jannik hat drei Bildschirmfotos aus *Battle Brothers* gezeigt und
+gesagt: *„Aktuell sind wände von böden und etagen auf denen man laufen
+kann unglaublich schlecht zu unterscheiden."* Die Ursache stand in
+unserem eigenen Vertrag — *„Der Blick muss exakt senkrecht sein"* — und
+ist mit E6 (Vorgang #33) aufgehoben. Der neue Vertrag steht in
+[SPIEL.md](SPIEL.md): Der Blick ist leicht gekippt, man sieht die
+Südflanke von allem Höheren, und ein Feld ist 32 Bildpunkte breit.
+
+Die Reihenfolge unten ist eine Empfehlung mit Begründung: **erst das
+Maß, dann die Fläche, dann das Zeichen darauf.** Wer die Flanke bei 16
+Bildpunkten abstimmt, stimmt sie bei 32 ein zweites Mal ab; wer Figuren
+zeichnet, bevor ihr Sockel steht, weiß nicht, wo ihr Fuß hingehört.
+
+## W9 — Ein Feld ist im Bild 32 Bildpunkte breit, die Welt bleibt bei 16
+
+Vorgang: #34
+**Abnahme:** Ein Feld ist im Bild 32 Bildpunkte breit. `karte.summe()`
+und `zustandsSumme()` sind vor und nach dem Umbau **byteweise gleich**
+über 20 Saaten und 40 Runden; die Kette bleibt grün.
+
+*Warum nicht eine Zahl:* `PIXEL_JE_FELD = 16` ist die Einheit des
+Welterzeugers, nicht nur des Bildes — `sektor 215`, `hoehenFrequenz
+0.0075` (*„Wellenlänge 133 px = 8,3 Kacheln"*) rechnen darin. Wer sie
+verdoppelt, halbiert die Raumbreite in Feldern und ändert damit Spiel,
+Zustandssumme und Netz. Gebraucht wird ein eigener Bildmaßstab in
+`runtime/`, während `spiel/raster.mjs` bei 16 bleibt.
+
+## W10 — Die Flanke: Etagen und Fels zeigen ihre Südseite
+
+Vorgang: #35
+**Abnahme:** Jede Kante, hinter der im Bild oben ein höheres Feld liegt,
+trägt eine Flanke von mindestens 5 Bildpunkten (Anteil **100 %**, an
+einer Treppe 0 %); die Flanke ist dunkler als die Oberseite darüber
+(Sprung durch Körnung ≥ 1,5 in 95 % der Kanten) und unterscheidet sich
+vom Boden darunter in der **Farbfamilie**, nicht nur in der Helligkeit.
+Die Abnahmen von W1 und W2 bleiben erfüllt.
+
+*Warum das die große Arbeit ist:* Heute zeigen Rollen 3 und 4 in
+`runtime/granit-feld.js` die Höhe als einen Bildpunkt an sechs Kanten
+und nur an Brüchen ohne Fels. Die Flanke ist eine neue Schicht: auf dem
+niedrigeren Feld gemalt, im Streifen unter der Kante, dem Winkel der
+beiden schrägen Unterkanten eines Hexes folgend.
+
+## W11 — Ein Sockel unter jeder Figur
+
+Vorgang: #36
+**Abnahme:** Unter jeder Figur liegt ein Ring ganz innerhalb ihres
+Feldes, und von jedem Bildschirmpunkt des Rings führt `bildNachFeld`
+auf ihr Feld — 100 % über alle Figuren einer erzeugten Karte.
+Zeichenreihenfolge Boden → Flanke → Sockel → Figur → Licht.
+
+*Warum klein und trotzdem wichtig:* Es ändert keine Regel und kein
+Sprite und beantwortet die eine Frage, die ein Taktikspiel jederzeit
+beantworten muss — *wo steht wer?* Sie wird dringlicher, sobald Figuren
+über ihr Feld hinausragen (W12).
+
+## W12 — Figuren als Vollkörper im Pixelstil von 1990
+
+Vorgang: #37
+**Abnahme:** Je Heldenklasse und Gegnerart ein Sprite 32 × 48, höchstens
+16 Farben aus einer gemeinsamen Palette von höchstens 32, 1 Bildpunkt
+schwarzer Umriss, Dithering statt Zwischentöne, vier Richtungen, als
+Text im Repository — geprüft gegen den Katalog, nicht gegen eine Liste
+von Hand. Eine Figur, die ins Feld darüber ragt, wird davor gezeichnet.
+
+*Janniks Wortlaut:* *„wir orientieren uns daran, aber full body aber
+pixeliger! Pixel art stil von 1990 das schwarze auge war super nice!"*
+
+*Umbau und Inhalt getrennt (Regel 12):* erst Maße, Platz, Sortierung
+mit den heutigen Sprites — byteweise folgenlos für die Regeln —, dann
+**ein** Prototyp-Sprite zum Ansehen, dann der Katalog.
+
+## W13 — Freie Kamera: schwenken mit Maus, Tasten und Finger
+
+Vorgang: #38
+**Abnahme:** Die Kamera lässt sich in ganzen Bildpunkten frei
+verschieben; ein Zug holt sie nicht ungefragt zurück; ein Finger, der
+zieht, wählt kein Feld.
+
+## W14 — Versuch: Parallaxe beim Kameraschwenk
+
+Vorgang: #39
+**Abnahme:** gibt es für den Versuch, nicht für das Spiel — ein
+Schalter, ganze Bildpunkte, die Figur bleibt auf ihrem Feld anklickbar,
+und Jannik sieht es im Browser und entscheidet.
+
+*Janniks Wortlaut:* *„später als versuch mit gekippter sicht."* Der Rat
+war „nicht jetzt": Die Vorlage kommt ohne aus, und der Tiefeneindruck
+kommt aus der gemalten Flanke, die auch im Standbild wirkt.

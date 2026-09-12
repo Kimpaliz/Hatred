@@ -30,6 +30,35 @@ const SPEICHER_GRENZE = 4096;
 const DISTANZ_GRENZE = 28;
 const STUFEN_WEITE = FELD_BREITE / 4;
 const NACHBAR_RINGE = 3;
+
+/* ── Der Bildmaßstab ────────────────────────────────────────────────
+   Janniks Entscheidung E6 vom 12.09.2026: *„3 ja"* — ein Feld ist im
+   Bild 32 Bildpunkte breit. Die **Welt** bleibt dabei bei 16 je Feld
+   (`spiel/bauart.mjs`), denn der Welterzeuger rechnet in Weltpunkten:
+   Wer dort verdoppelt, halbiert die Raumbreite in Feldern und ändert
+   damit Spiel, Zustandssumme und Netz. Gemessen am 12.09.2026 mit
+   blind verdoppeltem `PIXEL_JE_FELD`: `lauf`, `ki` und `abgrund` rot.
+
+   Deshalb entsteht die Auflösung hier: Jeder Weltpunkt wird `FEIN`-mal
+   je Achse abgetastet, der Puffer eines Feldes ist `FEIN²`-mal so groß,
+   und `x0`/`y0`/`breite`/`hoehe` bleiben die **Welt**-Boundingbox, die
+   Kamera und Prüfungen kennen. Was in Bildpunkten zählt, heißt
+   `bildBreite`/`bildHoehe`.
+
+   Gezeichnet wird ganzzahlig (Fehlerbuch D1): Bei einer Vergrößerung,
+   die ein Vielfaches von `FEIN` ist, kommt der feine Puffer aufs Blatt
+   und jeder Abtastpunkt bekommt gleich viele Bildschirmpunkte. Bei
+   einer ungeraden Stufe (1, 3, 5 …) wäre das nicht so — dann wird ein
+   grober Puffer gezeichnet, ein Punkt je Weltpunkt. Das ist dem Bild
+   von vor dem 12.09.2026 **ähnlich, nicht gleich**: Genommen wird der
+   erste der FEIN Abtastpunkte, also die Weltkoordinate `x0 + k + 0,25`
+   statt der Weltpunktmitte `x0 + k + 0,5`. Gemessen mit
+   `node werkzeuge/miss-bildabdruck.mjs` (640 × 360, Saat 3 — dort wählt
+   die Kamera Stufe 1, also genau diesen Weg): 4.680.806 Rechtecke
+   vorher gegen 4.918.850 nachher. Beide Wege prüft
+   `tests/pruefe-granit-feld.mjs`, jeder auf seiner Zoomstufe.
+   Die Automatik wählt gerade Stufen (`runtime/kamera.js`). */
+export const FEIN = 2;
 const NASS = [null, [23, 46, 58], [63, 17, 20], [24, 53, 31],
   [101, 31, 11], [15, 16, 23]];
 const SCHRAEG = Math.sqrt(3) / 2;
@@ -180,12 +209,20 @@ function farbwort(wert) {
 export function macheGranitFeld({ kasten, ton, ctx = null, kamera = null }) {
   let karten = new WeakMap();
   let neuGebaut = 0, treffer = 0, schnelleBilder = 0, rechtecke = 0;
-  const farben = new Map();
+  /* Zwei Tabellen (normal, gedämpft) mit dem Farbwert selbst als
+     Schlüssel. Bis zum 12.09.2026 war der Schlüssel eine Zeichenkette
+     `${wert}|${matt}` mit `has` **und** `get` — je Rechteck eine neue
+     Zeichenkette und zwei Suchen. Der Rechteckweg ruft das für jedes
+     Rechteck jedes Bildes; gemessen mit `node --cpu-prof` über
+     `tests/pruefe-app.mjs` war das mit 30,5 s von 133 s der größte
+     einzelne Posten. Die Ausgabe ist byteweise dieselbe. */
+  const farben = [new Map(), new Map()];
 
   function wort(wert, matt) {
-    const key = `${wert}|${matt ? 1 : 0}`;
-    if (!farben.has(key)) farben.set(key, ton(farbwort(wert), matt));
-    return farben.get(key);
+    const tabelle = farben[matt ? 1 : 0];
+    let hex = tabelle.get(wert);
+    if (hex === undefined) { hex = ton(farbwort(wert), matt); tabelle.set(wert, hex); }
+    return hex;
   }
 
 /* ── Wie massives Gestein aussieht ──────────────────────────────────
@@ -240,7 +277,9 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
 
   function baue(karte, x, y, ring) {
     const grenzen = feldPixelGrenzen(x, y);
-    const { x0, y0, breite, hoehe } = grenzen;
+    const { x0, y0 } = grenzen;
+    /* Ab hier zählen `breite`/`hoehe` in Bildpunkten: FEIN je Weltpunkt. */
+    const breite = grenzen.breite * FEIN, hoehe = grenzen.hoehe * FEIN;
     const land = landschaft(karte, ring.felder);
     const pixel = new Uint32Array(breite * hoehe);
     const rollen = new Uint8Array(pixel.length);
@@ -251,11 +290,31 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     const pb = breite + 2, ph = hoehe + 2;
     const proben = new Array(pb * ph);
     const abstaende = new Float32Array(pb * ph);
+    /* Der **Wandabstand** wird je Weltpunkt gerechnet, nicht je feinem
+       Abtastpunkt: Er ist ein Distanzfeld mit Steigung 1, der
+       Unterschied zweier Abtastpunkte desselben Weltpunkts liegt unter
+       einem halben Weltpunkt — unsichtbar. Das Materialrauschen dagegen
+       wird fein abgetastet, denn genau das ist die Detailtiefe.
+       Gemessen am 12.09.2026: Ohne diese Teilung kostete FEIN 2 das
+       3,3-Fache, das Rauschen allein macht davon die Hälfte aus.
+
+       Die **Feldzugehörigkeit** bleibt bewusst je Abtastpunkt
+       (`weltNachFeld` in der Malschleife unten). Sie entscheidet, welcher
+       Punkt zum Feld gehört — je Weltpunkt gerechnet, bekäme die
+       Hexkante wieder die grobe Treppe von vorher, und der feinere
+       Puffer wäre an seiner sichtbarsten Stelle wirkungslos. */
+    const wb = grenzen.breite + 2, wh = grenzen.hoehe + 2;
+    const weltD = new Float32Array(wb * wh);
+    for (let wy = -1; wy <= grenzen.hoehe; wy++) for (let wx = -1; wx <= grenzen.breite; wx++) {
+      const ax = x0 + wx + 0.5, ay = y0 + wy + 0.5;
+      const f = weltNachFeld(ax, ay);
+      weltD[(wy + 1) * wb + wx + 1] =
+        distanzZu(land.waende, ax, ay) * (fels(karte, f.x, f.y) ? 1 : -1);
+    }
     for (let py = -1; py <= hoehe; py++) for (let px = -1; px <= breite; px++) {
-      const wx = x0 + px + 0.5, wy = y0 + py + 0.5;
-      const f = weltNachFeld(wx, wy);
-      const d = distanzZu(land.waende, wx, wy) * (fels(karte, f.x, f.y) ? 1 : -1);
+      const wx = x0 + (px + 0.5) / FEIN, wy = y0 + (py + 0.5) / FEIN;
       const p = (py + 1) * pb + px + 1;
+      const d = weltD[(Math.floor(py / FEIN) + 1) * wb + Math.floor(px / FEIN) + 1];
       abstaende[p] = d;
       proben[p] = granitProbe(wx, wy, karte.saat >>> 0, d);
     }
@@ -265,15 +324,17 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     const ebene = karte.ebeneBei(x, y);
     const nass = NASS[karte.fluessigBei(x, y)];
     for (let py = 0; py < hoehe; py++) for (let px = 0; px < breite; px++) {
-      const wx = x0 + px + 0.5, wy = y0 + py + 0.5;
+      const wx = x0 + (px + 0.5) / FEIN, wy = y0 + (py + 0.5) / FEIN;
       const f = weltNachFeld(wx, wy);
       if (f.x !== x || f.y !== y) continue;
       const i = py * breite + px, p = (py + 1) * pb + px + 1;
       const s = proben[p], d = abstaende[p];
       /* Wie in Granithöhle: Normalen aus dem echten Materialhöhenfeld.
          Licht kommt von oben; kein geometrischer Versatz und keine Flanke. */
-      const nx = (proben[p - 1].hoehe - proben[p + 1].hoehe) * 0.88;
-      const ny = (proben[p - pb].hoehe - proben[p + pb].hoehe) * 0.88;
+      /* Die Nachbarproben liegen 1/FEIN Weltpunkt auseinander; mal FEIN
+         bleibt die Steigung dieselbe wie bei einem Abtastpunkt je Weltpunkt. */
+      const nx = (proben[p - 1].hoehe - proben[p + 1].hoehe) * 0.88 * FEIN;
+      const ny = (proben[p - pb].hoehe - proben[p + pb].hoehe) * 0.88 * FEIN;
       const norm = 1 / Math.sqrt(nx * nx + ny * ny + 1);
       const relief = Math.max(0.44, 0.78 + (nx * -0.28 + ny * -0.32) * norm);
       /* Massives Gestein verliert von der Naht an Licht — je tiefer,
@@ -338,7 +399,8 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
       rollen[i] = rolle;
     }
     neuGebaut++;
-    return { ...grenzen, pixel, rollen, hash: ring.hash, bilder: [null, null] };
+    return { ...grenzen, fein: FEIN, bildBreite: breite, bildHoehe: hoehe,
+      pixel, rollen, hash: ring.hash, bilder: [null, null, null, null] };
   }
 
   function feldDaten(karte, x, y) {
@@ -354,23 +416,29 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     return feld;
   }
 
-  function blattFuer(feld, matt) {
-    const fach = matt ? 1 : 0;
+  /* Ein Blatt je Feld, in vier Fächern: fein/grob × normal/gedämpft.
+     `grob` nimmt jeden FEIN-ten Abtastpunkt — ein Bildpunkt je Weltpunkt —
+     für Zoomstufen, bei denen der feine Puffer keine ganzen
+     Bildschirmpunkte ergäbe. */
+  function blattFuer(feld, matt, grob = false) {
+    const fach = (matt ? 1 : 0) + (grob ? 2 : 0);
     if (feld.bilder[fach]) return feld.bilder[fach];
+    const schritt = grob ? feld.fein : 1;
+    const breite = feld.bildBreite / schritt, hoehe = feld.bildHoehe / schritt;
     let blatt = null;
     if (typeof OffscreenCanvas !== "undefined") {
-      blatt = new OffscreenCanvas(feld.breite, feld.hoehe);
+      blatt = new OffscreenCanvas(breite, hoehe);
     } else if (ctx?.canvas?.ownerDocument?.createElement) {
       blatt = ctx.canvas.ownerDocument.createElement("canvas");
-      blatt.width = feld.breite; blatt.height = feld.hoehe;
+      blatt.width = breite; blatt.height = hoehe;
     }
     const ziel = blatt?.getContext("2d");
     if (!ziel || typeof ziel.createImageData !== "function") return null;
-    const bild = ziel.createImageData(feld.breite, feld.hoehe);
-    for (let i = 0; i < feld.pixel.length; i++) {
-      const wert = feld.pixel[i];
+    const bild = ziel.createImageData(breite, hoehe);
+    for (let py = 0; py < hoehe; py++) for (let px = 0; px < breite; px++) {
+      const wert = feld.pixel[(py * schritt) * feld.bildBreite + px * schritt];
       if (wert === 0) continue;
-      const hex = wort(wert, matt);
+      const hex = wort(wert, matt), i = py * breite + px;
       bild.data[i * 4] = Number.parseInt(hex.slice(1, 3), 16);
       bild.data[i * 4 + 1] = Number.parseInt(hex.slice(3, 5), 16);
       bild.data[i * 4 + 2] = Number.parseInt(hex.slice(5, 7), 16);
@@ -384,22 +452,27 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
   function zeichneFeld(karte, x, y, i, ecke, gedaempft) {
     const feld = feldDaten(karte, x, y);
     if (ctx && kamera && typeof ctx.drawImage === "function") {
-      const blatt = blattFuer(feld, gedaempft);
+      const gross = kamera.vergroesserung;
+      /* Fein nur, wenn jeder Abtastpunkt ganze Bildschirmpunkte bekommt. */
+      const grob = gross % feld.fein !== 0;
+      const blatt = blattFuer(feld, gedaempft, grob);
       if (blatt) {
         ctx.imageSmoothingEnabled = false;
-        const gross = kamera.vergroesserung;
         ctx.drawImage(blatt, ecke.x, ecke.y, feld.breite * gross, feld.hoehe * gross);
         schnelleBilder++;
         return 1;
       }
     }
+    /* Der Rechteckweg kennt nur Weltpunkte: ein Abtastpunkt je Weltpunkt. */
     let anzahl = 0;
+    const s = feld.fein, bb = feld.bildBreite, pixel = feld.pixel;
     for (let py = 0; py < feld.hoehe; py++) {
+      const zeile = (py * s) * bb;
       let px = 0;
       while (px < feld.breite) {
-        const wert = feld.pixel[py * feld.breite + px];
+        const wert = pixel[zeile + px * s];
         let bis = px + 1;
-        while (bis < feld.breite && feld.pixel[py * feld.breite + bis] === wert) bis++;
+        while (bis < feld.breite && pixel[zeile + bis * s] === wert) bis++;
         if (wert) {
           kasten(ecke.x, ecke.y, px, py, bis - px, 1, wort(wert, gedaempft));
           anzahl++;
@@ -412,6 +485,6 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
   }
 
   function statistik() { return { neuGebaut, treffer, schnelleBilder, rechtecke }; }
-  function leereSpeicher() { karten = new WeakMap(); farben.clear(); }
+  function leereSpeicher() { karten = new WeakMap(); farben[0].clear(); farben[1].clear(); }
   return { zeichneFeld, feldDaten, statistik, leereSpeicher };
 }

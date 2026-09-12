@@ -13,7 +13,11 @@ Browser- und Regelmodule dürfen ihn nicht importieren.
   sowohl in `alpha-code.json` als auch in der Kopfnotizprüfung erfassen.
 - `pruefe-regelwerk.mjs` prüft die Nachweise in `docs/REGELN.md` gegen die
   Regelnummern in den Kopfnotizen. Beide Richtungen bei Pfadänderungen bewahren.
-- `miss-wandkontrast.mjs` und `topdown-vorschau.html` helfen beim Weltvergleich.
+- `miss-wandkontrast.mjs`, `miss-felddetail.mjs`, `miss-feldbauzeit.mjs` und
+  `topdown-vorschau.html` helfen beim Weltvergleich. `miss-bildabdruck.mjs` liefert die Prüfzahl über
+  jeden Zeichenaufruf, `miss-kernabdruck.mjs` die über Karten und Rundensummen —
+  zusammen der Beweis für einen Umbau ohne Wirkung (Regel 12): vorher, nachher,
+  `diff`. Die `miss-*`-Werkzeuge prüfen nichts und laufen nicht in der Kette mit.
   `zugangswort.mjs` ist ein gesondertes Werkzeug für ausdrücklich beauftragte
   Zugangswortwechsel; ein Strukturauftrag enthält keinen solchen Wechsel.
 - `vorgaenge.mjs` und `github-zugang.mjs` können externe Aktionen ausführen.

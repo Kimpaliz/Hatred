@@ -238,3 +238,20 @@ die Zahl, hängt die Prüfung an einer bestimmten Karte.
 etwa „das erste begehbare Feld nördlich der Figur".
 *Anzeichen:* Eine Prüfung wird rot, ohne dass jemand ihren Gegenstand
 angefasst hat.
+
+**G3 — Eine Prüfung stößt an ihre Zeitschranke: die Schranke ist die
+letzte Stelle, an der man dreht.** Am 12.09.2026 lief
+`tests/pruefe-app.mjs` mit dem feinen Feldbild in 133 s gegen die 120 s,
+die `werkzeuge/pruefe-alles.mjs` jeder Prüfung gibt. Die Schranke zu
+heben wäre ein Handgriff gewesen — und hätte den eigentlichen Fund
+zugedeckt: Ein Profil (`node --cpu-prof …`) zeigte **30,5 s von 133 s**
+in einer Farbtabelle, die je gezeichnetem Rechteck eine Zeichenkette als
+Schlüssel baute. Der Feldbau, den man zuerst verdächtigt, machte 1,2 s
+aus. Nach dem Umbau: 82 s, ohne dass die Schranke angefasst wurde.
+**Woran man es erkennt:** Die Vermutung, wo die Zeit hingeht, steht vor
+der Messung. Wer sie nicht misst, „optimiert" die falsche Stelle oder
+hebt die Schranke.
+*Gegenmittel:* Erst `--cpu-prof`, dann entscheiden. Eine gehobene
+Schranke ist eine Änderung am **Prüfwesen** und gehört als solche in den
+Changelog — mit der Zahl, die sie nötig machte.
+*Anzeichen:* „Die Prüfung ist halt langsam geworden."

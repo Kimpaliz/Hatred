@@ -95,6 +95,18 @@ Ableitungen unten sind gemessen, nicht geraten.
 **Die Wände tragen im Bild keine eigene Auskunft. Was man heute sieht,
 macht das Licht.**
 
+> **Berichtigung vom 12.09.2026.** Die Prozentzahlen dieses Abschnitts
+> stammen aus einem Werkzeug, das danebentastete: Es nahm den
+> „Felspunkt" mit `Math.round` genau auf der Naht zweier Feldmitten, und
+> weil die Feldgrenze eine Voronoi-Entscheidung je Bildpunkt ist, lag
+> dieser Punkt oft im Boden. Von den 94 damals gemeldeten Grenzen waren
+> nur 46 wirklich Fels gegen Boden. **Der Befund selbst stimmt** — die
+> Wand trug im reinen Gesteinsbild keine eigene Auskunft —, aber die
+> 51,1 % sind es nicht: Dieselbe Lage, mit der berichtigten Messlatte
+> gemessen, ergibt **22,2 %**. Der Grund steht im Changelog-Eintrag vom
+> 12.09.2026 („Die Messlatte für den Wandkontrast tastete daneben"), die
+> gültigen Zahlen in [ROADMAP.md](ROADMAP.md) unter W1.
+
 Zwei Messungen nebeneinander, beide am 08.09.2026:
 
 **a) Im fertig gezeichneten Bild** (mit Licht und Nebel) sind Wände
@@ -149,6 +161,18 @@ der Fels also um 55 % abgedunkelt. Gemessen: Der Münzwurf steigt von
 trotzdem falschherum, weil ein heller Krümel im Fels eine dunkle Tönung
 schlägt. Wer über 95 % will, braucht eine **Kontur** und nicht nur einen
 Ton. (Die Probe diente nur der Messung; sie ist nicht eingebaut.)
+
+> **Berichtigung vom 12.09.2026.** Auch diese beiden Zahlen stammen aus
+> der schiefen Messlatte, und der Schluss daraus war falsch: Mit der
+> berichtigten Messung genügt ein **Ton** sehr wohl. Gebaut wurde genau
+> das — der Fels verliert von der Naht an Licht statt erst neunzehn
+> Bildpunkte tief —, und zwar ganz ohne neue Kontur. Gemessen am
+> 12.09.2026 mit `node werkzeuge/miss-wandkontrast.mjs`, Fall *„flach,
+> Wände ein Feld dick"*: **96,7 %** über der Schranke von 95, statt der
+> hier vermuteten 80,9 %. (Unmittelbar nach jener Arbeit waren es
+> 99,7 %; der feinere Bildmaßstab aus W9 tastet die Naht seither dichter
+> ab und drückt die Zahl auf 96,7 %. Beides steht im Changelog vom
+> 12.09.2026 — „Der Fels war heller als der Boden" und der W9-Eintrag.)
 
 ---
 
@@ -325,8 +349,12 @@ stolpern lässt:
 
 1. **Nie auf `main` schreiben.** Zweig anlegen, `WORKCLAIM.md` lesen und
    eintragen, dann erst schreiben.
-2. **Merge, Push, Veröffentlichung nur auf Janniks ausdrückliches Ja.**
-   Auch bei einer Kleinigkeit.
+2. **Merge nach `main`** läuft seit dem 12.09.2026 unter Janniks
+   Dauerfreigabe, gebunden an sieben nachprüfbare Bedingungen
+   ([REGELN.md](REGELN.md) 3) — im Zweifel wird gefragt.
+   **Veröffentlichen, Zweige löschen, Geschichte umschreiben und
+   Nachrichten nach außen** brauchen weiterhin sein ausdrückliches Ja,
+   auch bei einer Kleinigkeit.
 3. **Jede Zahl ist gemessen**, und der Befehl steht daneben. Eine Zahl
    aus einem einzigen Lauf ist keine Messung (Fehlerbuch C9).
 4. **Jede neue Prüfung wird zuerst absichtlich rot gemacht**, und im
