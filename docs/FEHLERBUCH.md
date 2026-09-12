@@ -81,7 +81,7 @@ eine heile; die Größe ist kein Beweis. **Woran man es erkennt, bevor
 man hineinläuft:** Gibt es zu dem, was ein Werkzeug *erzeugt*, eine
 Prüfung, die das Erzeugte selbst anfasst? Wenn nicht, ist das Werkzeug
 ungeprüft, egal wie grün die Kette ist — sie war es hier, 36 Prüfungen
-lang. Gegenmittel steht in `werkzeuge/pruefe-einzeldatei.mjs`:
+lang. Gegenmittel steht in `tests/pruefe-einzeldatei.mjs`:
 bauen, dann `node --check` auf das Ergebnis.
 
 **C7 — Ein verschachteltes Antwortformat für Agenten schlägt fehl,
@@ -197,3 +197,61 @@ eine Absage mit der Fundstelle; `--suche` fährt den ganzen Angriff
 einmal vor.
 *Anzeichen:* Das Wort „fühlt sich passend an" — es kommt aus der
 Fachsprache des Projekts. Genau das ist der Fehler.
+
+## Klasse G — Prüfungen, die nichts mehr prüfen
+
+**G1 — Eine Prüfung, die eine leere Menge misst, ist grün.** Am
+08.09.2026 wurden zum Messen die Höhen abgeschaltet (`spiel/bauart.mjs`:
+`hoehenSchwellen` auf `[9, 9, 9]`, `wandAnhebung` auf `0`) und die ganze
+Kette laufen gelassen. Von rund 43.900 Behauptungen fielen **19**.
+`tests/pruefe-becken.mjs` blieb dabei **53 von 53 grün** und druckte
+wörtlich: *„30 Karten 44 × 32: 0 mit Wasser auf mindestens zwei Ebenen,
+30 trocken, 0.0 Wasserkacheln je Karte"*. Sie prüft Aussagen **über**
+die gefundenen Becken — und keine davon wird falsch, wenn es kein
+einziges Becken mehr gibt. Bei `pruefe-abgrund.mjs` sank die Zahl der
+Behauptungen zugleich von 124 auf 122: **zwei sind lautlos
+verschwunden**, weil ihre Schleife über eine leere Liste lief. Eine
+verschwundene Behauptung meldet niemand; sie fehlt einfach.
+**Woran man es erkennt, bevor man hineinläuft:** Vor jedem Umbau, der
+etwas *weglässt*, den Umbau erst in einem Arbeitsbaum zur Probe machen
+und die Kette laufen lassen. Bleibt eine Prüfung grün, deren Gegenstand
+gerade verschwunden ist, fehlt ihr die Mindestmengen-Behauptung. Und die
+Zahl der Behauptungen je Prüfung vorher und nachher vergleichen — sie
+darf nicht sinken.
+*Gegenmittel:* Jede Prüfung, die über eine gefundene Menge redet, sagt
+**zuerst**, wie viele es mindestens sein müssen. Das ist Regel 10 in
+ihrer strengsten Lesart: geprüft wird der Fall, der ohne die Arbeit
+falsch wäre — und „es gibt gar keine" ist dieser Fall.
+*Anzeichen:* Eine Prüfung, deren Meldezeile lauter Nullen enthält und
+die trotzdem ein Häkchen bekommt.
+
+**G2 — Fest eingetragene Koordinaten in einer Prüfung.** Dieselbe Probe
+machte `tests/pruefe-tippen.mjs` rot: *„und die Figur steht dort
+(x): ist 31, soll 30"*. Die 30 beschreibt die Karte, wie der Erzeuger
+sie heute erzeugt, und sonst nichts. Wer den Erzeuger ändert, bekommt
+einen Fehler gemeldet, den es nicht gibt — und gewöhnt sich das
+Übergehen an, was schlimmer ist als der Fehler.
+**Woran man es erkennt:** In der Prüfung nach Zahlenpaaren suchen, die
+wie Feldkoordinaten aussehen. Steht daneben keine Ableitung, sondern nur
+die Zahl, hängt die Prüfung an einer bestimmten Karte.
+*Gegenmittel:* Das Ziel aus der Karte holen statt es hinzuschreiben —
+etwa „das erste begehbare Feld nördlich der Figur".
+*Anzeichen:* Eine Prüfung wird rot, ohne dass jemand ihren Gegenstand
+angefasst hat.
+
+**G3 — Eine Prüfung stößt an ihre Zeitschranke: die Schranke ist die
+letzte Stelle, an der man dreht.** Am 12.09.2026 lief
+`tests/pruefe-app.mjs` mit dem feinen Feldbild in 133 s gegen die 120 s,
+die `werkzeuge/pruefe-alles.mjs` jeder Prüfung gibt. Die Schranke zu
+heben wäre ein Handgriff gewesen — und hätte den eigentlichen Fund
+zugedeckt: Ein Profil (`node --cpu-prof …`) zeigte **30,5 s von 133 s**
+in einer Farbtabelle, die je gezeichnetem Rechteck eine Zeichenkette als
+Schlüssel baute. Der Feldbau, den man zuerst verdächtigt, machte 1,2 s
+aus. Nach dem Umbau: 82 s, ohne dass die Schranke angefasst wurde.
+**Woran man es erkennt:** Die Vermutung, wo die Zeit hingeht, steht vor
+der Messung. Wer sie nicht misst, „optimiert" die falsche Stelle oder
+hebt die Schranke.
+*Gegenmittel:* Erst `--cpu-prof`, dann entscheiden. Eine gehobene
+Schranke ist eine Änderung am **Prüfwesen** und gehört als solche in den
+Changelog — mit der Zahl, die sie nötig machte.
+*Anzeichen:* „Die Prüfung ist halt langsam geworden."

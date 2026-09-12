@@ -6,6 +6,12 @@ Der Auftrag vom 08.09.2026 verlangt Scotophobias Höhlenstil und
 Erzeugung, exakt senkrechte Draufsicht, anschließende Treppen und klar
 erkennbare Wände und Ebenen. Das vorhandene Sechseckraster bleibt.
 
+> **Berichtigung vom 12.09.2026.** Die „exakt senkrechte Draufsicht" ist
+> zurückgenommen. Janniks Entscheidung E6 (Vorgang #33) ersetzt sie: Der
+> Blick ist leicht gekippt, man sieht die Südflanke von allem Höheren.
+> Verbindlich ist [SPIEL.md](SPIEL.md); alles andere in diesem Dokument —
+> Höhlenstil, Erzeugung, Treppen, Raster — bleibt unberührt.
+
 Quellstand: `Kimpaliz/granithoehle`, Commit
 `d3460e97399b9748e1043a488c119dd3b7ec528c`, am 08.09.2026 gelesen.
 Die Formparameter entsprechen den Quellwerten `sector=215`, `corr=1.15`.
@@ -91,11 +97,11 @@ Fackellicht lassen sich zum Vergleichen umschalten.
 
 | Befehl | Aussage |
 | --- | --- |
-| `node werkzeuge/pruefe-granit-generator.mjs` | Quellwerte, einheitliche Wand-/Höhenproben, trockene Starts |
-| `node werkzeuge/pruefe-granit-material.mjs` | Referenzfarben, Relief und Material über Abschnittsgrenzen |
-| `node werkzeuge/pruefe-granit-feld.mjs` | Tatsächliche Treppenpixel, gesperrte Übergänge, Konturen und Speicher |
-| `node werkzeuge/pruefe-raster-projektion.mjs` | Kamera, Auswahl, Licht und Effekte auf derselben Hexgeometrie |
-| `node werkzeuge/pruefe-zeichnen.mjs` | Zusammengesetztes Spielbild, harte Pixel, Wesen und Sichtnebel |
+| `node tests/pruefe-granit-generator.mjs` | Quellwerte, einheitliche Wand-/Höhenproben, trockene Starts |
+| `node tests/pruefe-granit-material.mjs` | Referenzfarben, Relief und Material über Abschnittsgrenzen |
+| `node tests/pruefe-granit-feld.mjs` | Tatsächliche Treppenpixel, gesperrte Übergänge, Konturen und Speicher |
+| `node tests/pruefe-raster-projektion.mjs` | Kamera, Auswahl, Licht und Effekte auf derselben Hexgeometrie |
+| `node tests/pruefe-zeichnen.mjs` | Zusammengesetztes Spielbild, harte Pixel, Wesen und Sichtnebel |
 | `node werkzeuge/pruefe-alles.mjs` | Vollständige Projektprüfkette einschließlich Spiel- und Netzregeln |
 
 Messwerte eines konkreten Laufs gehören datiert in [CHANGELOG.md](../CHANGELOG.md).

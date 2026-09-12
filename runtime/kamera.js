@@ -70,6 +70,7 @@
    Entscheidet selbst keine Regel. */
 
 import { KACHEL } from "./licht.js";
+import { FEIN } from "./granit-feld.js";
 import { HELDEN } from "../spiel/katalog/helden.mjs";
 import { feldMitte, weltNachFeld, weltMasse, ZEILEN_HOEHE, FELD_RADIUS }
   from "../spiel/raster.mjs";
@@ -110,7 +111,14 @@ const RUETTEL_PHASE = 1.7;
 export function vergroesserungFuer(fensterBreite, fensterHoehe) {
   const kuerzere = Math.min(fensterBreite, fensterHoehe);
   if (!Number.isFinite(kuerzere) || kuerzere <= 0) return 1;
-  return Math.max(1, Math.floor(kuerzere / MINDEST_KANTE));
+  const passt = Math.floor(kuerzere / MINDEST_KANTE);
+  /* Seit dem 12.09.2026 (E6) hat ein Feld im Bild FEIN Abtastpunkte je
+     Weltpunkt. Die Automatik nimmt deshalb die größte Stufe, die ein
+     Vielfaches von FEIN ist — nur dann bekommt jeder Abtastpunkt gleich
+     viele Bildschirmpunkte (Fehlerbuch D1). Reicht es nicht einmal für
+     FEIN, bleibt es bei 1: ein Abtastpunkt je Weltpunkt, wie vorher. */
+  if (passt < FEIN) return 1;
+  return passt - (passt % FEIN);
 }
 
 export function macheKamera({ fensterBreite, fensterHoehe, karte }) {

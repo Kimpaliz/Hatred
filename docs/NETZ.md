@@ -60,7 +60,7 @@ Netzkarte im Rechner sind es 274 Zeichen, bei dreien 499 (gemessen am
 06.09.2026). Nachrechnen kannst du das jederzeit selbst:
 
 ```bash
-node werkzeuge/pruefe-leitung.mjs
+node tests/pruefe-leitung.mjs
 ```
 
 Dort steht die Zeile „eine Netzkarte: … Zeichen roh → … als Code".
@@ -188,4 +188,4 @@ beide führen zum selben Spiel.
 | Das kleine Programm für Weg 2 | `netz/broker.mjs` |
 | Die Leitung selbst — aufbauen, senden, schließen | `netz/verbindung.mjs` |
 | Wer beim Spiel Schiedsrichter ist | `netz/sitzung.mjs` |
-| Alle Zahlen dieser Seite nachrechnen | `werkzeuge/pruefe-leitung.mjs` |
+| Alle Zahlen dieser Seite nachrechnen | `tests/pruefe-leitung.mjs` |
