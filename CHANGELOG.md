@@ -3,6 +3,115 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Der Fels war heller als der Boden. Eine Zeile, und es war die falsche.
+
+**Janniks Auftrag:** *„gut erkennbare wände, dass ist unendlich wichtig
+das auf den ersten blick gut zu erkennen ist wo Wände sind"* — und
+*„massives gestein … von der seite aus die man sehen kann bis hin ins
+tiefe gestein wird die textur davon immer dunkler"*.
+
+**Der Befund:** In `runtime/granit-feld.js` stand für den Fels
+
+```js
+const ao = istWand ? Math.max(0.08, 1 - Math.max(0, d - 1) / 19) : …
+```
+
+`d` ist der Abstand zur Wandgrenze. An der Naht ist `d = 0`, der Term
+also **1,00** — und 0,08 erreicht er erst neunzehn Bildpunkte tief. Eine
+Gangwand ist **ein Feld** dick, also sechzehn Bildpunkte: Sie wurde nie
+tief genug, um dunkel zu werden. Derselbe Term dunkelt den Boden an
+derselben Naht auf **0,70** ab. Der Fels stand damit mit dem Faktor
+**1,43** über dem Boden — genau an der Stelle, an der man die Wand
+erkennen soll.
+
+**Was ein Spieler davon sah:** keine Wand, sondern eine beleuchtete
+Kante mit einem Schattenstreifen davor. Das ist Janniks Befund vom
+08.09.2026, und er hatte recht.
+
+**Die Änderung:** Der Fels verliert von der Naht an Licht, statt dort am
+hellsten zu sein.
+
+```js
+const ao = istWand
+  ? FELS_REST + (FELS_KANTE - FELS_REST) * Math.exp(-Math.max(0, d) / FELS_TIEFE)
+  : 0.70 + 0.30 * Math.min(1, -d / 7);
+```
+
+Drei Zahlen, jede begründet: `FELS_KANTE = 0,34` an der Naht (gegen 0,70
+beim Boden), `FELS_TIEFE = 5,5` Bildpunkte Abfall, `FELS_REST = 0,08`
+tief im Gestein — der **alte** Wert, denn das Innere war nie das Problem.
+
+**Gemessen** (`node werkzeuge/miss-wandkontrast.mjs`, Saat 4711;
+Selbstprobe grün: 100,0 % über 302 Grenzen, 0 ausgelassen):
+
+| | flach, 1 Feld dick | flach, breiter Rand | heute, alle | heute, gleiche Ebene |
+| --- | --- | --- | --- | --- |
+| Fels dunkler — **vorher** | 22,2 % | 22,3 % | 25,8 % | 25,2 % |
+| Fels dunkler — **nachher** | **100,0 %** | 98,9 % | 97,1 % | 99,7 % |
+| Sprung — vorher | +8,79 | +11,12 | +14,08 | +13,75 |
+| Sprung — nachher | **−21,24** | −22,13 | −30,59 | −31,07 |
+| Sprung/Körnung — vorher | 1,48 | 2,12 | 1,51 | 1,48 |
+| Sprung/Körnung — nachher | **3,57** | 4,23 | 3,28 | 3,33 |
+| Körper-Luft — vorher | −10,67 | +0,59 | −27,49 | −27,49 |
+| Körper-Luft — nachher | **+32,96** | +37,57 | +18,96 | +18,96 |
+
+Damit ist die Abnahme von Vorgang #24 in **allen vier** Fällen erfüllt:
+Vorzeichen über 95 %, Verhältnis über 1,5 mit negativem Sprung,
+Körper-Luft über 0.
+
+**Der Beweis, dass am Fels gedreht wurde und nicht an der Messlatte:**
+Der Boden ist **byteweise unverändert**. Über alle 119.349 Bodenpunkte
+der erzeugten Karte gerechnet ergibt sich vorher wie nachher die
+Prüfsumme **1083041655**. Es ist kein Strich an der Naht — die Änderung
+fasst nur Wandpunkte an, und zwar alle.
+
+**Zwei Prüfungen haben unterwegs angeschlagen, beide zu Recht:**
+
+- `tests/pruefe-koernung.mjs` verlangt mehr als zwölf Farben innerhalb
+  eines Feldes. Bei `FELS_KANTE = 0,30` war sie rot: So tief unten
+  bleiben von der Fünferrasterung in `farbByte` zu wenige Stufen übrig,
+  und der Fels verlor die Körnung — das Gegenteil von Janniks
+  *„pixeliger"*. Über zwölf Einstellungen gemessen ist **0,34 der
+  dunkelste Wert, bei dem die Körnung noch trägt**.
+- `tests/pruefe-granit-feld.mjs` meldete *„(6,6): hoher Innenfels hat
+  auch an den Feldkanten keine helle Palette-Wange"*. Ursache: Ein
+  erster Entwurf setzte `FELS_REST` auf 0,10 und hellte damit massiven
+  Fels um 0,02 auf. Der Umbau soll den Rand berichtigen, nicht das
+  Innere — `FELS_REST` steht deshalb auf dem alten 0,08.
+
+**Was der erste Entwurf zusätzlich tat und was davon übrig blieb:**
+nichts. Er dämpfte auch `relief`, weil dessen feste Lichtrichtung das
+Vorzeichen an die Himmelsrichtung hängt. Gemessen war die Dämpfung
+**überflüssig**: Mit vollem `relief` sind alle vier Tafeln besser
+(flach 100,0 % gegen 100,0 %, Verhältnis 3,57 gegen 3,47) **und** die
+Körnung bleibt erhalten. Sobald `ao` stimmt, ist die Streuung von
+`relief` zu klein, um ein Verhältnis von 2:1 zu kippen. Eine Zeile
+falsch, eine Zeile richtig — mehr war es nicht.
+
+**Laufzeit, abwechselnd gemessen** (Fehlerbuch C9), 2.240 Feldpuffer
+einer 56×40-Karte, vier Läufe je Stand, zwei Paarungen: 931,4 gegen
+976,6 ms und 877,7 gegen 887,3 ms. Die Spannen überlappen; ein Aufschlag
+ist **nicht messbar**. `Math.exp` ersetzt eine Division und ein
+`Math.max`.
+
+**Offen, und ehrlich:** Fels und Abgrund rücken zusammen. Der Abstand in
+der Helligkeit fällt von 12,50 auf **4,46** (Fels im Mittel 9,17, Abgrund
+4,71), der Farbabstand über alle drei Kanäle von 12,6 auf **6,9** (Fels
+8,3/9,2/10,9, Abgrund 5,0/6,5/10,0). `tests/pruefe-gelaende-bild.mjs`
+bleibt grün, aber ein Mensch könnte tiefes Gestein und Loch verwechseln
+— und das eine kann man betreten, ins andere fällt man. Das ist **keine
+Nebenwirkung dieser Änderung, sondern ihre Folge**: Der Fels war vorher
+zu hell, und jetzt ist er es nicht mehr. Ihn wieder aufzuhellen hieße,
+den Fehler zurückzuholen. Der Abgrund muss stattdessen unverwechselbar
+werden; das gehört zu Vorgang #25, und es steht dort.
+
+**Was ausdrücklich nicht geändert wurde:** `spiel/` ist unberührt, der
+Boden byteweise gleich, Wasser, Abgrund, Treppen und die Höhenkonturen
+ebenso. Keine Prüfschwelle gesenkt.
+
+**Dieser Zweig baut auf `werk/messlatte-wandkontrast` auf** — ohne die
+dort reparierte Messlatte wären alle Zahlen oben wertlos.
+
 ## 12.09.2026 — Die Messlatte für den Wandkontrast tastete daneben
 
 **Warum:** Am 08.09.2026 ist `werkzeuge/miss-wandkontrast.mjs`

@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| `werkzeuge/miss-wandkontrast.mjs`, `CHANGELOG.md`, `WORKCLAIM.md` | Claude (Sitzung Wände) | Die Messlatte für den Wandkontrast tastet daneben — reparieren und gegen Schönrechnen absichern. | 12.09.2026 |
+| frei | frei | Messlatte berichtigt, der Fels ist nicht mehr heller als der Boden; niemand schreibt. | 12.09.2026 |
 
 ## Format
 

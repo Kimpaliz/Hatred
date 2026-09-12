@@ -161,6 +161,31 @@ export function macheGranitFeld({ kasten, ton, ctx = null, kamera = null }) {
     return farben.get(key);
   }
 
+/* ── Wie massives Gestein aussieht ──────────────────────────────────
+   Drei Zahlen, alle gemessen mit `node werkzeuge/miss-wandkontrast.mjs`
+   im Fall „flach, Wände ein Feld dick" — dem harten Fall, weil eine
+   Gangwand kein Inneres hat, in dem sie dunkel werden könnte.
+
+   `FELS_KANTE` ist der Wert, der zählt: Er steht gegen die 0,70, auf
+   die der Boden an derselben Naht fällt. 0,34 gegen 0,70 ist gut das
+   Doppelte und übersteht die Streuung von `relief`, die beide Seiten
+   trifft — gemessen kippt keine einzige von 302 Grenzen.
+
+   `FELS_REST` ist bewusst der **alte** Tiefwert. Der Umbau soll den
+   Rand berichtigen, nicht das Innere: Bei 0,10 wurde massiver Fels um
+   0,02 heller, und `tests/pruefe-granit-feld.mjs` schlug an — „(6,6):
+   hoher Innenfels hat auch an den Feldkanten keine helle Palette-Wange".
+   Sie hatte recht.
+
+   Warum nicht dunkler: Bei 0,30 verliert der Fels seine Körnung.
+   `farbByte` rastet jeden Kanal auf Vielfache von 5, und so tief unten
+   bleiben davon zu wenige Stufen übrig; `tests/pruefe-koernung.mjs`
+   schlägt dann an. Gemessen über zwölf Einstellungen ist 0,34 der
+   dunkelste Wert, bei dem die Körnung noch trägt. */
+const FELS_KANTE = 0.34;    /* Fels an der Naht, gegen Boden dort 0,70      */
+const FELS_REST = 0.08;     /* tief im Gestein — unverändert gegenüber vorher */
+const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
+
   function baue(karte, x, y, ring) {
     const grenzen = feldPixelGrenzen(x, y);
     const { x0, y0, breite, hoehe } = grenzen;
@@ -195,7 +220,18 @@ export function macheGranitFeld({ kasten, ton, ctx = null, kamera = null }) {
       const ny = (proben[p - pb].hoehe - proben[p + pb].hoehe) * 0.88;
       const norm = 1 / Math.sqrt(nx * nx + ny * ny + 1);
       const relief = Math.max(0.44, 0.78 + (nx * -0.28 + ny * -0.32) * norm);
-      const ao = istWand ? Math.max(0.08, 1 - Math.max(0, d - 1) / 19)
+      /* Massives Gestein verliert von der Naht an Licht — je tiefer,
+         desto weniger kommt zurück. Bis zum 12.09.2026 stand hier das
+         Gegenteil: `1 - (d-1)/19` ist an der Naht **1,00** und erreicht
+         0,08 erst neunzehn Bildpunkte tief. Eine Gangwand ist ein Feld
+         dick, also sechzehn Bildpunkte — sie wurde nie tief genug, um
+         dunkel zu werden, und stand mit 1,00 gegen den Boden davor, den
+         derselbe Term auf 0,70 abdunkelt. Der Fels war damit um den
+         Faktor 1,43 **heller** als der Boden, und zwar genau an der
+         Stelle, an der man die Wand erkennen soll. Gemessen war er in
+         77,8 % der Grenzen der hellere von beiden. */
+      const ao = istWand
+        ? FELS_REST + (FELS_KANTE - FELS_REST) * Math.exp(-Math.max(0, d) / FELS_TIEFE)
         : 0.70 + 0.30 * Math.min(1, -d / 7);
       let faktor = relief * ao * (0.63 + ebene * 0.27);
       let r = s.r, g = s.g, b = s.b;
