@@ -3,6 +3,91 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Die Messlatte für den Wandkontrast tastete daneben
+
+**Warum:** Am 08.09.2026 ist `werkzeuge/miss-wandkontrast.mjs`
+entstanden, und auf seinen Zahlen steht die Abnahme von Vorgang #24.
+Vor dem Bauen wurde das Werkzeug gegen sich selbst geprüft — mit einem
+Bild, bei dem die Antwort feststeht: Fels überall 20, Boden überall 200,
+kein Rauschen. Es meldete **48,9 %** statt 100 % und ein Verhältnis von
+**0,00**.
+
+**Was falsch war:** `grenze()` nahm den „Felspunkt" mit `Math.round`
+genau auf der Naht zwischen zwei Feldmitten. Die Feldgrenze ist aber
+keine Linie zwischen zwei Mitten, sondern eine Voronoi-Entscheidung je
+Bildpunkt (`runtime/granit-feld.js` 186–189) — der abgetastete Punkt lag
+deshalb oft im **Boden**. Von den 94 gemeldeten Grenzen der damaligen
+Probekarte waren nur **46** wirklich Fels gegen Boden; **35** verglichen
+Boden gegen Boden. Das ist der schlimmste Fehler, den ein Messgerät
+haben kann: Es sah nicht kaputt aus, es lieferte plausible Zahlen.
+
+**Was daraus folgte:** Die Schwelle „95 % dunkler" war mit jenem
+Werkzeug **nicht erreichbar**. Selbst pechschwarzer Fels (Faktor 0,05)
+kam nur auf 85,1 %; die Decke lag bei rund 86 %. Eine Abnahme, die
+niemand erfüllen kann, hätte jede spätere Arbeit an dieser Stelle
+entweder scheitern lassen oder zum Schummeln gezwungen.
+
+**Was jetzt anders ist:**
+
+- **Besitz statt Rundung.** Beim Einsammeln wird mitgeschrieben, welches
+  Feld jeden Bildpunkt gemalt hat. Von der Naht aus wird nach beiden
+  Seiten gelaufen, bis ein Punkt auftaucht, der wirklich dem Fels- bzw.
+  dem Bodenfeld gehört. Wer sich nicht findet, wird **gezählt und
+  gemeldet** — eine stille Auslassung wäre dieselbe Lüge.
+- **Selbstprobe vor jeder Messung.** Dasselbe Idealbild durch dieselbe
+  Abtastung. Meldet sie nicht 100 %, bricht das Werkzeug mit Rückgabe 1
+  ab, statt eine Zahl zu drucken.
+- **Eine dritte Zahl: die Körper-Luft.** Fels P90 gegen Boden P10, über
+  ganze Felder statt über die Naht. Sie ist der Wächter gegen das
+  Schönrechnen: Rund sechs gefärbte Bildpunkte je Grenzfeld (von 222)
+  treiben Vorzeichen und Verhältnis beliebig hoch, bei völlig
+  unverändertem Felskörper — die Körper-Luft bewegen sie nicht.
+- **Eine ehrlichere Probekarte.** Bisher hatte sie einen sechs Felder
+  dicken Rand und ließ den Fels dadurch zehnmal dunkler erscheinen
+  (Feldmittel 18,2 gegen 57,8) als eine echte Höhlenwand (54,4 gegen
+  57,7). Gemessen wird jetzt zuerst der **harte** Fall: Wände ein Feld
+  dick, wie in einem Gang.
+- **Körnung in beide Richtungen.** Bisher zählten nur waagerechte
+  Punktpaare — das machte das Rauschen einer Richtung zum Maßstab für
+  alle.
+
+**Rotprobe (Regel 10):** Die alte Abtastung wurde wieder eingebaut und
+das Werkzeug gestartet. Es meldete wörtlich: *„Die Selbstprobe ist rot —
+das Werkzeug tastet daneben: · Fels dunkler nur in 38,4 % statt 100 %.
+Es wird nichts gemessen. Erst das Abtasten berichtigen."*, Rückgabe 1.
+Danach zurückgenommen.
+
+**Die berichtigte Wahrheit, gemessen** (`node
+werkzeuge/miss-wandkontrast.mjs`, Saat 4711). Selbstprobe grün: 100,0 %
+über 302 Grenzen, 0 ausgelassen.
+
+| | flach, 1 Feld dick | flach, breiter Rand | heute, alle Grenzen |
+| --- | --- | --- | --- |
+| Fels dunkler | **22,2 %** | 22,3 % | 25,8 % |
+| Sprung Boden→Fels | **+8,79** | +11,12 | +14,08 |
+| Körnung im Boden | 5,95 | 5,23 | 9,32 |
+| Sprung durch Körnung | 1,48 | 2,12 | 1,51 |
+| Körper-Luft | **−10,67** | +0,59 | **−27,49** |
+
+**Und die Wahrheit ist schlimmer als die alte Zahl.** „51,1 %, also ein
+Münzwurf" klang nach Unentschieden. Tatsächlich ist der Fels in
+**77,8 %** der Grenzen **heller** als der Boden, und über ganze Felder
+liegt er um 10,67 darüber. Das Verhältnis von 1,48 sah bisher fast
+erfüllt aus — es nimmt aber den Betrag und ist damit richtungsblind: Es
+war die ganze Zeit ein Sprung nach **oben**. Ein Spieler sieht dort
+keinen schwachen Rand, sondern eine beleuchtete Kante mit einem
+Schattenstreifen davor.
+
+**Regel 2, ausdrücklich benannt:** Dieser Zweig ist ein `werk/…` und
+ändert trotzdem `docs/ROADMAP.md`. Der Grund: Die Abnahme von #24 zitiert
+Zahlen, die dieses Werkzeug geliefert hat und die nachweislich falsch
+waren. Werkzeug und Abnahme werden nur zusammen wieder wahr; die alte
+Abnahme stehen zu lassen hieße, einen widerlegten Beweis weiterzureichen.
+
+**Was ausdrücklich nicht geändert wurde:** kein Bild. `runtime/` und
+`spiel/` sind unberührt. Dieser Eintrag verschiebt keine Wand — er
+sorgt dafür, dass man nachher sieht, ob sie sich bewegt hat.
+
 ## 08.09.2026 — Integration der Projektstruktur mit dem GitHub-Stand
 
 Jannik hat die Übernahme nach `main` und das Hochladen ausdrücklich mit
