@@ -3,6 +3,138 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Die erste Anwendung der Freigabe fand eine Prüfung, die nichts mehr prüfte
+
+**Warum es diese Prüfung gab:** Die Dauerfreigabe (Eintrag darunter)
+verlangt ein Urteil statt einer Rückfrage. Ein Urteil über die eigene
+Arbeit ist der schwächste Teil daran. Deshalb ist der Stand vor dem
+ersten Merge unter der Freigabe von **fünf unabhängigen Prüfern**
+angesehen worden — Spielkern, Prüfwesen, Geheimnisse, Zahlen und Doku,
+Bildcode —, jeder Fund danach von **drei** Gegenprüfern angegriffen
+(Beleg, Regel, Folge; Mehrheit entscheidet). Gemeldet wurden **15**
+Funde, einer davon am Code, die übrigen an Nachweisen und Dokumenten.
+
+**Was die Prüfer bestätigt haben, statt es zu glauben:** `spiel/` und
+`netz/` ohne Diff; `karte.summe()` und die Rundensummen auf einer
+eigenen Kopie des alten Standes nachgerechnet; ein eigener
+Wörterbuchangriff mit **9.027** Kandidaten aus den neu hinzugekommenen
+Zeilen gegen den Fingerabdruck des Torwächters, ohne Treffer.
+
+**Der Fund, der den Aufwand rechtfertigt:** Beim Umbau auf `FEIN` hatte
+ich den einen Browserpfad-Block in `tests/pruefe-granit-feld.mjs` von
+Vergrößerung 3 auf 2 gestellt. Stufe 2 ist ein Vielfaches von `FEIN`,
+also lief nur noch der **feine** Blattweg durch die Prüfung. Der
+**grobe** Weg — der bei jeder ungeraden Stufe zeichnet, und Stufe 1 ist
+die selbstgewählte bei 640 × 360 — hatte damit **null** Behauptungen.
+
+Der Prüfer hat das nicht vermutet, sondern gemessen: Ein Zähler hinter
+der Verzweigung meldet über alle 54 schnellen Prüfungen
+`{ja: 0, nein: 2}` — der grobe Zweig wird kein einziges Mal betreten.
+Und die Gegenprobe: `schritt = grob ? feld.fein : 1` zu `schritt = 1`
+verfälscht (das grobe Blatt zeigt dann nur das linke obere Viertel), und
+die **ganze Kette blieb grün**. Lehrbuchfall von Fehlerbuch G1.
+
+**Was jetzt da ist:** Der Block läuft zweimal, auf Stufe 2 und auf
+Stufe 3, und prüft je Stufe das Blattmaß, die Alphamaske gegen den
+richtigen Abtastpunkt und das `drawImage`-Maß. Dieselbe Verfälschung
+schlägt jetzt an — nachgestellt am 12.09.2026, sechs gefallene
+Behauptungen, darunter *„grob (Stufe 3): kein Nachbarpixel wird im
+Browser übermalt: ist 112, soll 222"*. Danach zurückgenommen; die
+Prüfung zählt **71.383** Behauptungen (vorher 71.052).
+
+**Die Nachweise, die fehlten:**
+
+- **Die Prüfzahl `b3bb09f0` hatte keinen Befehl.** Sie belegt, dass die
+  Welt unberührt blieb, stand aber nur im Changelog; das Skript lag
+  außerhalb des Projekts. `grep -rn "b3bb09f0"` fand genau eine Stelle.
+  Jetzt gibt es `werkzeuge/miss-kernabdruck.mjs` — Karten über 20 Saaten
+  und `zustandsSumme()` nach jeder von 40 Runden, gespielt über die
+  Sitzung. Es gibt auf beiden Ständen `b3bb09f0` aus.
+- **Vier Bildzahlen hatten ebenfalls keinen Befehl** (Farben je Feld,
+  Helligkeitsschritt, Helligkeit je Felstiefe). Jetzt gibt es
+  `werkzeuge/miss-felddetail.mjs`. Seine Tiefenzahlen weichen leicht von
+  denen des W2-Eintrags ab, weil jenes Wegwerfskript einen kleineren
+  Ausschnitt nahm; die Tabelle im W9-Eintrag ist auf die Werkzeugzahlen
+  umgestellt.
+- **Eine Kopfnotiz sagte mehr, als gemessen war.** In
+  `runtime/granit-feld.js` stand, der grobe Weg zeichne „wie bis zum
+  12.09.2026". Er tastet aber bei `x0 + k + 0,25` statt bei
+  `x0 + k + 0,5` ab — ähnlich, nicht gleich, und der Unterschied ist mit
+  4.680.806 gegen 4.918.850 Rechtecken messbar. Die Kopfnotiz sagt das
+  jetzt so.
+
+- **Die Kostenzahlen hatten keinen Befehl** (1.402 ms gegen 3.846 ms).
+  Jetzt gibt es `werkzeuge/miss-feldbauzeit.mjs`; die Tabelle im
+  W9-Eintrag steht auf seinen Zahlen, abwechselnd zwischen beiden
+  Ständen gemessen.
+
+**Sechs Stellen, die noch das Alte sagten:**
+
+- Der Freigabe-Eintrag sprach von „drei Commits"; es sind vier,
+  `dcc9812` fehlte in der Abrechnung.
+- `README.md` — die erste Seite, die jemand sieht — trug weiter *„exakt
+  von oben"*, und `docs/GRANIT-RASTER.md` nannte die *„exakt senkrechte
+  Draufsicht"* als verbindlich. Beides nimmt Entscheidung E6 zurück.
+- `docs/UEBERGABE.md` nannte in meinem eigenen Berichtigungskasten
+  99,7 % — richtig für den Stand von gestern, aber der feinere
+  Bildmaßstab drückt die Zahl auf **96,7 %** (Schranke 95). Die Aussage
+  „ein Ton genügt, es braucht keine Kontur" bleibt.
+- `docs/UEBERGABE.md` sagte außerdem weiter, **jeder** Merge brauche ein
+  einzelnes Ja — in demselben Stand, der die Dauerfreigabe einführt.
+- `AGENTS.md` zählte **drei** der vier Ausnahmen auf; „Nachrichten nach
+  außen" fehlte, obwohl der Changelog-Eintrag darunter vier behauptet.
+- `WORKCLAIM.md` beanspruchte vier Dateien, geändert wurden elf. Das ist
+  keine Formalie: Bedingung 6 der Freigabe stützt sich auf diese Zeile.
+
+**Und eine Frage an die Freigabe selbst, die ein Prüfer gestellt hat:**
+Janniks Satz nennt nur *„auf main"* — der Push zu GitHub ist ein
+zweiter Schritt, den er nicht ausspricht. Er antwortet aber auf eine
+Frage, die beide benannt hat (*„dann führe ich zusammen und lade
+hoch"*). Das steht jetzt als Begründung in `docs/REGELN.md` 3, statt
+stillschweigend mitgemeint zu sein.
+
+**Was das über die Freigabe sagt:** Ihre sieben Bedingungen haben
+gehalten — Bedingung 4 (keine Prüfung abschalten) hätte ich ohne diese
+Gegenprüfung guten Gewissens als erfüllt gemeldet, und sie war es nicht.
+Die Freigabe bleibt, wie sie ist; was sich ändert, ist die Gewohnheit,
+vor dem ersten Merge einer größeren Arbeit fremd gegenlesen zu lassen.
+
+## 12.09.2026 — Dauerfreigabe für `main`, an sieben Bedingungen gebunden
+
+**Janniks Wortlaut:** *„trag dir ein. das alles auf main kann wenn du der
+meinung bist das es sicher ist."* Vorausgegangen war seine Frage, ob es
+mehr Sinn ergibt, mehrere Zweige zu sammeln und gemeinsam nach `main` zu
+bringen.
+
+**Warum das eine Regeländerung ist und kein Vermerk:** Regel 3 verlangte
+bisher ein Ja je Änderung. Das war nicht Bürokratie, sondern die Antwort
+auf einen konkreten Vorfall (siehe `WORKCLAIM.md`, 02.09.2026). Eine
+Dauerfreigabe ersetzt diese Sicherung nur dann gefahrlos, wenn an ihre
+Stelle etwas Nachprüfbares tritt — sonst heißt *„wenn du der Meinung
+bist, dass es sicher ist"* am Ende „wenn es gerade passt".
+
+**Was jetzt da ist:** `docs/REGELN.md` 3 trägt die Freigabe mit **sieben
+Bedingungen, die alle zutreffen müssen** — Kette grün auf genau dem
+gemergten Stand; jede Zahl gemessen; ein Umbau ohne Bildänderung
+bewiesen; keine gesenkte Schwelle und keine entfernte Behauptung; `main`
+wird nicht schlechter; kein fremder Workclaim; kein Geheimnis im Baum.
+Dazu vier ausdrückliche Ausnahmen, die weiterhin ein eigenes Ja
+brauchen: veröffentlichen, Zweige löschen, Geschichte umschreiben,
+Nachrichten nach außen. `AGENTS.md` verweist darauf, damit auch ein
+fremder Agent die Freigabe nicht breiter liest, als sie ist.
+
+**Die Messung zu diesem Eintrag:** Der erste Stand, der unter der
+Freigabe nach `main` geht, ist der von heute — **vier** Commits
+(`git rev-list --count 8bc45a2..HEAD`), 55 von 55 Prüfungen grün.
+Bedingung 5 ist an jedem einzeln geprüft: `dcc9812` schreibt eine
+Entscheidung auf und ändert keinen Quelltext; `06197a7` ist byteweise
+bildgleich (vier von vier Prüfzahlen); `b8726b6` macht das Bild feiner
+(74,8 statt 42,7 Farben je Bodenfeld); `b498844` nimmt zwei falsche
+Zahlen zurück. Keiner der vier hinterlässt einen Zwischenzustand.
+
+**Was nicht geändert wurde:** kein Quelltext. Die Freigabe gilt, bis
+Jannik sie zurücknimmt.
+
 ## 12.09.2026 — Doku: zurückgenommene Zahlen berichtigt, Fehlerbuch G3, zwei Wegweiser
 
 **Warum:** `docs/UEBERGABE.md` ist das Dokument, mit dem ein fremder
@@ -96,15 +228,19 @@ anderes Spiel und ein anderes Netzprotokoll, nicht ein feineres Bild.
   Spieler, über die Sitzung wie in `tests/pruefe-app.mjs`: 20 von 20
   Saaten Zeile für Zeile gleich, Prüfzahl über alle Rundensummen
   `b3bb09f0` vorher wie nachher (15 Läufe erreichen die 40 Runden, fünf
-  enden früher — auf beiden Ständen an derselben Stelle).
+  enden früher — auf beiden Ständen an derselben Stelle). Der Befehl
+  dazu ist `node werkzeuge/miss-kernabdruck.mjs`; er kommt mit diesem
+  Eintrag ins Repository, damit die Zahl nachrechenbar ist und nicht
+  bloß behauptet (Regel 11).
 
-**Und was man davon sieht** — gemessen über 444 Bodenfelder der Karte
-(Saat 4711):
+**Und was man davon sieht** — `node werkzeuge/miss-felddetail.mjs`,
+444 Bodenfelder der Karte (Saat 4711, vier Felder Rand ausgelassen):
 
 | | 16 | 32 |
 | --- | --- | --- |
 | verschiedene Farben je Bodenfeld | 42,7 | **74,8** |
 | Helligkeitsschritt zum Nachbarpunkt | 9,99 | **7,10** |
+| derselbe Schritt über einen Weltpunkt | 9,99 | **13,44** |
 
 Ein Feld trägt also 75 % mehr Farbstufen, und der Schritt von einem
 gezeichneten Punkt zum nächsten ist **kleiner** — die Körnung wird
@@ -124,18 +260,27 @@ und die Naht in feinen Punkten sucht:
 | Sprung durch Körnung | 3,43 | **2,76** | ≥ 1,5 |
 | Körper-Luft | +28,80 | **+29,00** | > 0 |
 
-| Helligkeit je Felstiefe | 16 (vorher) | 32 (nachher) |
-| --- | --- | --- |
-| 1 | 23,57 | **23,57** |
-| 2 | 15,26 | **15,25** |
-| 3 | 10,75 | **10,75** |
-| 4+ | 7,78 | **7,76** |
+Die Felstiefe aus W2 ebenfalls mit
+`node werkzeuge/miss-felddetail.mjs`, über **alle** Felsfelder der Karte:
+
+| Helligkeit je Felstiefe | Felder | 16 (vorher) | 32 (nachher) |
+| --- | --- | --- | --- |
+| 1 | 236 | 22,96 | **22,95** |
+| 2 | 202 | 14,86 | **14,86** |
+| 3 | 182 | 10,56 | **10,56** |
+| 4+ | 1.056 | 7,41 | **7,40** |
+
+Streng monoton fallend, 0 Felsfelder ohne Tiefe, auf beiden Ständen.
+*Warum diese Zahlen neben denen des W2-Eintrags anders aussehen:* Jene
+kamen aus einem Wegwerfskript, das einen kleineren Feldausschnitt nahm
+(207 statt 236 Felder bei Tiefe 1). Gemessen wurde dort dasselbe, nur
+über weniger Felder. Seit diesem Eintrag steht das Werkzeug im
+Repository, und seine Zahlen sind die, die künftig gelten.
 
 Der Körper des Felsens ist derselbe (P90 gegen P10 über ganze Felder),
 der Sprung an der Naht ist kleiner. Geändert hat sich dort die
 Abtastung — die Messlatte sucht die Naht jetzt in feinen Punkten, also
-dichter an der Kante —, nicht der Fels. Alle vier Schranken halten, die
-Tiefe fällt weiter streng monoton.
+dichter an der Kante —, nicht der Fels. Alle vier Schranken halten.
 
 **Was der Zoom jetzt tut** (`vergroesserungFuer`, Karte 56 × 40):
 
@@ -154,14 +299,21 @@ die Kamera Stufe 2 mit dem feinen Puffer und zeigt fast die ganze Karte
 Stufe 1 (640 × 360) sieht das Bild aus wie bisher: ein Punkt je
 Weltpunkt.
 
-**Was es kostet:** Der Bau aller 2.240 Feldpuffer der Standardkarte
-(Saat 4711), Median aus vier Läufen, zweimal abwechselnd gemessen
-(Fehlerbuch C9): **1.402 / 1.356 ms → 3.846 / 3.910 ms**, das
-2,8-Fache. Viermal so viele Abtastpunkte des Materialrauschens kosten
-viermal so viel Rauschen; ein erster Stand, der auch Wandabstand und
-Feldzugehörigkeit je Abtastpunkt rechnete, lag beim 3,3-Fachen. Das
-trifft den ersten Blick auf ein neues Feld, nicht jedes Bild: Der
-Puffer wird je Feld einmal gebaut und wiederverwendet.
+**Was es kostet** — `node werkzeuge/miss-feldbauzeit.mjs`, der Bau aller
+2.240 Feldpuffer der Standardkarte (Saat 4711), Median aus vier Läufen,
+abwechselnd zwischen beiden Ständen gemessen (Fehlerbuch C9):
+
+| | 16 | 32 |
+| --- | --- | --- |
+| erster Block | 1.443,6 ms | 4.020,2 ms |
+| zweiter Block | 1.436,3 ms | 4.178,8 ms |
+| je Feld | 644 µs | **1.795 µs** |
+
+Das **2,8-Fache**. Viermal so viele Abtastpunkte des Materialrauschens
+kosten viermal so viel Rauschen; ein erster Stand, der auch den
+Wandabstand je Abtastpunkt rechnete, lag beim 3,3-Fachen. Das trifft den
+ersten Blick auf ein neues Feld, nicht jedes Bild: Der Puffer wird je
+Feld einmal gebaut und wiederverwendet.
 
 Und der Rechteckweg zählt mehr Rechtecke, gemessen mit
 `node werkzeuge/miss-bildabdruck.mjs`: 640 × 360, Saat 3: 4.680.806 →

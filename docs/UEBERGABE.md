@@ -166,9 +166,13 @@ Ton. (Die Probe diente nur der Messung; sie ist nicht eingebaut.)
 > der schiefen Messlatte, und der Schluss daraus war falsch: Mit der
 > berichtigten Messung genügt ein **Ton** sehr wohl. Gebaut wurde genau
 > das — der Fels verliert von der Naht an Licht statt erst neunzehn
-> Bildpunkte tief —, und es steht bei 99,7 % statt der hier vermuteten
-> 80,9 %, ganz ohne neue Kontur. Der Weg dahin steht im Changelog vom
-> 12.09.2026 („Der Fels war heller als der Boden").
+> Bildpunkte tief —, und zwar ganz ohne neue Kontur. Gemessen am
+> 12.09.2026 mit `node werkzeuge/miss-wandkontrast.mjs`, Fall *„flach,
+> Wände ein Feld dick"*: **96,7 %** über der Schranke von 95, statt der
+> hier vermuteten 80,9 %. (Unmittelbar nach jener Arbeit waren es
+> 99,7 %; der feinere Bildmaßstab aus W9 tastet die Naht seither dichter
+> ab und drückt die Zahl auf 96,7 %. Beides steht im Changelog vom
+> 12.09.2026 — „Der Fels war heller als der Boden" und der W9-Eintrag.)
 
 ---
 
@@ -345,8 +349,12 @@ stolpern lässt:
 
 1. **Nie auf `main` schreiben.** Zweig anlegen, `WORKCLAIM.md` lesen und
    eintragen, dann erst schreiben.
-2. **Merge, Push, Veröffentlichung nur auf Janniks ausdrückliches Ja.**
-   Auch bei einer Kleinigkeit.
+2. **Merge nach `main`** läuft seit dem 12.09.2026 unter Janniks
+   Dauerfreigabe, gebunden an sieben nachprüfbare Bedingungen
+   ([REGELN.md](REGELN.md) 3) — im Zweifel wird gefragt.
+   **Veröffentlichen, Zweige löschen, Geschichte umschreiben und
+   Nachrichten nach außen** brauchen weiterhin sein ausdrückliches Ja,
+   auch bei einer Kleinigkeit.
 3. **Jede Zahl ist gemessen**, und der Befehl steht daneben. Eine Zahl
    aus einem einzigen Lauf ist keine Messung (Fehlerbuch C9).
 4. **Jede neue Prüfung wird zuerst absichtlich rot gemacht**, und im

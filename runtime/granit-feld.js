@@ -49,8 +49,15 @@ const NACHBAR_RINGE = 3;
    die ein Vielfaches von `FEIN` ist, kommt der feine Puffer aufs Blatt
    und jeder Abtastpunkt bekommt gleich viele Bildschirmpunkte. Bei
    einer ungeraden Stufe (1, 3, 5 …) wäre das nicht so — dann wird ein
-   grober Puffer gezeichnet, ein Abtastpunkt je Weltpunkt, wie bis zum
-   12.09.2026. Die Automatik wählt gerade Stufen (`runtime/kamera.js`). */
+   grober Puffer gezeichnet, ein Punkt je Weltpunkt. Das ist dem Bild
+   von vor dem 12.09.2026 **ähnlich, nicht gleich**: Genommen wird der
+   erste der FEIN Abtastpunkte, also die Weltkoordinate `x0 + k + 0,25`
+   statt der Weltpunktmitte `x0 + k + 0,5`. Gemessen mit
+   `node werkzeuge/miss-bildabdruck.mjs` (640 × 360, Saat 3 — dort wählt
+   die Kamera Stufe 1, also genau diesen Weg): 4.680.806 Rechtecke
+   vorher gegen 4.918.850 nachher. Beide Wege prüft
+   `tests/pruefe-granit-feld.mjs`, jeder auf seiner Zoomstufe.
+   Die Automatik wählt gerade Stufen (`runtime/kamera.js`). */
 export const FEIN = 2;
 const NASS = [null, [23, 46, 58], [63, 17, 20], [24, 53, 31],
   [101, 31, 11], [15, 16, 23]];
@@ -283,13 +290,19 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     const pb = breite + 2, ph = hoehe + 2;
     const proben = new Array(pb * ph);
     const abstaende = new Float32Array(pb * ph);
-    /* Wandabstand und Feldzugehörigkeit je **Welt**punkt, nicht je feinem
-       Abtastpunkt: Der Abstand ist ein Distanzfeld mit Steigung 1, der
+    /* Der **Wandabstand** wird je Weltpunkt gerechnet, nicht je feinem
+       Abtastpunkt: Er ist ein Distanzfeld mit Steigung 1, der
        Unterschied zweier Abtastpunkte desselben Weltpunkts liegt unter
-       einem halben Weltpunkt — unsichtbar. Nur das Materialrauschen wird
-       fein abgetastet, denn genau das ist die Detailtiefe. Gemessen am
-       12.09.2026: Ohne diese Teilung kostete FEIN 2 das 3,3-Fache, das
-       Rauschen allein macht davon die Hälfte aus. */
+       einem halben Weltpunkt — unsichtbar. Das Materialrauschen dagegen
+       wird fein abgetastet, denn genau das ist die Detailtiefe.
+       Gemessen am 12.09.2026: Ohne diese Teilung kostete FEIN 2 das
+       3,3-Fache, das Rauschen allein macht davon die Hälfte aus.
+
+       Die **Feldzugehörigkeit** bleibt bewusst je Abtastpunkt
+       (`weltNachFeld` in der Malschleife unten). Sie entscheidet, welcher
+       Punkt zum Feld gehört — je Weltpunkt gerechnet, bekäme die
+       Hexkante wieder die grobe Treppe von vorher, und der feinere
+       Puffer wäre an seiner sichtbarsten Stelle wirkungslos. */
     const wb = grenzen.breite + 2, wh = grenzen.hoehe + 2;
     const weltD = new Float32Array(wb * wh);
     for (let wy = -1; wy <= grenzen.hoehe; wy++) for (let wx = -1; wx <= grenzen.breite; wx++) {

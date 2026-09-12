@@ -53,16 +53,23 @@ Einzelprüfung beispielsweise: `node tests/pruefe-kamera-zoom.mjs`.
 Ein roter Rückgabewert muss untersucht werden; keine Schwelle zum Beruhigen
 der Kette senken. Fehlerfälle für neue Wächter zuerst nachweisen.
 
-## Zwei Messlatten neben der Kette
+## Die Messlatten neben der Kette
 
 Sie prüfen nichts und werden von Hand gerufen — die Kette bleibt ohne sie
-grün. Beide schreiben ihre Ausgabe nach `stdout`; abgelegt gehört sie
+grün. Alle schreiben ihre Ausgabe nach `stdout`; abgelegt gehört sie
 außerhalb des Projekts (Fehlerbuch C2).
 
 | Frage | Befehl |
 | --- | --- |
 | Hebt sich eine Wand im Bild vom Boden ab? | `node werkzeuge/miss-wandkontrast.mjs` |
-| Hat ein Umbau das Bild verändert? | `node werkzeuge/miss-bildabdruck.mjs` — Prüfzahl über jeden Zeichenaufruf; vorher und nachher laufen lassen und die beiden Ausgaben vergleichen (Regel 12) |
+| Wie viel Zeichnung trägt ein Feld, und wird der Fels nach innen dunkler? | `node werkzeuge/miss-felddetail.mjs [saat]` |
+| Was kostet der Bau der Feldbilder einer ganzen Karte? | `node werkzeuge/miss-feldbauzeit.mjs [saat]` |
+| Hat ein Umbau das **Bild** verändert? | `node werkzeuge/miss-bildabdruck.mjs` — Prüfzahl über jeden Zeichenaufruf |
+| Hat ein Umbau das **Spiel** verändert? | `node werkzeuge/miss-kernabdruck.mjs` — Prüfzahl über Karten und Rundensummen |
+
+Die beiden Abdruck-Werkzeuge sind für Regel 12 gedacht: vorher laufen
+lassen, umbauen, nachher laufen lassen, die beiden Ausgaben vergleichen.
+Gleiche Ausgabe heißt, der Umbau hat nichts verändert — byteweise.
 
 ## Prüfkette und Dateipfade
 

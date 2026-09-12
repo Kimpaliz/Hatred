@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | W9 (Feld 32 im Bild), der Umbau des Farbwort-Speichers und die Doku-Berichtigung liegen fertig auf ihren Zweigen; niemand schreibt. | 12.09.2026 |
+| frei | frei | Der Stand vom 12.09.2026 ist nach `main` geführt; niemand schreibt. | 12.09.2026 |
 
 ## Format
 

@@ -40,11 +40,65 @@ statt „was". Wer beides braucht, nimmt `WORKCLAIM.md` für das Wer.
 
 Merge, Push und Veröffentlichung nur auf das ausdrückliche Ja des
 Auftraggebers. Kein „ich habe es schon mal nach main gebracht, war ja
-klein".
+klein". Für `main` gilt seit dem 12.09.2026 die Dauerfreigabe weiter
+unten in diesem Abschnitt; für alles andere bleibt es bei diesem Satz.
 
 Eine bereits erteilte Autorisierung gilt für den vereinbarten Umfang weiter.
 Lokale Änderungen erst vollständig bauen und prüfen; nicht vor jeder
 reversiblen Teiländerung dieselbe Frage wiederholen.
+
+### Die Dauerfreigabe für `main` vom 12.09.2026
+
+Janniks Wortlaut: *„trag dir ein. das alles auf main kann wenn du der
+meinung bist das es sicher ist."*
+
+**Warum das auch den Push deckt.** Der Satz nennt nur *„auf main"*, und
+das Hochladen zu GitHub ist ein zweiter Schritt. Er antwortet aber auf
+eine Frage, die beide benannt hat — im selben Gespräch stand:
+*„Sag „ja main", dann führe ich zusammen und **lade hoch**."* Sein
+„das alles" bezieht sich darauf. Wer es enger liest, fragt nach; wer es
+weiter liest als hier, überschreitet die Freigabe.
+
+Damit ist **Merge nach `main` und Push von `main`** dauerhaft
+autorisiert — nicht mehr Änderung für Änderung. Die Freigabe hängt an
+einer Bedingung, und die Bedingung ist keine Stimmung, sondern diese
+Liste. **Alle sieben Punkte müssen zutreffen:**
+
+1. `node werkzeuge/pruefe-alles.mjs` ist grün, und zwar auf **genau dem
+   Stand, der gemergt wird** — nicht auf einem früheren.
+2. Jede Zahl im Changelog-Eintrag ist gemessen, mit dem Befehl daneben
+   (Regel 11).
+3. Ein Umbau ohne beabsichtigte Bildänderung ist bewiesen
+   (`werkzeuge/miss-bildabdruck.mjs`), eine Änderung in `runtime/` gegen
+   die Prüfsummen aus `spiel/` abgegrenzt (Regel 12).
+4. Keine Prüfschwelle wurde gesenkt, keine Prüfung abgeschaltet und keine
+   Behauptung entfernt, um grün zu werden.
+5. `main` wird dadurch **nicht schlechter**: kein Zwischenzustand, den
+   Jannik nicht bedienen kann. Der Beispielfall aus dem Gespräch vom
+   12.09.2026: eine flache Karte ohne sichtbare Wände wäre so ein
+   Zustand — sie wartet, bis sie zusammen mit ihrem Gegenstück kommt.
+6. `WORKCLAIM.md` trägt keinen fremden Anspruch auf die berührten
+   Bereiche.
+7. Kein Zugangswort, kein Messprotokoll und keine Wegwerfdatei liegen im
+   Baum (`werkzeuge/pruefe-geheimnisse.mjs` läuft in der Kette mit).
+
+**Im Zweifel wird gefragt, nicht gemergt.** Genau dafür steht *„wenn du
+der meinung bist"* — die Freigabe nimmt die Rückfrage bei klaren Fällen
+weg, nicht das Urteil.
+
+**Was die Freigabe ausdrücklich NICHT deckt** und weiterhin ein eigenes
+Ja braucht:
+
+- **Veröffentlichen.** Der Zweig `gh-pages` und alles, was Jannik seinen
+  Freunden schickt. `main` ist der Arbeitsstand, nicht die Auslieferung.
+- **Zweige löschen**, auch offensichtlich tote.
+- **Geschichte umschreiben** auf `main`: kein `--force`, kein `reset`,
+  kein `rebase` eines Standes, der schon oben liegt.
+- **Nachrichten nach außen**, die über einen Vorgangskommentar zum
+  eigenen Stand hinausgehen.
+
+Die Freigabe gilt, bis Jannik sie zurücknimmt; ein Satz von ihm genügt
+dafür.
 
 ## 4. Alles steht im Changelog
 
