@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| `runtime/granit-feld.js`, `runtime/kamera.js`, `runtime/zeichnen.js`, `tests/pruefe-granit-feld.mjs`, `tests/pruefe-zeichnen.mjs`, `werkzeuge/miss-flanke.mjs` | Claude (Sitzung W10/W11) | W10 die Flanke (Zweig `bild/flanke`), danach W11 der Sockel (Zweig `bild/sockel`). | 12.09.2026 |
+| frei | frei | W10 und W11 sind gebaut und geprüft; niemand schreibt. | 12.09.2026 |
 
 ## Format
 
