@@ -3,6 +3,162 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — W11: Ein Sockel unter jeder Figur (Vorgang #36)
+
+**Warum:** Ein Taktikspiel muss jederzeit die Frage beantworten *wo
+steht wer?* Die Figuren sind heute 15 × 15 große Sprites auf einem
+Sechseck, das 16 breit und 18,5 hoch ist — welches Feld gemeint ist,
+sagt das Sprite nicht. Sobald Figuren über ihr Feld hinausragen (W12),
+sagt es das noch weniger.
+
+**Was gebaut wurde:** Eine flache Scheibe unter jeder sichtbaren Figur,
+in `runtime/zeichnen.js` als eigener Durchgang zwischen Boden und
+Figur: Boden → Flanke → **Sockel** → Figur → Licht. Flach und nicht
+rund, weil der Blick seit Entscheidung E6 leicht gekippt ist — ein
+Kreis auf dem Boden erscheint dann als Ellipse. Der Umriss sind die
+Punkte der gefüllten Ellipse mit mindestens einem Nachbarn außerhalb;
+so ist der Ring geschlossen, statt oben und unten aufzureißen, wie es
+ein „je Zeile links und rechts ein Punkt" täte.
+
+**Die Maße sind gerechnet, nicht gewählt.** Der erste Versuch war eine
+Scheibe 6 × 3, vier Weltpunkte unter der Feldmitte. Sie ragte an vier
+Stellen ins Nachbarfeld — **281** von 33.220 geprüften Bildschirmecken
+bei Vergrößerung 3, alle in den unteren Zeilen, wo das Sechseck spitz
+zuläuft. Danach sind alle Maße von 4 × 2 bis 7 × 3 mit jeder Tiefe von
+1 bis 5 durchgerechnet worden. Von denen, die **überall** passen, lässt
+`7 × 2` bei Tiefe `3` den breitesten Saum neben der Figur frei:
+
+| Scheibe | Randpunkte | sichtbarer Saum im Mittel | kleinster |
+| --- | --- | --- | --- |
+| 7 × 2, Tiefe 3 | 28 | **12,9** | 4 |
+| 7 × 3, Tiefe 2 | 28 | 10,9 | 5 |
+| 6 × 3, Tiefe 3 | 24 | 10,7 | 3 |
+| 6 × 2, Tiefe 3 | 24 | 9,5 | 2 |
+| 5 × 3, Tiefe 3 | 20 | 7,7 | 0 |
+
+**Abnahme erfüllt:** 100 % — keine einzige von 51.944 geprüften
+Bildschirmecken führt auf ein anderes Feld. Das sind 151 Figuren einer
+erzeugten Karte (Saat 4711, 24 × 20) mal 43 Sockelpunkte mal vier Ecken,
+bei Vergrößerung 1 und bei 3.
+Geprüft werden alle **vier** Ecken jedes gemalten Rechtecks, denn bei
+Vergrößerung 3 belegt ein Weltpunkt neun Bildschirmpunkte und
+`bildNachFeld` rechnet jeden einzeln um.
+
+**Nicht weggeschnitten.** Der Zeichner beschneidet die Scheibe *nicht*
+am Hexrand. Täte er es, wäre die Prüfung von selbst grün und prüfte
+nichts mehr — der Lehrbuchfall aus Fehlerbuch G1. Stattdessen tragen
+die drei Maße die Zusage, und die Prüfung rechnet sie nach.
+
+**Sichtbar bleibt er auch:** Über alle 16 Arten in allen 4
+Blickrichtungen bleiben zwischen **4** (blutvogt) und **18**
+(krätzling) von 28 Saumpunkten neben der Figur stehen; kein einziger
+Sockelpunkt liegt über einem Spritepunkt.
+
+**Fünfmal rot gemacht** (Regel 10), jede Verfälschung danach
+zurückgenommen: Scheibe auf 9 verbreitert → *„jede Sockelecke führt auf
+das Feld ihrer Figur: ist 1.892, soll 0"*; Tiefe 6 → *„ist 7.629, soll
+0"*; Sockel **nach** der Figur gezeichnet → *„kein Sockelpunkt liegt
+über der Figur: ist 28, soll 0"*; Sichtprüfung entfernt → *„Ein
+ungesehenes Wesen bekommt keinen Sockel: ist 1, soll 0"*; Sockel ganz
+aus dem Bildlauf genommen → *„der Saum des Sockels bleibt neben der
+Figur sichtbar (0)"*. `tests/pruefe-zeichnen.mjs` zählt **229**
+Behauptungen (vorher 88).
+
+## 12.09.2026 — W10: Etagen und Fels zeigen ihre Südseite (Vorgang #35)
+
+**Warum:** Janniks Entscheidung E6 lautet *„Der Blick ist leicht
+gekippt."* Damit hat alles Höhere eine **Seite**, und man sieht sie nach
+Süden. Bis hierher zeigte sich Höhe als **ein** Bildpunkt Saum an sechs
+Kanten — auf einem Feld von 32 Bildpunkten ist das nichts. Genau die
+Klage aus Janniks Wortlaut: *„Aktuell sind wände von böden und etagen
+auf denen man laufen kann unglaublich schlecht zu unterscheiden."*
+
+**Was gebaut wurde:** Eine neue Fläche (Rolle 6) in
+`runtime/granit-feld.js`, gemalt auf dem **niedrigeren** Feld, im
+Streifen unter der Kante. Das ist keine Wahl, sondern die einzige
+mögliche Stelle: Jeder Bildpunkt gehört genau einem Feld, und die
+Fläche unter einer Kante gehört dem unteren. Nur die beiden oberen
+Kanten (`dy < 0`) tragen sie — eine Wand östlich von mir zeigt mir ihre
+Südseite nicht. Gemessen wird senkrecht nach unten, nicht rechtwinklig
+zur Kante: Eine senkrechte Wandfläche wirft den Kantenzug im gekippten
+Blick gerade nach unten. Ein Loch bekommt keine Flanke — es ist selbst
+die Tiefe —, eine Treppe auch nicht: Dort geht man hinauf.
+
+**Messung** — `node werkzeuge/miss-flanke.mjs` (Saat 4711, 56 × 40):
+
+| | Abnahme | gemessen |
+| --- | --- | --- |
+| Kanten mit Flanke ≥ 5 Bildpunkten an allen 5 Stellen | 100 % | **100,0 %** von 314 |
+| mittlere Flankenhöhe | — | 7,46 Bildpunkte |
+| Treppenkanten mit Flanke | 0 % | **0,0 %** von 41 |
+| Sprung durch Körnung, dem Betrag nach | ≥ 1,5 | **1,82** |
+| hebt sich von der Oberseite ab | ≥ 95 % | **98,2 %** |
+| Farbfamilienabstand zum Boden darunter | ≥ 0,5 | **0,877** |
+
+**Was an der Abnahme geändert wurde, und warum:** Sie verlangte
+zuerst, die Flanke sei **dunkler** als die Oberseite darüber. Unter
+einer Etagenkante ist das richtig und erfüllt (Sprung durch Körnung
+**7,44**, dunkler an **100,0 %** von 190 Stellen). Unter massivem Fels
+ist es unerfüllbar, ohne das Bild kaputtzumachen: Die Felsoberseite ist
+selbst dunkel — gemessen **23** von 255 —, eine dunklere Flanke läge
+bei ~8 und damit auf der Helligkeit eines Abgrunds (gemessen **8,94**).
+Der erste Versuch band die Flanke genau so an die Fläche darüber, und
+im Bild verschwand sie in der Wand: Sprung durch Körnung **7,19** unter
+einer Etagenkante, aber **−0,56** unter Fels. Die Wand verlor dabei
+das, was man sehen will — ihren **Körper**. Gewählt ist deshalb eine
+feste warme Erdfläche in vier Stufen: unter Fels **heller** als die
+Oberseite (−3,09, n=1380), unter einer Etage dunkler. Der Betrag ist
+beide Male groß; nur das Vorzeichen dreht sich, und es dreht sich aus
+einem Grund. Die Abnahme in `docs/ROADMAP.md` W10 heißt jetzt „hebt
+sich ab" und trägt diese Begründung; `werkzeuge/miss-flanke.mjs` zählt
+den Betrag und gibt die Richtung getrennt nach Etage und Fels aus.
+
+**W1 und W2 bleiben erfüllt** — `node werkzeuge/miss-wandkontrast.mjs`
+(Fall *flach, Wände ein Feld dick*) und
+`node werkzeuge/miss-felddetail.mjs`:
+
+| | Abnahme | vor W10 | mit W10 |
+| --- | --- | --- | --- |
+| W1 Vorzeichen | ≥ 95 % | 96,7 % | **96,7 %** von 302 |
+| W1 Sprung durch Körnung | ≥ 1,5, negativ | 2,76 | **5,62** (−26,91) |
+| W1 Körper-Luft | > 0 | 28,99 | **28,99** |
+| W2 Helligkeit je Felstiefe 1–4 | streng fallend | 23,35 / 15,31 / 11,25 / 8,12 | **unverändert**; 0 Felsfelder ohne Tiefe |
+
+W1 ist durch W10 nicht schlechter, sondern **besser** geworden, und das
+ist nachgerechnet und nicht gehofft: Der erste Bodenpunkt an einer
+Nordnaht war vorher 29,6 hell und ist jetzt als Flanke 52,2 — der
+Abstand zum dunklen Fels daneben wächst dadurch.
+
+**Prüfung:** `tests/pruefe-granit-feld.mjs` bekommt einen eigenen
+Abschnitt, der **je Bildspalte** prüft statt im Mittel: Wo Flanke steht,
+beginnt sie am obersten gemalten Punkt der Spalte, läuft ohne Lücke
+weiter, bleibt höchstens vier Weltpunkte hoch, wird nach unten dunkler
+(volle Spalten fallen um ≥ 15), bleibt heller als ein Abgrund und ist
+wärmer als der wärmste Granit daneben. Dazu: Loch und Treppe unter
+einer Kante tragen **keine** Flanke. Der Abschnitt „Alle sechs
+Höhenkanten" erwartet nach Südost und Südwest jetzt die Flanke und
+**keine** Schattenkontur mehr — zwei Zeichen für dieselbe Höhe an
+derselben Stelle wären eins zu viel.
+
+**Sechsmal rot gemacht** (Regel 10), jede Verfälschung danach
+zurückgenommen: Streifen 3 Punkte unter die Naht gesetzt → *„jede
+Flanke beginnt an der Naht, keine schwebt: ist 32, soll 0"*; Höhe 8 auf
+14 → *„keine Flanke höher als vier Weltpunkte"*; Farbrampe umgedreht →
+*„keine Flanke wird nach unten heller: ist 96, soll 0"*; graue statt
+warmer Rampe → *„die kälteste Flanke ist wärmer als der wärmste Granit
+daneben (0 gegen 15)"*; Loch- und Treppenausnahme entfernt → *„ein Loch
+unter der Kante trägt keine Flanke: ist 16, soll 0"*; jede zweite Tiefe
+ausgelassen → *„keine Flankenspalte hat ein Loch: ist 32, soll 0"*. Die
+Prüfung zählt **71.447** Behauptungen (vorher 71.383).
+
+**Zwei Kopfnotizen waren durch diese Arbeit falsch geworden** und sind
+mitkorrigiert: `runtime/granit-feld.js` sagte *„keine gezeichnete
+Südflanke"*, und `runtime/kamera.js` begründete den unverschobenen
+Anker mit *„Der Blick bleibt exakt senkrecht"*. Der Anker wird
+weiterhin nicht verschoben — aber aus einem anderen Grund: Ein Versatz
+machte `bildNachFeld` mehrdeutig, und welches Feld man trifft, ist
+Regel und nicht Bild.
+
 ## 12.09.2026 — Die erste Anwendung der Freigabe fand eine Prüfung, die nichts mehr prüfte
 
 **Warum es diese Prüfung gab:** Die Dauerfreigabe (Eintrag darunter)

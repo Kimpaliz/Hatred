@@ -5,15 +5,19 @@
    Die endgültige Hexkarte trägt die Regeln. Das Granitfeld baut daraus
    zusammenhängende Oberflächen mit Relief, Wanddistanz und Konturen.
    Der Bildlauf setzt gecachte Flächen, Wesen, Licht und Nebel zusammen.
-   Keine Wandvorderseiten, verschobenen Höhenflächen oder Kachelmuster:
-   Die Höhe verändert die Schattierung, niemals die Weltkoordinaten.
+   Seit W10 (Entscheidung E6, *„Der Blick ist leicht gekippt."*) zeigt
+   alles Höhere seine **Südseite** — gemalt auf dem niedrigeren Feld, im
+   Streifen unter der Kante, von `runtime/granit-feld.js`. Was weiterhin
+   **nicht** passiert: verschobene Höhenflächen und Kachelmuster. Die
+   Höhe verändert die Schattierung, niemals die Weltkoordinaten; sonst
+   stünde eine Figur im Bild auf einem anderen Feld als in der Regel.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    runtime/granit-feld.js baut das Terrain; spiel/raster.mjs liefert
    die gemeinsame Geometrie für Kamera, Eingabe, Licht und Erzeugung.
    Sprites, Partikel und Oberfläche bleiben eigenständige Bildschichten.
-   werkzeuge/pruefe-zeichnen.mjs prüft den vollständigen Zeichenweg. */
+   tests/pruefe-zeichnen.mjs prüft den vollständigen Zeichenweg. */
 
 import { FARBEN, FLUESSIG_FARBEN, ERINNERT_HELLE, abdunkeln } from "./palette.js";
 import { KACHEL } from "./licht.js";
@@ -31,6 +35,59 @@ export const QUELL_ANTEIL = 12;
 const BILD_TAKT = 0.18;
 export const DING_NAMEN = [null, null, "saeule", "fass", "kiste", "spiess",
   "altar", "gitter", "fackelsockel", "sarg", "truheZu", null];
+/* ── Der Sockel unter einer Figur (W11, Vorgang #36) ────────────────
+
+   Eine Figur ist 16 × 16 groß und steht auf einem Sechseck, das 16 breit
+   und 18,5 hoch ist. Wo genau ihr Fuß hingehört, sagt das Sprite nicht —
+   und sobald Figuren über ihr Feld hinausragen (W12), sagt es das noch
+   weniger. Der Sockel sagt es: eine flache Scheibe unter der Figur, die
+   **ganz** in ihrem Feld liegt.
+
+   Flach und nicht rund, weil der Blick seit Entscheidung E6 leicht
+   gekippt ist: Ein Kreis auf dem Boden erscheint dann als Ellipse.
+
+   Die drei Maße sind **nicht** nach Gefühl gewählt, sondern die größte
+   Scheibe, die überall hineinpasst. Ein Sechseck ist nur auf Höhe
+   seiner Mitte 8 Weltpunkte halbbreit; nach unten läuft es spitz zu,
+   und dort sitzt die Scheibe. Eine Scheibe 6 × 3, vier Punkte tief,
+   ragte deshalb an vier Stellen ins Nachbarfeld — gemessen am
+   12.09.2026 an 281 von 33.220 Bildschirmecken bei Vergrößerung 3.
+   Durchgerechnet wurden alle Maße von 4 × 2 bis 7 × 3 und jede Tiefe
+   von 1 bis 5; 7 × 2 bei Tiefe 3 ist darunter die Scheibe, die den
+   breitesten Saum neben der Figur frei lässt (im Mittel 12,9 von 28
+   Randpunkten gegen 10,7 bei 6 × 3).
+
+   Geprüft wird das nicht durch Wegschneiden: `tests/pruefe-zeichnen.mjs`
+   rechnet für jede Ecke jedes Punktes nach, dass `bildNachFeld` auf das
+   Feld der Figur führt. Würde der Zeichner die Scheibe am Hexrand
+   abschneiden, wäre die Prüfung von selbst grün und prüfte nichts mehr
+   (Fehlerbuch G1). */
+const SOCKEL_BREIT = 7;   /* halbe Breite in Weltpunkten                  */
+const SOCKEL_HOCH = 2;    /* halbe Höhe — flach, weil der Blick kippt     */
+const SOCKEL_TIEF = 3;    /* so weit unter der Feldmitte: am Fuß, nicht   */
+                          /* in der Bauchhöhe der Figur                   */
+
+/* Einmal gerechnet, für alle Figuren gleich: Der Umriss sind die
+   Punkte der gefüllten Ellipse, die mindestens einen Nachbarn außerhalb
+   haben. So ist der Ring geschlossen, ohne oben und unten aufzureißen —
+   was er täte, würde man je Zeile nur links und rechts einen Punkt
+   setzen. */
+function baueSockel() {
+  const drin = (dx, dy) =>
+    (dx / SOCKEL_BREIT) ** 2 + (dy / SOCKEL_HOCH) ** 2 <= 1;
+  const kern = [], ring = [];
+  for (let dy = -SOCKEL_HOCH; dy <= SOCKEL_HOCH; dy++) {
+    for (let dx = -SOCKEL_BREIT; dx <= SOCKEL_BREIT; dx++) {
+      if (!drin(dx, dy)) continue;
+      const rand = !drin(dx - 1, dy) || !drin(dx + 1, dy)
+        || !drin(dx, dy - 1) || !drin(dx, dy + 1);
+      (rand ? ring : kern).push({ dx, dy: dy + SOCKEL_TIEF });
+    }
+  }
+  return { kern, ring };
+}
+export const SOCKEL = baueSockel();
+
 const gedaempftSpeicher = new Map();
 function ton(hex, gedaempft) {
   if (!gedaempft) return hex;
@@ -223,12 +280,38 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     }
     return anzahl;
   }
+  /* Dieselbe Auswahl wie `zeichneWesen`: Wer nicht gezeichnet wird,
+     bekommt auch keinen Sockel — sonst verriete ein Ring im Dunkeln,
+     wo ein Gegner steht. */
+  function sichtbaresWesen(karte, w, sichtbar) {
+    if (!w || w.lebt === false) return false;
+    const fx = Math.round(w.x), fy = Math.round(w.y);
+    return karte.drin(fx, fy) && istDrin(sichtbar, karte.index(fx, fy));
+  }
+  function zeichneSockel(karte, wesenListe, sichtbar = null) {
+    if (!karte || !wesenListe) return 0;
+    let n = 0;
+    for (const w of wesenListe) {
+      if (!sichtbaresWesen(karte, w, sichtbar)) continue;
+      /* `SOCKEL_TIEF` steckt schon in den Punkten; hier nur die Mitte. */
+      const m = feldMitte(w.x, w.y);
+      const cx = Math.round(m.x), cy = Math.round(m.y);
+      for (const [punkte, farbe] of
+        [[SOCKEL.kern, FARBEN.sockelKern], [SOCKEL.ring, FARBEN.sockelRand]]) {
+        for (const p of punkte) {
+          const s = schirm(cx + p.dx, cy + p.dy);
+          kasten(s.x, s.y, 0, 0, 1, 1, farbe);
+        }
+      }
+      n++;
+    }
+    return n;
+  }
   function zeichneWesen(karte, wesenListe, sichtbar = null, farben = SPIELER_FARBEN) {
     if (!karte || !wesenListe) return 0;
     let n = 0;
     for (const w of wesenListe) {
-      if (!w || w.lebt === false || !karte.drin(Math.round(w.x), Math.round(w.y))) continue;
-      if (!istDrin(sichtbar, karte.index(Math.round(w.x), Math.round(w.y)))) continue;
+      if (!sichtbaresWesen(karte, w, sichtbar)) continue;
       const vorrat = w.seite === "brut" ? GEGNER_BILDER : HELDEN_BILDER;
       const sprite = vorrat[w.art] || GEGNER_BILDER[w.art] || HELDEN_BILDER[w.art];
       if (!sprite) continue;
@@ -305,6 +388,9 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     if (ansicht.folgt) kamera.folge(ansicht.folgt.x, ansicht.folgt.y, dt === 0, dt || 1 / 60);
     leere();
     zeichneWelt(karte, ansicht.sichtbar, ansicht.erinnert, zeit);
+    /* Boden → Flanke → Sockel → Figur → Licht: Der Sockel liegt auf dem
+       Boden und unter der Figur, nie über ihr. */
+    zeichneSockel(karte, zustand.wesen, ansicht.sichtbar);
     zeichneWesen(karte, zustand.wesen, ansicht.sichtbar, ansicht.spielerFarben);
     zeichneMerker(karte, ansicht.merker);
     stosseQuellenAus(karte, ansicht.sichtbar, zeit);
@@ -320,7 +406,8 @@ export function macheZeichner({ ctx, kamera, lichtwerk = null, partikelwerk = nu
     deckeUngesehenes(karte, ansicht.sichtbar, ansicht.erinnert);
     return rechtecke;
   }
-  return { KACHEL, setzeFenster, leere, zeichneWelt, zeichneWesen, zeichneMerker, bild,
+  return { KACHEL, setzeFenster, leere, zeichneWelt, zeichneSockel, zeichneWesen,
+    zeichneMerker, bild,
     stosseQuellenAus, kameraFenster, anzahlRechtecke: () => rechtecke,
     gelaendeStatistik: () => gelaende.statistik() };
 }

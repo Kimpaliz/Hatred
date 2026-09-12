@@ -65,20 +65,141 @@ abschnitt("Hexbesitz: kein Loch, kein doppelter Weltpixel");
 }
 
 abschnitt("Alle sechs Höhenkanten: oben hell, unten dunkel");
+
+/* ── Was sich am 12.09.2026 geändert hat (W10, Vorgang #35) ─────────
+   Liegt der tiefere Nachbar **unter** dem Hochfeld (Südost, Südwest),
+   zeigt sich die Höhe seit der Flanke nicht mehr als ein Bildpunkt
+   Schattenkontur, sondern als Südseite über mehrere Bildpunkte. Die
+   Rolle 4 ist dort weg, und das ist Absicht: Zwei Zeichen für dieselbe
+   Höhe an derselben Stelle wären eins zu viel.
+
+   Die anderen vier Richtungen behalten die Kontur. Sie ist dort das
+   Einzige, was die Höhe zeigt — im gekippten Blick sieht man die Seite
+   von etwas, das neben oder über einem steht, nun einmal nicht. */
 for (const y of [6, 7]) for (const r of richtungen(y)) {
   const k = neu(), g = renderer(), x = 7;
   k.setze(x, y, { ebene: 2 });
   const oben = g.feldDaten(k, x, y);
   const unten = g.feldDaten(k, x + r.dx, y + r.dy);
+  const suedlich = r.dy > 0;
   behaupte([...oben.rollen].filter((v) => v === 3).length >= 4,
     `${y}/${r.name}: das Hochfeld trägt eine sichtbare Oberkontur`);
-  behaupte([...unten.rollen].filter((v) => v === 4).length >= 4,
-    `${y}/${r.name}: das tiefere Nachbarfeld trägt eine Schattenkontur`);
+  if (suedlich) {
+    const flanke = [...unten.rollen].filter((v) => v === 6).length;
+    behaupte(flanke >= 30,
+      `${y}/${r.name}: das tiefere Nachbarfeld trägt eine Flanke (${flanke} Abtastpunkte)`);
+    gleich([...unten.rollen].filter((v) => v === 4).length, 0,
+      `${y}/${r.name}: und daneben keine zweite Höhenanzeige als Schattenkontur`);
+  } else {
+    behaupte([...unten.rollen].filter((v) => v === 4).length >= 4,
+      `${y}/${r.name}: das tiefere Nachbarfeld trägt eine Schattenkontur`);
+    gleich([...unten.rollen].filter((v) => v === 6).length, 0,
+      `${y}/${r.name}: und keine Flanke — von der Seite sieht man keine Südseite`);
+  }
   const lichtrand = farben(oben).filter((p) => hell(p) > 90);
   behaupte(lichtrand.length >= 4, `${y}/${r.name}: die gemalte Kontur ist wirklich hell`);
   k.setze(x, y, { ebene: 1 });
-  behaupte(!g.feldDaten(k, x, y).rollen.some((v) => v === 3 || v === 4),
+  const gleichHoch = g.feldDaten(k, x, y);
+  behaupte(!gleichHoch.rollen.some((v) => v === 3 || v === 4),
     `${y}/${r.name}: gleiche Höhe hat keine erfundene Kontur`);
+  gleich([...g.feldDaten(k, x + r.dx, y + r.dy).rollen].filter((v) => v === 6).length, 0,
+    `${y}/${r.name}: gleiche Höhe hat auch keine erfundene Flanke`);
+}
+
+abschnitt("Die Flanke hängt an der Naht, wird nach unten dunkler und ist Erde");
+
+/* ── Warum spaltenweise und nicht als Mittelwert (W10, Vorgang #35) ──
+   Ein Mittelwert über alle Flankenpunkte wäre auch dann noch schön,
+   wenn der Streifen zu tief im Feld säße, Löcher hätte oder unten
+   heller wäre als oben. Geprüft wird deshalb je Bildspalte: Wo Flanke
+   steht, beginnt sie am **obersten gemalten Punkt** der Spalte, läuft
+   ohne Lücke weiter, bleibt höchstens vier Weltpunkte hoch und wird
+   nach unten dunkler.
+
+   Die Toleranz 1,1 ist kein Spielraum für echte Umkehrungen, sondern
+   die Rasterung: Die Körnung schwankt um bis zu 0,36, und jeder Kanal
+   rastet auf Vielfache von 5 — ein einziger Rotschritt sind 5 · 0,2126
+   = 1,06 Helligkeit. Beides zusammen gemessen am 12.09.2026 als
+   größter Aufwärtssprung 1,06. Ein echter Rücksprung wäre ein
+   Farbschritt der Flanke, und die liegen 7,4 auseinander. */
+const warm = (p) => (p & 255) - ((p >>> 16) & 255);
+
+function flankenSpalten(bild) {
+  const spalten = [];
+  for (let px = 0; px < bild.bildBreite; px++) {
+    const reihe = [];
+    let erstes = -1;
+    for (let py = 0; py < bild.bildHoehe; py++) {
+      const i = py * bild.bildBreite + px;
+      if (bild.pixel[i] && erstes < 0) erstes = py;
+      if (bild.rollen[i] === 6) reihe.push(py);
+    }
+    if (reihe.length) spalten.push({ px, reihe, erstes });
+  }
+  return spalten;
+}
+
+for (const y of [6, 7]) for (const art of ["Etage", "Fels"]) {
+  const k = neu(), g = renderer(), x = 7;
+  const hoch = richtungen(y).filter((r) => r.dy < 0);
+  for (const r of hoch) {
+    k.setze(x + r.dx, y + r.dy,
+      art === "Fels" ? { hindernis: HINDERNIS.wand } : { ebene: 2 });
+  }
+  const bild = g.feldDaten(k, x, y), spalten = flankenSpalten(bild);
+  const maxHoch = 4 * bild.fein;
+  behaupte(spalten.length >= 30,
+    `${y}/${art}: beide oberen Kanten tragen Flanke (${spalten.length} Spalten)`);
+  let lueckig = 0, schwebend = 0, zuHoch = 0, aufwaerts = 0, falleZuKlein = 0;
+  let dunkelsteFlanke = 255, kaeltesteFlanke = 255;
+  for (const s of spalten) {
+    if (s.reihe[s.reihe.length - 1] - s.reihe[0] + 1 !== s.reihe.length) lueckig++;
+    if (s.reihe[0] !== s.erstes) schwebend++;
+    if (s.reihe.length > maxHoch) zuHoch++;
+    let vorher = 256;
+    for (const py of s.reihe) {
+      const p = bild.pixel[py * bild.bildBreite + s.px];
+      if (hell(p) > vorher + 1.1) aufwaerts++;
+      vorher = hell(p);
+      dunkelsteFlanke = Math.min(dunkelsteFlanke, hell(p));
+      kaeltesteFlanke = Math.min(kaeltesteFlanke, warm(p));
+    }
+    if (s.reihe.length < maxHoch) continue;
+    const obenH = hell(bild.pixel[s.reihe[0] * bild.bildBreite + s.px]);
+    if (obenH - vorher < 15) falleZuKlein++;
+  }
+  gleich(lueckig, 0, `${y}/${art}: keine Flankenspalte hat ein Loch`);
+  gleich(schwebend, 0, `${y}/${art}: jede Flanke beginnt an der Naht, keine schwebt`);
+  gleich(zuHoch, 0, `${y}/${art}: keine Flanke höher als vier Weltpunkte`);
+  gleich(aufwaerts, 0, `${y}/${art}: keine Flanke wird nach unten heller`);
+  gleich(falleZuKlein, 0,
+    `${y}/${art}: volle Flanken fallen von oben nach unten um mindestens 15`);
+  behaupte(dunkelsteFlanke > 20,
+    `${y}/${art}: die Flanke bleibt Wand und wird nicht so dunkel wie ein Abgrund`
+    + ` (dunkelster Punkt ${dunkelsteFlanke.toFixed(2)}, Abgrund 8,94)`);
+  let waermsterBoden = -255;
+  for (let i = 0; i < bild.pixel.length; i++) {
+    if (bild.rollen[i] === 0 && bild.pixel[i]) {
+      waermsterBoden = Math.max(waermsterBoden, warm(bild.pixel[i]));
+    }
+  }
+  behaupte(kaeltesteFlanke > waermsterBoden,
+    `${y}/${art}: die kälteste Flanke ist wärmer als der wärmste Granit daneben`
+    + ` (${kaeltesteFlanke} gegen ${waermsterBoden})`);
+}
+
+/* Ein Loch ist selbst die Tiefe, und eine Treppe geht hinauf: Beide
+   bekommen keine Südseite, auch wenn oben etwas Höheres steht. */
+for (const y of [6, 7]) for (const r of richtungen(y).filter((d) => d.dy < 0)) {
+  const loch = neu(), g = renderer(), x = 7;
+  loch.setze(x + r.dx, y + r.dy, { ebene: 2 });
+  loch.setze(x, y, { hindernis: HINDERNIS.abgrund });
+  gleich(flankenSpalten(g.feldDaten(loch, x, y)).length, 0,
+    `${y}/${r.name}: ein Loch unter der Kante trägt keine Flanke`);
+  const stufe = neu();
+  setzeRampe(stufe, x, y, r);
+  gleich(flankenSpalten(g.feldDaten(stufe, x, y)).length, 0,
+    `${y}/${r.name}: eine Treppe unter der Kante trägt keine Flanke`);
 }
 
 abschnitt("Treppen: durchgehende Pixel bis an sechs Feldränder");

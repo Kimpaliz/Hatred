@@ -508,12 +508,27 @@ Zustandssumme und Netz. Gebraucht wird ein eigener Bildmaßstab in
 Vorgang: #35
 **Abnahme:** Jede Kante, hinter der im Bild oben ein höheres Feld liegt,
 trägt eine Flanke von mindestens 5 Bildpunkten (Anteil **100 %**, an
-einer Treppe 0 %); die Flanke ist dunkler als die Oberseite darüber
-(Sprung durch Körnung ≥ 1,5 in 95 % der Kanten) und unterscheidet sich
-vom Boden darunter in der **Farbfamilie**, nicht nur in der Helligkeit.
-Die Abnahmen von W1 und W2 bleiben erfüllt.
+einer Treppe 0 %); die Flanke **hebt sich von der Oberseite darüber ab**
+— Sprung durch Körnung ≥ 1,5 dem Betrag nach, an ≥ 95 % der Stellen —
+und unterscheidet sich vom Boden darunter in der **Farbfamilie**, nicht
+nur in der Helligkeit (Abstand ≥ 0,5). Die Abnahmen von W1 und W2
+bleiben erfüllt. Nachgerechnet mit `node werkzeuge/miss-flanke.mjs`.
 
-*Warum das die große Arbeit ist:* Heute zeigen Rollen 3 und 4 in
+*Warum „abheben" und nicht „dunkler" (geändert am 12.09.2026):* Die
+erste Fassung dieser Abnahme verlangte, die Flanke sei **dunkler** als
+die Oberseite darüber. Das ist an einer Etagenkante richtig und dort
+auch erfüllt (gemessen: Sprung durch Körnung 7,44, dunkler an 100,0 %
+von 190 Stellen). Unter massivem Fels ist es unerfüllbar, ohne das Bild
+kaputtzumachen: Die Oberseite des Felsens ist selbst dunkel — gemessen
+23 von 255 —, eine Flanke darunter müsste bei ~8 liegen und wäre damit
+so dunkel wie ein Abgrund (gemessen 8,94). Genau das war der erste
+Versuch, und die Wand verlor dabei ihren Körper. Gewählt ist deshalb
+eine feste warme Erdfläche: unter Fels **heller** als die Oberseite
+(Sprung durch Körnung −3,09, n=1380), unter einer Etage dunkler. Der
+Betrag ist beide Male groß; nur das Vorzeichen dreht sich, und es dreht
+sich aus einem Grund, nicht aus Zufall.
+
+*Warum das die große Arbeit ist:* Vor W10 zeigten Rollen 3 und 4 in
 `runtime/granit-feld.js` die Höhe als einen Bildpunkt an sechs Kanten
 und nur an Brüchen ohne Fels. Die Flanke ist eine neue Schicht: auf dem
 niedrigeren Feld gemalt, im Streifen unter der Kante, dem Winkel der
@@ -526,6 +541,14 @@ Vorgang: #36
 Feldes, und von jedem Bildschirmpunkt des Rings führt `bildNachFeld`
 auf ihr Feld — 100 % über alle Figuren einer erzeugten Karte.
 Zeichenreihenfolge Boden → Flanke → Sockel → Figur → Licht.
+
+*Warum „von jedem Bildschirmpunkt" und nicht „von der Ecke"
+(nachgetragen am 12.09.2026):* Bei Vergrößerung 3 belegt ein Weltpunkt
+neun Bildschirmpunkte, und `bildNachFeld` rechnet jeden einzeln um.
+Eine Scheibe, die nur mit ihrer linken oberen Ecke im Feld liegt, führt
+beim Anklicken ihres rechten Randes auf den Nachbarn — genau der
+Fehler, den dieser Ring verhindern soll. Geprüft werden deshalb alle
+vier Ecken jedes gemalten Rechtecks.
 
 *Warum klein und trotzdem wichtig:* Es ändert keine Regel und kein
 Sprite und beantwortet die eine Frage, die ein Taktikspiel jederzeit

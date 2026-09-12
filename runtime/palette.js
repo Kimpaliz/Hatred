@@ -52,6 +52,15 @@ export const FARBEN = {
   konturHell: "#151221",
   leere: "#04040a",
 
+  /* ── Der Sockel unter einer Figur (W11) ───────────────────────────
+     Kein eigener Gegenstand, sondern die Antwort auf die Frage, die
+     ein Taktikspiel jederzeit beantworten muss: *wo steht wer?* Der
+     Kern ist ein weicher Schlagschatten, der Rand ein warmer Saum aus
+     derselben Erdfamilie wie die Flanke aus W10 — damit der Sockel zum
+     Boden gehört und nicht wie ein Zeichen darauf liegt. */
+  sockelKern: "#100d15",
+  sockelRand: "#5d4a33",
+
   /* ── Stein: der Kerker ────────────────────────────────────────────
      Vier Töne, die durch die Ebenenrampe weiter aufgehellt werden. */
   stein0: "#1b1926",
@@ -188,11 +197,18 @@ export const VORLAUF = {
   warn: "#efb879"
 };
 
-/* Wie hoch eine Stufe im Bild aufträgt. Rein zeichnerisch: Bei „exakt
-   von oben" gibt es keine Perspektive, also wird die Höhe durch einen
-   harten Schlagschatten **nach unten** und eine helle Oberkante
-   erzählt — nicht durch Versatz. Der Wert ist die Schattenhöhe in
-   Bildpunkten je Stufe. */
+/* Wie hoch eine Stufe im Bild aufträgt. Rein zeichnerisch: Die Höhe
+   wird erzählt, nicht als Versatz gerechnet — eine Figur steht im Bild
+   auf demselben Feld wie in der Regel. Der Wert ist die Schattenhöhe in
+   Bildpunkten je Stufe.
+
+   Die alte Begründung *„bei ‚exakt von oben‘ gibt es keine
+   Perspektive"* gilt seit Janniks Entscheidung E6 vom 12.09.2026 nicht
+   mehr: Der Blick ist leicht gekippt, und die Höhe zeigt sich seit W10
+   zusätzlich als gemalte Südflanke (`runtime/granit-feld.js`). Der
+   Schlagschatten nach unten und die helle Oberkante bleiben davon
+   unberührt — sie sind das Zeichen an den Kanten, die keine Südseite
+   zeigen. */
 export const STUFEN_SCHATTEN = 3;
 
 /* ── Farben je Schlüssel ────────────────────────────────────────────
