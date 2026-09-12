@@ -95,6 +95,18 @@ Ableitungen unten sind gemessen, nicht geraten.
 **Die Wände tragen im Bild keine eigene Auskunft. Was man heute sieht,
 macht das Licht.**
 
+> **Berichtigung vom 12.09.2026.** Die Prozentzahlen dieses Abschnitts
+> stammen aus einem Werkzeug, das danebentastete: Es nahm den
+> „Felspunkt" mit `Math.round` genau auf der Naht zweier Feldmitten, und
+> weil die Feldgrenze eine Voronoi-Entscheidung je Bildpunkt ist, lag
+> dieser Punkt oft im Boden. Von den 94 damals gemeldeten Grenzen waren
+> nur 46 wirklich Fels gegen Boden. **Der Befund selbst stimmt** — die
+> Wand trug im reinen Gesteinsbild keine eigene Auskunft —, aber die
+> 51,1 % sind es nicht: Dieselbe Lage, mit der berichtigten Messlatte
+> gemessen, ergibt **22,2 %**. Der Grund steht im Changelog-Eintrag vom
+> 12.09.2026 („Die Messlatte für den Wandkontrast tastete daneben"), die
+> gültigen Zahlen in [ROADMAP.md](ROADMAP.md) unter W1.
+
 Zwei Messungen nebeneinander, beide am 08.09.2026:
 
 **a) Im fertig gezeichneten Bild** (mit Licht und Nebel) sind Wände
@@ -149,6 +161,14 @@ der Fels also um 55 % abgedunkelt. Gemessen: Der Münzwurf steigt von
 trotzdem falschherum, weil ein heller Krümel im Fels eine dunkle Tönung
 schlägt. Wer über 95 % will, braucht eine **Kontur** und nicht nur einen
 Ton. (Die Probe diente nur der Messung; sie ist nicht eingebaut.)
+
+> **Berichtigung vom 12.09.2026.** Auch diese beiden Zahlen stammen aus
+> der schiefen Messlatte, und der Schluss daraus war falsch: Mit der
+> berichtigten Messung genügt ein **Ton** sehr wohl. Gebaut wurde genau
+> das — der Fels verliert von der Naht an Licht statt erst neunzehn
+> Bildpunkte tief —, und es steht bei 99,7 % statt der hier vermuteten
+> 80,9 %, ganz ohne neue Kontur. Der Weg dahin steht im Changelog vom
+> 12.09.2026 („Der Fels war heller als der Boden").
 
 ---
 

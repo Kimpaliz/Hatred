@@ -3,6 +3,55 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Doku: zurückgenommene Zahlen berichtigt, Fehlerbuch G3, zwei Wegweiser
+
+**Warum:** `docs/UEBERGABE.md` ist das Dokument, mit dem ein fremder
+Agent anfängt. Abschnitt 3 nennt darin *„51,1 %, also ein Münzwurf"* und
+schließt daraus, ein Ton allein genüge nicht, man brauche eine Kontur
+(*„Der Münzwurf steigt von 51,1 % auf 80,9 %"*). Beide Zahlen stammen
+aus der Messlatte, die daneben tastete und am selben Tag berichtigt
+wurde — und der Schluss daraus ist mittlerweile **gemessen widerlegt**:
+Der Ton allein steht bei 99,7 %, ohne jede neue Kontur.
+
+Die Berichtigung stand bisher nur in `docs/ROADMAP.md` unter W1 und im
+Changelog. Wer die Übergabe liest — und nur sie —, bekam die falsche
+Zahl und die falsche Schlussfolgerung.
+
+**Was jetzt da ist:** zwei datierte Kästen in `docs/UEBERGABE.md` 3,
+jeweils unmittelbar an der Zahl, die sie zurücknehmen. Der **Befund**
+des Abschnitts bleibt stehen, denn er stimmt: Die Wand trug im reinen
+Gesteinsbild keine eigene Auskunft.
+
+| dieselbe Lage | Übergabe (08.09.2026) | berichtigt (12.09.2026) |
+| --- | --- | --- |
+| Fels dunkler als der Boden, vor der Arbeit | 51,1 % | **22,2 %** |
+| Fels dunkler, nur mit dunklerem Ton | 80,9 % erwartet | **99,7 %** gemessen |
+
+**Und ein zweiter Fund aus derselben Arbeit, als Fehlerbuch G3:** Eine
+Prüfung, die an ihre Zeitschranke stößt, verleitet dazu, die Schranke zu
+heben. Am 12.09.2026 hätte das den eigentlichen Fund zugedeckt — 30,5 s
+von 133 s lagen in einer Farbtabelle, der verdächtigte Feldbau in 1,2 s.
+Der Eintrag nennt das Anzeichen („Die Prüfung ist halt langsam
+geworden"), das Gegenmittel (erst `--cpu-prof`, dann entscheiden) und
+die Regel, dass eine gehobene Schranke eine Änderung am Prüfwesen ist
+und mit ihrer Zahl in den Changelog gehört.
+
+**Und die beiden Messlatten stehen jetzt in `docs/ENTWICKLUNG.md`:**
+`miss-wandkontrast.mjs` und das neue `miss-bildabdruck.mjs` prüfen
+nichts und laufen nicht in der Kette mit — wer sie nicht kennt, findet
+sie auch nicht. Jetzt stehen sie mit ihrer Frage und ihrem Befehl in der
+Datei, in der man nach Befehlen sucht.
+
+**Eine Zeile im Wegweiser:** Auf die Frage *„Wie viele Bildpunkte
+hat ein Feld?"* gibt es seit W9 **zwei** Antworten — `FEIN` in
+`runtime/granit-feld.js` für das Bild und `PIXEL_JE_FELD` in
+`spiel/bauart.mjs` für die Welt. Wer die zweite anfasst, ändert Spiel,
+Prüfzahl und Netz. Das steht jetzt in `docs/WEGWEISER.md`, wo danach
+gesucht wird, und nicht nur im Quelltext.
+
+**Was nicht geändert wurde:** kein Quelltext. Die Messungen selbst
+stehen unverändert in den Einträgen vom 12.09.2026.
+
 ## 12.09.2026 — W9: Ein Feld ist im Bild 32 Bildpunkte breit, die Welt bleibt bei 16
 
 **Janniks Entscheidung, wörtlich** (Vorgang #33, Punkt 3): *„3 ja"* —

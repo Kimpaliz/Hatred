@@ -53,6 +53,17 @@ Einzelprüfung beispielsweise: `node tests/pruefe-kamera-zoom.mjs`.
 Ein roter Rückgabewert muss untersucht werden; keine Schwelle zum Beruhigen
 der Kette senken. Fehlerfälle für neue Wächter zuerst nachweisen.
 
+## Zwei Messlatten neben der Kette
+
+Sie prüfen nichts und werden von Hand gerufen — die Kette bleibt ohne sie
+grün. Beide schreiben ihre Ausgabe nach `stdout`; abgelegt gehört sie
+außerhalb des Projekts (Fehlerbuch C2).
+
+| Frage | Befehl |
+| --- | --- |
+| Hebt sich eine Wand im Bild vom Boden ab? | `node werkzeuge/miss-wandkontrast.mjs` |
+| Hat ein Umbau das Bild verändert? | `node werkzeuge/miss-bildabdruck.mjs` — Prüfzahl über jeden Zeichenaufruf; vorher und nachher laufen lassen und die beiden Ausgaben vergleichen (Regel 12) |
+
 ## Prüfkette und Dateipfade
 
 `werkzeuge/pruefe-alles.mjs` entdeckt `pruefe-*.mjs` in `tests/` und
