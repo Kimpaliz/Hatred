@@ -180,12 +180,20 @@ function farbwort(wert) {
 export function macheGranitFeld({ kasten, ton, ctx = null, kamera = null }) {
   let karten = new WeakMap();
   let neuGebaut = 0, treffer = 0, schnelleBilder = 0, rechtecke = 0;
-  const farben = new Map();
+  /* Zwei Tabellen (normal, gedämpft) mit dem Farbwert selbst als
+     Schlüssel. Bis zum 12.09.2026 war der Schlüssel eine Zeichenkette
+     `${wert}|${matt}` mit `has` **und** `get` — je Rechteck eine neue
+     Zeichenkette und zwei Suchen. Der Rechteckweg ruft das für jedes
+     Rechteck jedes Bildes; gemessen mit `node --cpu-prof` über
+     `tests/pruefe-app.mjs` war das mit 30,5 s von 133 s der größte
+     einzelne Posten. Die Ausgabe ist byteweise dieselbe. */
+  const farben = [new Map(), new Map()];
 
   function wort(wert, matt) {
-    const key = `${wert}|${matt ? 1 : 0}`;
-    if (!farben.has(key)) farben.set(key, ton(farbwort(wert), matt));
-    return farben.get(key);
+    const tabelle = farben[matt ? 1 : 0];
+    let hex = tabelle.get(wert);
+    if (hex === undefined) { hex = ton(farbwort(wert), matt); tabelle.set(wert, hex); }
+    return hex;
   }
 
 /* ── Wie massives Gestein aussieht ──────────────────────────────────
@@ -412,6 +420,6 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
   }
 
   function statistik() { return { neuGebaut, treffer, schnelleBilder, rechtecke }; }
-  function leereSpeicher() { karten = new WeakMap(); farben.clear(); }
+  function leereSpeicher() { karten = new WeakMap(); farben[0].clear(); farben[1].clear(); }
   return { zeichneFeld, feldDaten, statistik, leereSpeicher };
 }

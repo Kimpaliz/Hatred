@@ -3,6 +3,66 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Umbau ohne Bildänderung: der Farbwort-Speicher sucht nicht mehr mit Zeichenketten
+
+**Warum:** `tests/pruefe-app.mjs` ist die längste Prüfung der Kette, und
+`werkzeuge/pruefe-alles.mjs` gibt jeder Prüfung 120 s. Gemessen auf dem
+Ausgangsstand (`dcc9812`) mit `node tests/pruefe-app.mjs` und Stoppuhr
+(`date +%s%N` davor und danach), zwei Läufe im Wechsel mit den Läufen
+unten: **121,1 s und 118,2 s**. Die Prüfung stand also schon vor W9 an
+der Schranke; mit dem feinen Feldbild aus W9 (Eintrag darüber) lag sie
+mit 133,3 s und 135,0 s darüber, und die Kette schlug sie tot.
+
+Ein Profil (`node --cpu-prof tests/pruefe-app.mjs`, 133,1 s auf dem
+W9-Stand) zeigt, wo die Zeit bleibt — **nicht** im Feldbau:
+
+| Eigenzeit | Anteil | Stelle |
+| --- | --- | --- |
+| 30,46 s | 22,9 % | `wort` in `runtime/granit-feld.js` — Farbwert → `#rrggbb` |
+| 17,67 s | 13,3 % | `kasten` in `runtime/zeichnen.js` |
+| 13,64 s | 10,2 % | `zeichneFeld`, der Rechteckweg |
+| 7,42 s | 5,6 % | Speicherbereinigung |
+| 1,15 s | 0,9 % | `baue` — der Feldbau selbst |
+| 0,86 s | 0,6 % | `granitProbe` — das Materialrauschen |
+
+`wort` baute je Rechteck eine Zeichenkette `${wert}|${matt}` als
+Schlüssel und suchte zweimal (`has`, dann `get`). Im Browser läuft das
+einmal je Feldblatt und fällt nicht auf; die Prüfungen aber zeichnen
+ohne `drawImage`, also über den Rechteckweg — dort 25 Millionen Mal je
+Lauf.
+
+**Was jetzt da ist:** zwei Tabellen (normal, gedämpft) mit dem Farbwert
+selbst als Schlüssel und ein einziges `get`. `leereSpeicher` leert
+beide. Sonst nichts.
+
+**Der Beweis, dass sich am Bild nichts ändert (Regel 12):** neu
+`werkzeuge/miss-bildabdruck.mjs` — eine Prüfzahl (FNV-1a) über **jeden**
+Zeichenaufruf (Farbe, Rechteck mit Ort und Maß, Glättung) von 40 Bildern
+über `macheSpiel`, in vier Fällen. Vorher zweimal ohne Änderung
+gefahren: stabil. Dann vorher gegen nachher:
+
+| Fall | vorher | nachher | Rechtecke |
+| --- | --- | --- | --- |
+| 640 × 360, Saat 3 | `0710c0a0` | **`0710c0a0`** | 4.680.806 |
+| 640 × 360, Saat 7 | `154bcdbf` | **`154bcdbf`** | 4.377.288 |
+| 1920 × 1080, Saat 3 | `89c0ed9b` | **`89c0ed9b`** | 4.680.806 |
+| 1920 × 1080, Saat 7 | `14762ec4` | **`14762ec4`** | 4.377.288 |
+
+Byteweise gleich, alle vier. (Dass Full HD dieselben Rechtecke zählt
+wie 640 × 360, ist richtig: Die Kamera wählt dort Vergrößerung 3, und
+1920 ÷ 3 ist 640 — derselbe Weltausschnitt.)
+
+**Die Wirkung, gemessen wie oben:** `tests/pruefe-app.mjs` **121,1 /
+118,2 s → 82,2 / 82,5 s**, also rund ein Drittel weniger. Die
+120-s-Schranke in `werkzeuge/pruefe-alles.mjs` bleibt, wie sie ist.
+
+**Regel 2, benannt:** `werkzeuge/miss-bildabdruck.mjs` ist `werk/`, der
+Zweig heißt `bild/feld-32`. Das Werkzeug ist das Beweismittel für genau
+diesen Umbau und kommt mit ihm; `werkzeuge/AGENTS.md` nennt es.
+
+**Was nicht geändert wurde:** kein Bildpunkt, keine Prüfung, keine Zahl
+in `tests/`; `spiel/` und `netz/` unberührt.
+
 ## 12.09.2026 — Entscheidung E6: Der Blick ist gekippt, das Feld wird 32
 
 **Janniks Befund, wörtlich:** *„Aktuell sind wände von böden und etagen

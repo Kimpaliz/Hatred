@@ -14,6 +14,8 @@ Browser- und Regelmodule dürfen ihn nicht importieren.
 - `pruefe-regelwerk.mjs` prüft die Nachweise in `docs/REGELN.md` gegen die
   Regelnummern in den Kopfnotizen. Beide Richtungen bei Pfadänderungen bewahren.
 - `miss-wandkontrast.mjs` und `topdown-vorschau.html` helfen beim Weltvergleich.
+  `miss-bildabdruck.mjs` liefert die Prüfzahl über jeden Zeichenaufruf — der
+  Beweis für einen Umbau ohne Bildänderung (Regel 12): vorher, nachher, `diff`.
   `zugangswort.mjs` ist ein gesondertes Werkzeug für ausdrücklich beauftragte
   Zugangswortwechsel; ein Strukturauftrag enthält keinen solchen Wechsel.
 - `vorgaenge.mjs` und `github-zugang.mjs` können externe Aktionen ausführen.
