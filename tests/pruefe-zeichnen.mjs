@@ -24,9 +24,11 @@ import { abschnitt, behaupte, gleich, tiefGleich, wirft, ende } from "./helfer.m
 import { macheKarte, BODEN, HINDERNIS, FLUESSIG } from "../spiel/gitter.mjs";
 import { feldMitte, weltNachFeld } from "../spiel/raster.mjs";
 import { macheKamera } from "../runtime/kamera.js";
-import { macheZeichner, GLUT_TAKT } from "../runtime/zeichnen.js";
+import { macheZeichner, GLUT_TAKT, SOCKEL } from "../runtime/zeichnen.js";
+import { baueLandschaft } from "../spiel/landschaft.mjs";
 import { FARBEN, helligkeit } from "../runtime/palette.js";
-import { DINGE, HELDEN_BILDER, SPIELER_FARBEN } from "../runtime/sprite-daten.js";
+import { DINGE, GEGNER_BILDER, HELDEN_BILDER, SPIELER_FARBEN }
+  from "../runtime/sprite-daten.js";
 import { macheSpriteBild } from "../runtime/sprites.js";
 
 export function probeKarte(breite = 12, hoehe = 12, saat = 7) {
@@ -154,6 +156,98 @@ function pruefeZeichnen() {
     behaupte(punkte > 50 && falsch === 0, "Tatsächliche Spritepixel haben Farbe und Richtung");
     gleich(p.zeichner.zeichneWesen(karte, [w], new Set()), 0, "Ungesehenes Wesen fehlt");
     gleich(p.zeichner.zeichneWesen(karte, [{ ...w, lebt: false }]), 0, "Totes Wesen fehlt");
+  }
+
+  abschnitt("Der Sockel liegt ganz im Feld seiner Figur");
+
+  /* ── Warum über eine erzeugte Karte (W11, Vorgang #36) ─────────────
+     Ein Sockel in der Kartenmitte beweist nichts: Dort ist überall
+     Platz. Die Abnahme von W11 verlangt **jede** Figur einer erzeugten
+     Karte, also beide Zeilenparitäten, beide Spaltenhälften und die
+     Ränder. Geprüft werden die tatsächlichen Zeichenaufrufe, nicht die
+     Punktliste — und alle vier Ecken jedes Rechtecks, weil ein Sockel
+     bei Vergrößerung 3 neun Bildschirmpunkte je Weltpunkt belegt. */
+  for (const gross of [1, 3]) {
+    const welt = baueLandschaft({ saat: 4711, breite: 24, hoehe: 20 });
+    const p = bildProbe(welt, { gross });
+    const wesen = [];
+    for (let y = 0; y < welt.hoehe; y++) for (let x = 0; x < welt.breite; x++) {
+      if (welt.blocktBewegung(x, y)) continue;
+      wesen.push({ x, y, art: "spaeher", seite: "helden", spielerPlatz: 1, blick: 0 });
+    }
+    behaupte(wesen.length > 100, `Vergrößerung ${gross}: genug Figuren (${wesen.length})`);
+    p.neu();
+    gleich(p.zeichner.zeichneSockel(welt, wesen), wesen.length,
+      `Vergrößerung ${gross}: jede Figur bekommt einen Sockel`);
+    gleich(p.aufrufe.length, wesen.length * (SOCKEL.kern.length + SOCKEL.ring.length),
+      `Vergrößerung ${gross}: jeder Sockelpunkt wird wirklich gemalt`);
+    let daneben = 0, geprueft = 0;
+    for (let i = 0; i < p.aufrufe.length; i++) {
+      const [sx, sy, sb, sh] = p.aufrufe[i];
+      const w = wesen[Math.floor(i / (SOCKEL.kern.length + SOCKEL.ring.length))];
+      for (const [ex, ey] of [[sx, sy], [sx + sb - 1, sy], [sx, sy + sh - 1],
+        [sx + sb - 1, sy + sh - 1]]) {
+        const f = p.kamera.bildNachFeld(ex, ey);
+        if (f.x !== w.x || f.y !== w.y) daneben++;
+        geprueft++;
+      }
+    }
+    behaupte(geprueft > 20000,
+      `Vergrößerung ${gross}: an echten Sockelecken gemessen (${geprueft})`);
+    gleich(daneben, 0,
+      `Vergrößerung ${gross}: jede Sockelecke führt auf das Feld ihrer Figur`);
+  }
+
+  abschnitt("Der Sockel liegt unter der Figur und bleibt trotzdem zu sehen");
+
+  /* ── Warum über alle Arten und Blicke (W11, Vorgang #36) ───────────
+     Die heutigen Figuren sind 15 × 15 und füllen ihr Feld fast ganz
+     aus; ein Sockel unter ihnen kann nur an den Rändern hervorschauen.
+     Genau deshalb wird er nicht an einem gefälligen Sprite gemessen,
+     sondern an **jeder** Art in **jeder** Blickrichtung — die dichteste
+     entscheidet. Gemessen am 12.09.2026: zwischen 4 (blutvogt) und 18
+     (krätzling) von 28 Saumpunkten bleiben sichtbar; geprüft werden 3,
+     damit eine Spriteänderung die Prüfung nicht ohne Grund rot macht.
+     Ohne Sockel wären es null. */
+  {
+    const k = probeKarte();
+    const arten = [...Object.keys(HELDEN_BILDER).map((art) => [art, "helden"]),
+      ...Object.keys(GEGNER_BILDER).map((art) => [art, "brut"])];
+    let kleinster = 99;
+    for (const [art, seite] of arten) for (const blick of [0, 1, 2, 3]) {
+      const w = { x: 6, y: 6, art, seite, spielerPlatz: 1, blick };
+      const p = bildProbe(k);
+      p.zeichner.bild({ karte: k, wesen: [w] }, {}, 0);
+      const m = feldMitte(6, 6);
+      const cx = Math.round(m.x), cy = Math.round(m.y);
+      const saum = SOCKEL.ring
+        .filter((q) => p.weltPixel(cx + q.dx, cy + q.dy) === FARBEN.sockelRand).length;
+      kleinster = Math.min(kleinster, saum);
+      behaupte(saum >= 3,
+        `${art}/${blick}: der Saum des Sockels bleibt neben der Figur sichtbar (${saum})`);
+      const vorrat = seite === "brut" ? GEGNER_BILDER : HELDEN_BILDER;
+      const soll = macheSpriteBild(vorrat[art], blick, SPIELER_FARBEN[0]);
+      const e = p.kamera.feldNachBild(6, 6), gross = p.kamera.vergroesserung;
+      let ueberdeckt = 0;
+      for (let y = 0; y < soll.hoehe; y++) for (let x = 0; x < soll.breite; x++) {
+        if (!soll.punkte[y * soll.breite + x]) continue;
+        const px = e.x + (x + Math.floor((16 - soll.breite) / 2)) * gross;
+        const py = e.y + (y + Math.floor((16 - soll.hoehe) / 2)) * gross;
+        const farbe = p.pixel.get(`${px},${py}`);
+        if (farbe === FARBEN.sockelKern || farbe === FARBEN.sockelRand) ueberdeckt++;
+      }
+      gleich(ueberdeckt, 0, `${art}/${blick}: kein Sockelpunkt liegt über der Figur`);
+    }
+    console.log(`      · schmalster sichtbarer Saum über ${arten.length} Arten`
+      + ` und 4 Blicke: ${kleinster} von ${SOCKEL.ring.length} Punkten`);
+    const w = { x: 6, y: 6, art: "spaeher", seite: "helden", spielerPlatz: 1, blick: 0 };
+    const leer = bildProbe(k);
+    gleich(leer.zeichner.zeichneSockel(k, [w], new Set()), 0,
+      "Ein ungesehenes Wesen bekommt keinen Sockel");
+    gleich(leer.zeichner.zeichneSockel(k, [{ ...w, lebt: false }]), 0,
+      "Ein totes Wesen bekommt keinen Sockel");
+    gleich(leer.zeichner.zeichneSockel(k, [{ ...w, x: -3 }]), 0,
+      "Ein Wesen außerhalb der Karte bekommt keinen Sockel");
   }
 
   abschnitt("Quellpartikel laufen im Takt und bleiben im Sichtbereich");

@@ -542,6 +542,14 @@ Feldes, und von jedem Bildschirmpunkt des Rings führt `bildNachFeld`
 auf ihr Feld — 100 % über alle Figuren einer erzeugten Karte.
 Zeichenreihenfolge Boden → Flanke → Sockel → Figur → Licht.
 
+*Warum „von jedem Bildschirmpunkt" und nicht „von der Ecke"
+(nachgetragen am 12.09.2026):* Bei Vergrößerung 3 belegt ein Weltpunkt
+neun Bildschirmpunkte, und `bildNachFeld` rechnet jeden einzeln um.
+Eine Scheibe, die nur mit ihrer linken oberen Ecke im Feld liegt, führt
+beim Anklicken ihres rechten Randes auf den Nachbarn — genau der
+Fehler, den dieser Ring verhindern soll. Geprüft werden deshalb alle
+vier Ecken jedes gemalten Rechtecks.
+
 *Warum klein und trotzdem wichtig:* Es ändert keine Regel und kein
 Sprite und beantwortet die eine Frage, die ein Taktikspiel jederzeit
 beantworten muss — *wo steht wer?* Sie wird dringlicher, sobald Figuren

@@ -52,6 +52,15 @@ export const FARBEN = {
   konturHell: "#151221",
   leere: "#04040a",
 
+  /* ── Der Sockel unter einer Figur (W11) ───────────────────────────
+     Kein eigener Gegenstand, sondern die Antwort auf die Frage, die
+     ein Taktikspiel jederzeit beantworten muss: *wo steht wer?* Der
+     Kern ist ein weicher Schlagschatten, der Rand ein warmer Saum aus
+     derselben Erdfamilie wie die Flanke aus W10 — damit der Sockel zum
+     Boden gehört und nicht wie ein Zeichen darauf liegt. */
+  sockelKern: "#100d15",
+  sockelRand: "#5d4a33",
+
   /* ── Stein: der Kerker ────────────────────────────────────────────
      Vier Töne, die durch die Ebenenrampe weiter aufgehellt werden. */
   stein0: "#1b1926",

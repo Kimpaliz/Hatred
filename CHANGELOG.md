@@ -3,6 +3,67 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — W11: Ein Sockel unter jeder Figur (Vorgang #36)
+
+**Warum:** Ein Taktikspiel muss jederzeit die Frage beantworten *wo
+steht wer?* Die Figuren sind heute 15 × 15 große Sprites auf einem
+Sechseck, das 16 breit und 18,5 hoch ist — welches Feld gemeint ist,
+sagt das Sprite nicht. Sobald Figuren über ihr Feld hinausragen (W12),
+sagt es das noch weniger.
+
+**Was gebaut wurde:** Eine flache Scheibe unter jeder sichtbaren Figur,
+in `runtime/zeichnen.js` als eigener Durchgang zwischen Boden und
+Figur: Boden → Flanke → **Sockel** → Figur → Licht. Flach und nicht
+rund, weil der Blick seit Entscheidung E6 leicht gekippt ist — ein
+Kreis auf dem Boden erscheint dann als Ellipse. Der Umriss sind die
+Punkte der gefüllten Ellipse mit mindestens einem Nachbarn außerhalb;
+so ist der Ring geschlossen, statt oben und unten aufzureißen, wie es
+ein „je Zeile links und rechts ein Punkt" täte.
+
+**Die Maße sind gerechnet, nicht gewählt.** Der erste Versuch war eine
+Scheibe 6 × 3, vier Weltpunkte unter der Feldmitte. Sie ragte an vier
+Stellen ins Nachbarfeld — **281** von 33.220 geprüften Bildschirmecken
+bei Vergrößerung 3, alle in den unteren Zeilen, wo das Sechseck spitz
+zuläuft. Danach sind alle Maße von 4 × 2 bis 7 × 3 mit jeder Tiefe von
+1 bis 5 durchgerechnet worden. Von denen, die **überall** passen, lässt
+`7 × 2` bei Tiefe `3` den breitesten Saum neben der Figur frei:
+
+| Scheibe | Randpunkte | sichtbarer Saum im Mittel | kleinster |
+| --- | --- | --- | --- |
+| 7 × 2, Tiefe 3 | 28 | **12,9** | 4 |
+| 7 × 3, Tiefe 2 | 28 | 10,9 | 5 |
+| 6 × 3, Tiefe 3 | 24 | 10,7 | 3 |
+| 6 × 2, Tiefe 3 | 24 | 9,5 | 2 |
+| 5 × 3, Tiefe 3 | 20 | 7,7 | 0 |
+
+**Abnahme erfüllt:** 100 % — keine einzige von 51.944 geprüften
+Bildschirmecken führt auf ein anderes Feld. Das sind 151 Figuren einer
+erzeugten Karte (Saat 4711, 24 × 20) mal 43 Sockelpunkte mal vier Ecken,
+bei Vergrößerung 1 und bei 3.
+Geprüft werden alle **vier** Ecken jedes gemalten Rechtecks, denn bei
+Vergrößerung 3 belegt ein Weltpunkt neun Bildschirmpunkte und
+`bildNachFeld` rechnet jeden einzeln um.
+
+**Nicht weggeschnitten.** Der Zeichner beschneidet die Scheibe *nicht*
+am Hexrand. Täte er es, wäre die Prüfung von selbst grün und prüfte
+nichts mehr — der Lehrbuchfall aus Fehlerbuch G1. Stattdessen tragen
+die drei Maße die Zusage, und die Prüfung rechnet sie nach.
+
+**Sichtbar bleibt er auch:** Über alle 16 Arten in allen 4
+Blickrichtungen bleiben zwischen **4** (blutvogt) und **18**
+(krätzling) von 28 Saumpunkten neben der Figur stehen; kein einziger
+Sockelpunkt liegt über einem Spritepunkt.
+
+**Fünfmal rot gemacht** (Regel 10), jede Verfälschung danach
+zurückgenommen: Scheibe auf 9 verbreitert → *„jede Sockelecke führt auf
+das Feld ihrer Figur: ist 1.892, soll 0"*; Tiefe 6 → *„ist 7.629, soll
+0"*; Sockel **nach** der Figur gezeichnet → *„kein Sockelpunkt liegt
+über der Figur: ist 28, soll 0"*; Sichtprüfung entfernt → *„Ein
+ungesehenes Wesen bekommt keinen Sockel: ist 1, soll 0"*; Sockel ganz
+aus dem Bildlauf genommen → *„der Saum des Sockels bleibt neben der
+Figur sichtbar (0)"*. `tests/pruefe-zeichnen.mjs` zählt **229**
+Behauptungen (vorher 88).
+
 ## 12.09.2026 — W10: Etagen und Fels zeigen ihre Südseite (Vorgang #35)
 
 **Warum:** Janniks Entscheidung E6 lautet *„Der Blick ist leicht
