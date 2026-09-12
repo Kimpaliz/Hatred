@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Projektstruktur mit d7271d0 verbunden; alle 55 Prüfungen am 08.09.2026 bestanden. | 08.09.2026 |
+| frei | frei | Messlatte berichtigt, der Fels ist nicht mehr heller als der Boden; niemand schreibt. | 12.09.2026 |
 
 ## Format
 

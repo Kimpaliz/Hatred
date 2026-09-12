@@ -3,6 +3,286 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Massives Gestein wird nach innen dunkler, in vier Stufen
+
+**Janniks Auftrag** (Vorgang #25): *„massives gestein also das was nicht
+bespielt werden kan. soll als solches erkennbar sein. von der seite aus
+die man sehen kann bis hin ins tiefe gestein wird die textur davon immer
+dunkler pxliger."*
+
+**Was fehlte:** Der Fels kannte keine Tiefe. Er wurde über den
+Wandabstand `d` in **Bildpunkten** dunkler — und `d` sättigt bei 28,
+also schon in der zweiten Feldreihe. Gemessen über die erzeugte Karte
+(Saat 4711) war die Helligkeit je Feldtiefe vorher
+
+| Tiefe | Felder | Helligkeit |
+| --- | --- | --- |
+| 1 | 207 | 62,58 |
+| 2 | 177 | 15,17 |
+| 3 | 158 | 7,58 |
+| 4+ | 780 | **7,59** |
+
+— also **nicht** monoton: Tiefe 4 war heller als Tiefe 3. Und Tiefe 1
+lag mit 62,58 fast auf Bodenhöhe; das war der Fehler aus dem Eintrag
+darüber, hier nach Tiefen aufgeschlüsselt.
+
+**Was jetzt da ist:** `felstiefe()` zählt in **Feldern** statt in
+Bildpunkten — eine Flutfüllung vom offenen Raum aus über die Felder des
+Nachbarrings. Daraus bekommt jedes Felsfeld einen eigenen Ruhewert:
+`FELS_STUFE = [0,22, 0,15, 0,11, 0,08]` für Tiefe 1, 2, 3 und tiefer.
+
+**Warum der Ring und nicht die ganze Karte:** Der Zwischenspeicher je
+Feld unterschreibt genau die 37 Felder des Rings (`nachbarRing`). Eine
+Tiefe, die weiter blickt, würde **lautlos veralten**, sobald sich etwas
+außerhalb ändert — und ein Bild, das stillschweigend falsch wird, ist
+schlimmer als eines, das gröber ist. Alles ab vier Feldern ist deshalb
+eine Stufe, und sie steht auf dem **alten** Wert 0,08: Das tiefe Gestein
+war nie das Problem.
+
+**Gemessen, nachher** (`node werkzeuge/miss-wandkontrast.mjs` und eine
+Flutfüllung über die ganze Karte):
+
+| Tiefe | Felder | Helligkeit |
+| --- | --- | --- |
+| 1 | 207 | **23,57** |
+| 2 | 177 | **15,26** |
+| 3 | 158 | **10,75** |
+| 4+ | 780 | **7,78** |
+
+**Streng monoton fallend über vier Stufen**, und **0 Felsfelder ohne
+Tiefe**. Damit ist die Abnahme von #25 erfüllt.
+
+**Die Abnahme von #24 bleibt erfüllt** — flach, Wände ein Feld dick:
+Vorzeichen 99,7 % (Schranke 95), Sprung −20,40 (negativ), Sprung durch
+Körnung 3,43 (Schranke 1,5), Körper-Luft +28,80 (Schranke 0).
+
+**Und es löst nebenbei den offenen Punkt aus dem Eintrag darüber.** Dort
+stand, dass Fels und Abgrund zusammenrücken (Abstand 4,46). Das ist
+beseitigt, und zwar beweisbar statt zufällig: Ein Abgrund zählt bei der
+Flutfüllung als **offen**. Ein Felsfeld neben einem Abgrund hat damit
+immer einen offenen Nachbarn und ist deshalb **Tiefe 1** — also der
+hellste Fels überhaupt. Nachgezählt über fünf Saaten: **56 von 56**
+Felsfeldern mit einem Abgrund als Nachbarn sind Tiefe 1, **0** sind
+tiefer. Der Abstand an dieser Stelle ist damit 23,57 gegen 6,44, also
+**17,13** statt 4,46. Tiefes Gestein steht weiterhin dicht am Abgrund
+(7,78 gegen 6,44), aber es liegt per Konstruktion nie neben einem.
+
+**Was ausdrücklich NICHT gebaut wurde, und warum:** der zweite Teil von
+Janniks Satz, *„pxliger"*. Ein Versuch, das Materialrauschen nach innen
+gröber zu rastern, war **gemessen wirkungslos**: mittlere Krume je Tiefe
+1,56 / 2,01 / 2,34 / 3,47 mit Rasterung gegen 1,56 / 2,04 / 2,53 / 3,24
+ohne — bei Tiefe 3 sogar **feiner**. Die Ursache ist nicht das Raster,
+sondern der Farbumfang: Tiefes Gestein steht bei RGB(10,10,10), und
+`farbByte` rastet ohnehin auf Vielfache von 5. Da ist nichts mehr zu
+vergröbern. Wer „pixeliger" will, muss dem Fels unten **mehr**
+Farbabstand geben statt weniger. Das ist eine eigene Arbeit; der Versuch
+ist wieder ausgebaut worden, statt als unbelegte Zeile stehen zu
+bleiben.
+
+**Laufzeit, abwechselnd gemessen** (Fehlerbuch C9), 2.240 Feldpuffer,
+vier Läufe je Stand, drei Paarungen. Mediane ohne Tiefe 1076,4 / 1112,5
+/ 1112,2 ms, mit Tiefe 1099,6 / 1097,6 / 1148,9 ms. Die Spannen
+überlappen vollständig (1070–1132 gegen 1084–1211); ein Aufschlag ist
+**nicht messbar** und liegt jedenfalls weit unter den erlaubten 30 %.
+Die Flutfüllung läuft einmal je Feld, nicht je Bildpunkt.
+
+**Was unberührt blieb:** `spiel/`, der Boden, Wasser, Treppen, die
+Höhenkonturen. Keine Prüfschwelle gesenkt.
+
+## 12.09.2026 — Der Fels war heller als der Boden. Eine Zeile, und es war die falsche.
+
+**Janniks Auftrag:** *„gut erkennbare wände, dass ist unendlich wichtig
+das auf den ersten blick gut zu erkennen ist wo Wände sind"* — und
+*„massives gestein … von der seite aus die man sehen kann bis hin ins
+tiefe gestein wird die textur davon immer dunkler"*.
+
+**Der Befund:** In `runtime/granit-feld.js` stand für den Fels
+
+```js
+const ao = istWand ? Math.max(0.08, 1 - Math.max(0, d - 1) / 19) : …
+```
+
+`d` ist der Abstand zur Wandgrenze. An der Naht ist `d = 0`, der Term
+also **1,00** — und 0,08 erreicht er erst neunzehn Bildpunkte tief. Eine
+Gangwand ist **ein Feld** dick, also sechzehn Bildpunkte: Sie wurde nie
+tief genug, um dunkel zu werden. Derselbe Term dunkelt den Boden an
+derselben Naht auf **0,70** ab. Der Fels stand damit mit dem Faktor
+**1,43** über dem Boden — genau an der Stelle, an der man die Wand
+erkennen soll.
+
+**Was ein Spieler davon sah:** keine Wand, sondern eine beleuchtete
+Kante mit einem Schattenstreifen davor. Das ist Janniks Befund vom
+08.09.2026, und er hatte recht.
+
+**Die Änderung:** Der Fels verliert von der Naht an Licht, statt dort am
+hellsten zu sein.
+
+```js
+const ao = istWand
+  ? FELS_REST + (FELS_KANTE - FELS_REST) * Math.exp(-Math.max(0, d) / FELS_TIEFE)
+  : 0.70 + 0.30 * Math.min(1, -d / 7);
+```
+
+Drei Zahlen, jede begründet: `FELS_KANTE = 0,34` an der Naht (gegen 0,70
+beim Boden), `FELS_TIEFE = 5,5` Bildpunkte Abfall, `FELS_REST = 0,08`
+tief im Gestein — der **alte** Wert, denn das Innere war nie das Problem.
+
+**Gemessen** (`node werkzeuge/miss-wandkontrast.mjs`, Saat 4711;
+Selbstprobe grün: 100,0 % über 302 Grenzen, 0 ausgelassen):
+
+| | flach, 1 Feld dick | flach, breiter Rand | heute, alle | heute, gleiche Ebene |
+| --- | --- | --- | --- | --- |
+| Fels dunkler — **vorher** | 22,2 % | 22,3 % | 25,8 % | 25,2 % |
+| Fels dunkler — **nachher** | **100,0 %** | 98,9 % | 97,1 % | 99,7 % |
+| Sprung — vorher | +8,79 | +11,12 | +14,08 | +13,75 |
+| Sprung — nachher | **−21,24** | −22,13 | −30,59 | −31,07 |
+| Sprung/Körnung — vorher | 1,48 | 2,12 | 1,51 | 1,48 |
+| Sprung/Körnung — nachher | **3,57** | 4,23 | 3,28 | 3,33 |
+| Körper-Luft — vorher | −10,67 | +0,59 | −27,49 | −27,49 |
+| Körper-Luft — nachher | **+32,96** | +37,57 | +18,96 | +18,96 |
+
+Damit ist die Abnahme von Vorgang #24 in **allen vier** Fällen erfüllt:
+Vorzeichen über 95 %, Verhältnis über 1,5 mit negativem Sprung,
+Körper-Luft über 0.
+
+**Der Beweis, dass am Fels gedreht wurde und nicht an der Messlatte:**
+Der Boden ist **byteweise unverändert**. Über alle 119.349 Bodenpunkte
+der erzeugten Karte gerechnet ergibt sich vorher wie nachher die
+Prüfsumme **1083041655**. Es ist kein Strich an der Naht — die Änderung
+fasst nur Wandpunkte an, und zwar alle.
+
+**Zwei Prüfungen haben unterwegs angeschlagen, beide zu Recht:**
+
+- `tests/pruefe-koernung.mjs` verlangt mehr als zwölf Farben innerhalb
+  eines Feldes. Bei `FELS_KANTE = 0,30` war sie rot: So tief unten
+  bleiben von der Fünferrasterung in `farbByte` zu wenige Stufen übrig,
+  und der Fels verlor die Körnung — das Gegenteil von Janniks
+  *„pixeliger"*. Über zwölf Einstellungen gemessen ist **0,34 der
+  dunkelste Wert, bei dem die Körnung noch trägt**.
+- `tests/pruefe-granit-feld.mjs` meldete *„(6,6): hoher Innenfels hat
+  auch an den Feldkanten keine helle Palette-Wange"*. Ursache: Ein
+  erster Entwurf setzte `FELS_REST` auf 0,10 und hellte damit massiven
+  Fels um 0,02 auf. Der Umbau soll den Rand berichtigen, nicht das
+  Innere — `FELS_REST` steht deshalb auf dem alten 0,08.
+
+**Was der erste Entwurf zusätzlich tat und was davon übrig blieb:**
+nichts. Er dämpfte auch `relief`, weil dessen feste Lichtrichtung das
+Vorzeichen an die Himmelsrichtung hängt. Gemessen war die Dämpfung
+**überflüssig**: Mit vollem `relief` sind alle vier Tafeln besser
+(flach 100,0 % gegen 100,0 %, Verhältnis 3,57 gegen 3,47) **und** die
+Körnung bleibt erhalten. Sobald `ao` stimmt, ist die Streuung von
+`relief` zu klein, um ein Verhältnis von 2:1 zu kippen. Eine Zeile
+falsch, eine Zeile richtig — mehr war es nicht.
+
+**Laufzeit, abwechselnd gemessen** (Fehlerbuch C9), 2.240 Feldpuffer
+einer 56×40-Karte, vier Läufe je Stand, zwei Paarungen: 931,4 gegen
+976,6 ms und 877,7 gegen 887,3 ms. Die Spannen überlappen; ein Aufschlag
+ist **nicht messbar**. `Math.exp` ersetzt eine Division und ein
+`Math.max`.
+
+**Offen, und ehrlich:** Fels und Abgrund rücken zusammen. Der Abstand in
+der Helligkeit fällt von 12,50 auf **4,46** (Fels im Mittel 9,17, Abgrund
+4,71), der Farbabstand über alle drei Kanäle von 12,6 auf **6,9** (Fels
+8,3/9,2/10,9, Abgrund 5,0/6,5/10,0). `tests/pruefe-gelaende-bild.mjs`
+bleibt grün, aber ein Mensch könnte tiefes Gestein und Loch verwechseln
+— und das eine kann man betreten, ins andere fällt man. Das ist **keine
+Nebenwirkung dieser Änderung, sondern ihre Folge**: Der Fels war vorher
+zu hell, und jetzt ist er es nicht mehr. Ihn wieder aufzuhellen hieße,
+den Fehler zurückzuholen. Der Abgrund muss stattdessen unverwechselbar
+werden; das gehört zu Vorgang #25, und es steht dort.
+
+**Was ausdrücklich nicht geändert wurde:** `spiel/` ist unberührt, der
+Boden byteweise gleich, Wasser, Abgrund, Treppen und die Höhenkonturen
+ebenso. Keine Prüfschwelle gesenkt.
+
+**Dieser Zweig baut auf `werk/messlatte-wandkontrast` auf** — ohne die
+dort reparierte Messlatte wären alle Zahlen oben wertlos.
+
+## 12.09.2026 — Die Messlatte für den Wandkontrast tastete daneben
+
+**Warum:** Am 08.09.2026 ist `werkzeuge/miss-wandkontrast.mjs`
+entstanden, und auf seinen Zahlen steht die Abnahme von Vorgang #24.
+Vor dem Bauen wurde das Werkzeug gegen sich selbst geprüft — mit einem
+Bild, bei dem die Antwort feststeht: Fels überall 20, Boden überall 200,
+kein Rauschen. Es meldete **48,9 %** statt 100 % und ein Verhältnis von
+**0,00**.
+
+**Was falsch war:** `grenze()` nahm den „Felspunkt" mit `Math.round`
+genau auf der Naht zwischen zwei Feldmitten. Die Feldgrenze ist aber
+keine Linie zwischen zwei Mitten, sondern eine Voronoi-Entscheidung je
+Bildpunkt (`runtime/granit-feld.js` 186–189) — der abgetastete Punkt lag
+deshalb oft im **Boden**. Von den 94 gemeldeten Grenzen der damaligen
+Probekarte waren nur **46** wirklich Fels gegen Boden; **35** verglichen
+Boden gegen Boden. Das ist der schlimmste Fehler, den ein Messgerät
+haben kann: Es sah nicht kaputt aus, es lieferte plausible Zahlen.
+
+**Was daraus folgte:** Die Schwelle „95 % dunkler" war mit jenem
+Werkzeug **nicht erreichbar**. Selbst pechschwarzer Fels (Faktor 0,05)
+kam nur auf 85,1 %; die Decke lag bei rund 86 %. Eine Abnahme, die
+niemand erfüllen kann, hätte jede spätere Arbeit an dieser Stelle
+entweder scheitern lassen oder zum Schummeln gezwungen.
+
+**Was jetzt anders ist:**
+
+- **Besitz statt Rundung.** Beim Einsammeln wird mitgeschrieben, welches
+  Feld jeden Bildpunkt gemalt hat. Von der Naht aus wird nach beiden
+  Seiten gelaufen, bis ein Punkt auftaucht, der wirklich dem Fels- bzw.
+  dem Bodenfeld gehört. Wer sich nicht findet, wird **gezählt und
+  gemeldet** — eine stille Auslassung wäre dieselbe Lüge.
+- **Selbstprobe vor jeder Messung.** Dasselbe Idealbild durch dieselbe
+  Abtastung. Meldet sie nicht 100 %, bricht das Werkzeug mit Rückgabe 1
+  ab, statt eine Zahl zu drucken.
+- **Eine dritte Zahl: die Körper-Luft.** Fels P90 gegen Boden P10, über
+  ganze Felder statt über die Naht. Sie ist der Wächter gegen das
+  Schönrechnen: Rund sechs gefärbte Bildpunkte je Grenzfeld (von 222)
+  treiben Vorzeichen und Verhältnis beliebig hoch, bei völlig
+  unverändertem Felskörper — die Körper-Luft bewegen sie nicht.
+- **Eine ehrlichere Probekarte.** Bisher hatte sie einen sechs Felder
+  dicken Rand und ließ den Fels dadurch zehnmal dunkler erscheinen
+  (Feldmittel 18,2 gegen 57,8) als eine echte Höhlenwand (54,4 gegen
+  57,7). Gemessen wird jetzt zuerst der **harte** Fall: Wände ein Feld
+  dick, wie in einem Gang.
+- **Körnung in beide Richtungen.** Bisher zählten nur waagerechte
+  Punktpaare — das machte das Rauschen einer Richtung zum Maßstab für
+  alle.
+
+**Rotprobe (Regel 10):** Die alte Abtastung wurde wieder eingebaut und
+das Werkzeug gestartet. Es meldete wörtlich: *„Die Selbstprobe ist rot —
+das Werkzeug tastet daneben: · Fels dunkler nur in 38,4 % statt 100 %.
+Es wird nichts gemessen. Erst das Abtasten berichtigen."*, Rückgabe 1.
+Danach zurückgenommen.
+
+**Die berichtigte Wahrheit, gemessen** (`node
+werkzeuge/miss-wandkontrast.mjs`, Saat 4711). Selbstprobe grün: 100,0 %
+über 302 Grenzen, 0 ausgelassen.
+
+| | flach, 1 Feld dick | flach, breiter Rand | heute, alle Grenzen |
+| --- | --- | --- | --- |
+| Fels dunkler | **22,2 %** | 22,3 % | 25,8 % |
+| Sprung Boden→Fels | **+8,79** | +11,12 | +14,08 |
+| Körnung im Boden | 5,95 | 5,23 | 9,32 |
+| Sprung durch Körnung | 1,48 | 2,12 | 1,51 |
+| Körper-Luft | **−10,67** | +0,59 | **−27,49** |
+
+**Und die Wahrheit ist schlimmer als die alte Zahl.** „51,1 %, also ein
+Münzwurf" klang nach Unentschieden. Tatsächlich ist der Fels in
+**77,8 %** der Grenzen **heller** als der Boden, und über ganze Felder
+liegt er um 10,67 darüber. Das Verhältnis von 1,48 sah bisher fast
+erfüllt aus — es nimmt aber den Betrag und ist damit richtungsblind: Es
+war die ganze Zeit ein Sprung nach **oben**. Ein Spieler sieht dort
+keinen schwachen Rand, sondern eine beleuchtete Kante mit einem
+Schattenstreifen davor.
+
+**Regel 2, ausdrücklich benannt:** Dieser Zweig ist ein `werk/…` und
+ändert trotzdem `docs/ROADMAP.md`. Der Grund: Die Abnahme von #24 zitiert
+Zahlen, die dieses Werkzeug geliefert hat und die nachweislich falsch
+waren. Werkzeug und Abnahme werden nur zusammen wieder wahr; die alte
+Abnahme stehen zu lassen hieße, einen widerlegten Beweis weiterzureichen.
+
+**Was ausdrücklich nicht geändert wurde:** kein Bild. `runtime/` und
+`spiel/` sind unberührt. Dieser Eintrag verschiebt keine Wand — er
+sorgt dafür, dass man nachher sieht, ob sie sich bewegt hat.
+
 ## 08.09.2026 — Integration der Projektstruktur mit dem GitHub-Stand
 
 Jannik hat die Übernahme nach `main` und das Hochladen ausdrücklich mit

@@ -310,25 +310,48 @@ wird anders gebaut — die Entscheidung steht als E1 in
 ## W1 — Wände, die man ohne Licht erkennt
 
 Vorgang: #24
-**Abnahme:** Auf einer flachen Karte ist der Felspunkt an mindestens
-**95 %** aller Grenzen dunkler als der Bodenpunkt daneben (gemessen am
-08.09.2026: 51,1 %, also ein Münzwurf), und der Sprung ist **größer als
-die Körnung im Boden** — Verhältnis mindestens 1,5 statt der heute
-gemessenen 0,06. Nachzurechnen mit
-`node werkzeuge/miss-wandkontrast.mjs`.
+**Abnahme:** Drei Zahlen, alle mit
+`node werkzeuge/miss-wandkontrast.mjs` im Fall *„flach, Wände ein Feld
+dick"* nachzurechnen. Sie müssen **zusammen** stimmen; einzeln ist jede
+von ihnen zu betrügen.
 
-*Warum zuerst:* Weil jeder folgende Schritt an dieser Zahl hängt und
+| | Abnahme | gemessen am 12.09.2026 |
+| --- | --- | --- |
+| **Vorzeichen** — der Fels ist dunkler als der Boden daneben | in mindestens **95 %** der Grenzen | **22,2 %** |
+| **Sprung durch Körnung** — und der Sprung zeigt nach unten | mindestens **1,5**, Vorzeichen negativ | 1,48, aber **nach oben** (+8,79) |
+| **Körper-Luft** — Fels P90 gegen Boden P10, über ganze Felder | größer als **0** | **−10,67** |
+
+*Warum zuerst:* Weil jeder folgende Schritt an diesen Zahlen hängt und
 zwei davon sie verschlechtern. Und weil Janniks eigener Satz sie zur
 wichtigsten Sache erklärt: *„gut erkennbare wände, dass ist unendlich
 wichtig"*.
 
-*Warum die Schwelle bei 95 % liegt und nicht bei 80 %:* Den Fels
-einfach dunkler zu tönen genügt nicht. Zur Probe am 08.09.2026 mit dem
-Faktor 0,45 auf Wandfeldern gemessen: Der Münzwurf steigt von 51,1 %
-auf **80,9 %**, das Verhältnis zur Körnung von 0,06 auf 2,97 — jede
-fünfte Kante bleibt trotzdem falschherum. Der Grund ist die Körnung
-selbst: Ein heller Krümel im Fels schlägt eine dunkle Tönung. Über
-95 % kommt nur, wer dem Fels eine **Kontur** gibt statt nur einen Ton.
+*Warum die Abnahme am 12.09.2026 neu gefasst wurde:* Die alte Fassung
+nannte zwei Zahlen und berief sich auf eine Messung, die **daneben
+tastete**. Das Werkzeug nahm den „Felspunkt" mit `Math.round` genau auf
+der Naht zwischen zwei Feldmitten — und weil die Feldgrenze eine
+Voronoi-Entscheidung je Bildpunkt ist, lag dieser Punkt oft im Boden.
+Von den damals 94 gemeldeten Grenzen waren nur 46 wirklich Fels gegen
+Boden. Die gemeldeten *„51,1 %, also ein Münzwurf"* waren dadurch
+geschönt, und die Schwelle von 95 % war mit jenem Werkzeug **gar nicht
+erreichbar** — selbst pechschwarzer Fels kam nur auf rund 86 %. Beide
+Zahlen der alten Fassung sind damit hinfällig; die Begründung dazu steht
+im Changelog-Eintrag vom 12.09.2026.
+
+*Was die berichtigte Messung zeigt, und es ist schlimmer:* Der Fels ist
+nicht ununterscheidbar vom Boden — er ist **systematisch das Hellere**.
+In 77,8 % der Grenzen ist der Fels heller, der mittlere Sprung zum Fels
+ist **+8,79**, und über ganze Felder liegt der Fels um 10,67 über dem
+Boden. Ein Spieler sieht dort keinen schwachen Rand, sondern eine
+beleuchtete Kante mit einem Schattenstreifen davor — das genaue
+Gegenteil von *„hier ist die Wand"*.
+
+*Warum drei Zahlen und nicht eine:* Jede einzelne lässt sich erreichen,
+ohne dass ein Mensch mehr sieht. Sechs gefärbte Bildpunkte je Grenzfeld
+(von 222) treiben Vorzeichen und Verhältnis beliebig hoch, bei völlig
+unverändertem Felskörper — man hätte einen Bilderrahmen um eine
+bodenhelle Fläche gebaut. Genau das fängt die **Körper-Luft** ab: Sie
+misst ganze Felder, ein Strich an der Naht bewegt sie nicht.
 
 ## W2 — Massives Gestein, das nach Tiefe dunkler wird
 
