@@ -5,15 +5,19 @@
    Die endgültige Hexkarte trägt die Regeln. Das Granitfeld baut daraus
    zusammenhängende Oberflächen mit Relief, Wanddistanz und Konturen.
    Der Bildlauf setzt gecachte Flächen, Wesen, Licht und Nebel zusammen.
-   Keine Wandvorderseiten, verschobenen Höhenflächen oder Kachelmuster:
-   Die Höhe verändert die Schattierung, niemals die Weltkoordinaten.
+   Seit W10 (Entscheidung E6, *„Der Blick ist leicht gekippt."*) zeigt
+   alles Höhere seine **Südseite** — gemalt auf dem niedrigeren Feld, im
+   Streifen unter der Kante, von `runtime/granit-feld.js`. Was weiterhin
+   **nicht** passiert: verschobene Höhenflächen und Kachelmuster. Die
+   Höhe verändert die Schattierung, niemals die Weltkoordinaten; sonst
+   stünde eine Figur im Bild auf einem anderen Feld als in der Regel.
 
    ── Arbeitet zusammen mit ───────────────────────────────────────────
 
    runtime/granit-feld.js baut das Terrain; spiel/raster.mjs liefert
    die gemeinsame Geometrie für Kamera, Eingabe, Licht und Erzeugung.
    Sprites, Partikel und Oberfläche bleiben eigenständige Bildschichten.
-   werkzeuge/pruefe-zeichnen.mjs prüft den vollständigen Zeichenweg. */
+   tests/pruefe-zeichnen.mjs prüft den vollständigen Zeichenweg. */
 
 import { FARBEN, FLUESSIG_FARBEN, ERINNERT_HELLE, abdunkeln } from "./palette.js";
 import { KACHEL } from "./licht.js";

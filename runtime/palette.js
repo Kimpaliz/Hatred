@@ -188,11 +188,18 @@ export const VORLAUF = {
   warn: "#efb879"
 };
 
-/* Wie hoch eine Stufe im Bild aufträgt. Rein zeichnerisch: Bei „exakt
-   von oben" gibt es keine Perspektive, also wird die Höhe durch einen
-   harten Schlagschatten **nach unten** und eine helle Oberkante
-   erzählt — nicht durch Versatz. Der Wert ist die Schattenhöhe in
-   Bildpunkten je Stufe. */
+/* Wie hoch eine Stufe im Bild aufträgt. Rein zeichnerisch: Die Höhe
+   wird erzählt, nicht als Versatz gerechnet — eine Figur steht im Bild
+   auf demselben Feld wie in der Regel. Der Wert ist die Schattenhöhe in
+   Bildpunkten je Stufe.
+
+   Die alte Begründung *„bei ‚exakt von oben‘ gibt es keine
+   Perspektive"* gilt seit Janniks Entscheidung E6 vom 12.09.2026 nicht
+   mehr: Der Blick ist leicht gekippt, und die Höhe zeigt sich seit W10
+   zusätzlich als gemalte Südflanke (`runtime/granit-feld.js`). Der
+   Schlagschatten nach unten und die helle Oberkante bleiben davon
+   unberührt — sie sind das Zeichen an den Kanten, die keine Südseite
+   zeigen. */
 export const STUFEN_SCHATTEN = 3;
 
 /* ── Farben je Schlüssel ────────────────────────────────────────────

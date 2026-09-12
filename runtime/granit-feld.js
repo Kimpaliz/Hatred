@@ -5,7 +5,8 @@
    Scotophobias Granithöhle gewinnt ihre Oberfläche aus Weltkoordinaten,
    Abstand zum Fels, Materialhöhe, Normalen und Umgebungsverdeckung.
    Diese Größen bleiben über Feldgrenzen hinweg stetig. Das Regelraster
-   bestimmt den Besitzer jedes Pixels, keine gezeichnete Südflanke.
+   bestimmt den Besitzer jedes Pixels — auch den der Südflanke, die seit
+   W10 auf dem **niedrigeren** Feld liegt und nicht auf dem höheren.
    Treppen haben eine weltweite Stufenphase und keine inneren Wangen.
 
    Der teure Materialpass läuft einmal je sichtbarem Feld. Eine Signatur
@@ -18,7 +19,8 @@
    `runtime/granit-material.js` liefert die ursprünglichen Oberflächen;
    `spiel/raster.mjs` teilt Weltpixel zu, `spiel/gitter.mjs` die Regeln.
    `runtime/zeichnen.js` reicht Kamera, Zeichenblatt und Nebelfarben.
-   `werkzeuge/pruefe-granit-feld.mjs` prüft die tatsächlich gemalten Pixel. */
+   `tests/pruefe-granit-feld.mjs` prüft die tatsächlich gemalten Pixel,
+   `werkzeuge/miss-flanke.mjs` misst die Flanke gegen die Abnahme W10. */
 
 import { granitProbe } from "./granit-material.js";
 import { FELD_BREITE, FELD_RADIUS, feldMitte, weltNachFeld } from "../spiel/raster.mjs";
@@ -194,6 +196,75 @@ function distanzZu(kanten, x, y) {
   return distanz;
 }
 
+/* ── Die Flanke: die Südseite von allem, was höher steht ────────────
+
+   Janniks Entscheidung E6 vom 12.09.2026: *„Der Blick ist leicht
+   gekippt."* Damit hat alles Höhere eine **Seite**, und die sieht man
+   nach Süden. Bis dahin zeigte die Höhe sich als ein Bildpunkt Saum an
+   sechs Kanten — auf einem Feld von 32 Bildpunkten ist das nichts.
+
+   Gemalt wird auf dem **niedrigeren** Feld, im Streifen unter der
+   Kante. Das ist keine Willkür, sondern die einzige Stelle, an der es
+   geht: Jeder Bildpunkt gehört genau einem Feld, und die Fläche unter
+   einer Kante gehört dem unteren Feld.
+
+   **Nur die beiden oberen Kanten.** Ein spitzes Sechseck hat links und
+   rechts senkrechte Kanten (Ost, West) und schräge nach Nordost und
+   Nordwest. Eine Wand, die östlich von mir steht, zeigt mir ihre Seite
+   nicht — im gekippten Blick sieht man Südseiten. Also zählen nur die
+   Nachbarn mit `dy < 0`.
+
+   **Senkrecht nach unten, nicht rechtwinklig zur Kante.** Eine
+   senkrechte Wandfläche wirft im gekippten Blick den oberen Kantenzug
+   gerade nach unten. Rechtwinklig gemessen wäre der Streifen an einer
+   schrägen Kante zu schmal und liefe an der Spitze spitz zu. */
+const FLANKE_HOCH = 8;          /* Abtastpunkte, also 4 Weltpunkte     */
+
+/* Die Farbe der Flanke, vier Stufen von der Kante nach unten: warme
+   Erde, kein Granit, und **fest** statt aus der Fläche darüber
+   abgeleitet.
+
+   Der erste Versuch am 12.09.2026 band sie an die Oberseite — eine
+   Seitenfläche bekommt weniger Licht als eine, die nach oben zeigt.
+   Physikalisch richtig, im Bild falsch: Unter massivem Fels ist die
+   Oberseite selbst dunkel (gemessen 23 von 255), die Flanke wurde
+   damit noch dunkler und verschwand in der Wand. Genau das, was man
+   sehen will — dass die Wand einen **Körper** hat —, war weg. Gemessen
+   mit `node werkzeuge/miss-flanke.mjs`: Sprung durch Körnung 7,19 unter
+   einer Etagenkante, aber −0,56 unter Fels, und das Bild war unter Fels
+   nicht zu unterscheiden.
+
+   Fest gewählt heißt: Die Erde hat ihr eigenes Licht, so wie in
+   Janniks Vorlage. Zwischen dem dunklen Fels (23) und dem hellen Boden
+   (81 auf Ebene 2) bleibt sie beides Mal erkennbar, und unter einer
+   Etagenkante ist sie weiter deutlich dunkler als der Boden darüber —
+   Etagen beginnen bei Ebene 2, also bei 81 aufwärts. */
+const FLANKE_STUFEN = [[69, 51, 33], [59, 44, 29], [50, 37, 24], [43, 32, 21]];
+
+function bildhoehe(karte, x, y) {
+  /* Massiver Fels zählt als eine Stufe über seinem Boden: Seine
+     Südseite ist das, was man als Wand sieht. Der Zuschlag ist 1,5 und
+     nicht 1, damit Fels auch gegen ein Feld eine Stufe höher noch eine
+     Flanke wirft. */
+  return karte.ebeneBei(x, y) + (fels(karte, x, y) ? 1.5 : 0);
+}
+
+/* Wie tief unter einer solchen Kante dieser Bildpunkt liegt, in
+   Abtastpunkten; 0 heißt „keine Flanke". Senkrecht gemessen. */
+function flankenTiefe(kanten, wx, wy) {
+  let beste = 0;
+  for (const k of kanten) {
+    const vonX = Math.min(k.ax, k.bx), bisX = Math.max(k.ax, k.bx);
+    if (wx < vonX || wx > bisX) continue;
+    const anteil = (wx - k.ax) / (k.bx - k.ax);
+    const unter = (wy - (k.ay + anteil * (k.by - k.ay))) * FEIN;
+    if (unter <= 0 || unter > FLANKE_HOCH) continue;
+    const tiefe = Math.ceil(unter);
+    if (!beste || tiefe < beste) beste = tiefe;
+  }
+  return beste;
+}
+
 function farbByte(wert) { return Math.max(0, Math.min(255, Math.round(wert / 5) * 5)); }
 
 function packe(r, g, b) {
@@ -275,6 +346,25 @@ const FELS_STUFE = [0.22, 0.15, 0.11, 0.08];  /* Ruhewert bei Tiefe 1,2,3,4+ */
 const FELS_REST = 0.08;     /* tief im Gestein — unverändert gegenüber vorher */
 const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
 
+  /* Die oberen Kanten dieses Feldes, hinter denen etwas Höheres steht.
+     Höchstens zwei; meist keine. */
+  function flankenKanten(karte, x, y) {
+    /* Ein Loch bekommt keine Flanke — es ist selbst die Tiefe. Eine
+       Treppe auch nicht: Dort geht man hinauf, und die Abnahme von W10
+       verlangt dort ausdrücklich 0 %. */
+    if (loch(karte, x, y) || treppe(karte, x, y)) return null;
+    const meine = bildhoehe(karte, x, y);
+    let kanten = null;
+    for (const r of richtungen(y)) {
+      if (r.dy >= 0) continue;
+      const nx = x + r.dx, ny = y + r.dy;
+      if (!karte.drin(nx, ny)) continue;
+      if (bildhoehe(karte, nx, ny) <= meine + 0.4) continue;
+      (kanten || (kanten = [])).push(kante(x, y, nx, ny));
+    }
+    return kanten;
+  }
+
   function baue(karte, x, y, ring) {
     const grenzen = feldPixelGrenzen(x, y);
     const { x0, y0 } = grenzen;
@@ -321,6 +411,7 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     const istWand = fels(karte, x, y), istLoch = loch(karte, x, y);
     const mitte = feldMitte(x, y);
     const rampe = treppe(karte, x, y);
+    const flanken = flankenKanten(karte, x, y);
     const ebene = karte.ebeneBei(x, y);
     const nass = NASS[karte.fluessigBei(x, y)];
     for (let py = 0; py < hoehe; py++) for (let px = 0; px < breite; px++) {
@@ -394,6 +485,21 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
             faktor *= distanz < 1.2 ? 0.21 : 0.57; rolle = 4;
           }
         }
+      }
+      /* Die Flanke kommt zuletzt und übermalt alles darunter: Sie ist
+         keine Tönung des Bodens, sondern eine andere Fläche. Der
+         Kantensaum (Rolle 3) darf hier nicht durchscheinen — er zeigt
+         dieselbe Höhe ein zweites Mal und säße mitten in der Wand. */
+      const tiefe = flanken ? flankenTiefe(flanken, wx, wy) : 0;
+      if (tiefe) {
+        const stufe = FLANKE_STUFEN[Math.min(FLANKE_STUFEN.length - 1,
+          Math.floor((tiefe - 1) * FLANKE_STUFEN.length / FLANKE_HOCH))];
+        /* Etwas Körnung aus demselben Materialrauschen, damit die Erde
+           nicht als Farbfläche liegt. Klein gehalten: Der Unterschied
+           zum Boden soll die Farbe tragen, nicht das Rauschen. */
+        faktor = 0.94 + s.hoehe * 0.008;
+        r = stufe[0]; g = stufe[1]; b = stufe[2];
+        rolle = 6;
       }
       pixel[i] = packe(r * faktor, g * faktor, b * faktor);
       rollen[i] = rolle;

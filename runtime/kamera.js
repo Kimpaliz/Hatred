@@ -227,7 +227,12 @@ export function macheKamera({ fensterBreite, fensterHoehe, karte }) {
   }
 
   /* Feld → Bildschirm, Anker eines 16×16-Sprites um die echte Hexmitte.
-     Höhe verschiebt den Anker nie: Der Blick bleibt exakt senkrecht.
+     Höhe verschiebt den Anker nie. Seit Entscheidung E6 (12.09.2026)
+     ist der Blick leicht gekippt, aber nur **gemalt**: Die Höhe zeigt
+     sich als Flanke auf dem niedrigeren Feld (`runtime/granit-feld.js`),
+     nicht als Versatz der Figur. Ein Versatz machte `bildNachFeld`
+     mehrdeutig — zwei Felder auf demselben Bildschirmpunkt —, und
+     welches Feld man trifft, ist Regel und nicht Bild.
      Erst in Weltpunkten runden, danach ganzzahlig vergrößern. */
   function feldNachBild(feldX, feldY) {
     const mitte = feldMitte(feldX, feldY);

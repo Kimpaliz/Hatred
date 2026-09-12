@@ -3,6 +3,101 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — W10: Etagen und Fels zeigen ihre Südseite (Vorgang #35)
+
+**Warum:** Janniks Entscheidung E6 lautet *„Der Blick ist leicht
+gekippt."* Damit hat alles Höhere eine **Seite**, und man sieht sie nach
+Süden. Bis hierher zeigte sich Höhe als **ein** Bildpunkt Saum an sechs
+Kanten — auf einem Feld von 32 Bildpunkten ist das nichts. Genau die
+Klage aus Janniks Wortlaut: *„Aktuell sind wände von böden und etagen
+auf denen man laufen kann unglaublich schlecht zu unterscheiden."*
+
+**Was gebaut wurde:** Eine neue Fläche (Rolle 6) in
+`runtime/granit-feld.js`, gemalt auf dem **niedrigeren** Feld, im
+Streifen unter der Kante. Das ist keine Wahl, sondern die einzige
+mögliche Stelle: Jeder Bildpunkt gehört genau einem Feld, und die
+Fläche unter einer Kante gehört dem unteren. Nur die beiden oberen
+Kanten (`dy < 0`) tragen sie — eine Wand östlich von mir zeigt mir ihre
+Südseite nicht. Gemessen wird senkrecht nach unten, nicht rechtwinklig
+zur Kante: Eine senkrechte Wandfläche wirft den Kantenzug im gekippten
+Blick gerade nach unten. Ein Loch bekommt keine Flanke — es ist selbst
+die Tiefe —, eine Treppe auch nicht: Dort geht man hinauf.
+
+**Messung** — `node werkzeuge/miss-flanke.mjs` (Saat 4711, 56 × 40):
+
+| | Abnahme | gemessen |
+| --- | --- | --- |
+| Kanten mit Flanke ≥ 5 Bildpunkten an allen 5 Stellen | 100 % | **100,0 %** von 314 |
+| mittlere Flankenhöhe | — | 7,46 Bildpunkte |
+| Treppenkanten mit Flanke | 0 % | **0,0 %** von 41 |
+| Sprung durch Körnung, dem Betrag nach | ≥ 1,5 | **1,82** |
+| hebt sich von der Oberseite ab | ≥ 95 % | **98,2 %** |
+| Farbfamilienabstand zum Boden darunter | ≥ 0,5 | **0,877** |
+
+**Was an der Abnahme geändert wurde, und warum:** Sie verlangte
+zuerst, die Flanke sei **dunkler** als die Oberseite darüber. Unter
+einer Etagenkante ist das richtig und erfüllt (Sprung durch Körnung
+**7,44**, dunkler an **100,0 %** von 190 Stellen). Unter massivem Fels
+ist es unerfüllbar, ohne das Bild kaputtzumachen: Die Felsoberseite ist
+selbst dunkel — gemessen **23** von 255 —, eine dunklere Flanke läge
+bei ~8 und damit auf der Helligkeit eines Abgrunds (gemessen **8,94**).
+Der erste Versuch band die Flanke genau so an die Fläche darüber, und
+im Bild verschwand sie in der Wand: Sprung durch Körnung **7,19** unter
+einer Etagenkante, aber **−0,56** unter Fels. Die Wand verlor dabei
+das, was man sehen will — ihren **Körper**. Gewählt ist deshalb eine
+feste warme Erdfläche in vier Stufen: unter Fels **heller** als die
+Oberseite (−3,09, n=1380), unter einer Etage dunkler. Der Betrag ist
+beide Male groß; nur das Vorzeichen dreht sich, und es dreht sich aus
+einem Grund. Die Abnahme in `docs/ROADMAP.md` W10 heißt jetzt „hebt
+sich ab" und trägt diese Begründung; `werkzeuge/miss-flanke.mjs` zählt
+den Betrag und gibt die Richtung getrennt nach Etage und Fels aus.
+
+**W1 und W2 bleiben erfüllt** — `node werkzeuge/miss-wandkontrast.mjs`
+(Fall *flach, Wände ein Feld dick*) und
+`node werkzeuge/miss-felddetail.mjs`:
+
+| | Abnahme | vor W10 | mit W10 |
+| --- | --- | --- | --- |
+| W1 Vorzeichen | ≥ 95 % | 96,7 % | **96,7 %** von 302 |
+| W1 Sprung durch Körnung | ≥ 1,5, negativ | 2,76 | **5,62** (−26,91) |
+| W1 Körper-Luft | > 0 | 28,99 | **28,99** |
+| W2 Helligkeit je Felstiefe 1–4 | streng fallend | 23,35 / 15,31 / 11,25 / 8,12 | **unverändert**; 0 Felsfelder ohne Tiefe |
+
+W1 ist durch W10 nicht schlechter, sondern **besser** geworden, und das
+ist nachgerechnet und nicht gehofft: Der erste Bodenpunkt an einer
+Nordnaht war vorher 29,6 hell und ist jetzt als Flanke 52,2 — der
+Abstand zum dunklen Fels daneben wächst dadurch.
+
+**Prüfung:** `tests/pruefe-granit-feld.mjs` bekommt einen eigenen
+Abschnitt, der **je Bildspalte** prüft statt im Mittel: Wo Flanke steht,
+beginnt sie am obersten gemalten Punkt der Spalte, läuft ohne Lücke
+weiter, bleibt höchstens vier Weltpunkte hoch, wird nach unten dunkler
+(volle Spalten fallen um ≥ 15), bleibt heller als ein Abgrund und ist
+wärmer als der wärmste Granit daneben. Dazu: Loch und Treppe unter
+einer Kante tragen **keine** Flanke. Der Abschnitt „Alle sechs
+Höhenkanten" erwartet nach Südost und Südwest jetzt die Flanke und
+**keine** Schattenkontur mehr — zwei Zeichen für dieselbe Höhe an
+derselben Stelle wären eins zu viel.
+
+**Sechsmal rot gemacht** (Regel 10), jede Verfälschung danach
+zurückgenommen: Streifen 3 Punkte unter die Naht gesetzt → *„jede
+Flanke beginnt an der Naht, keine schwebt: ist 32, soll 0"*; Höhe 8 auf
+14 → *„keine Flanke höher als vier Weltpunkte"*; Farbrampe umgedreht →
+*„keine Flanke wird nach unten heller: ist 96, soll 0"*; graue statt
+warmer Rampe → *„die kälteste Flanke ist wärmer als der wärmste Granit
+daneben (0 gegen 15)"*; Loch- und Treppenausnahme entfernt → *„ein Loch
+unter der Kante trägt keine Flanke: ist 16, soll 0"*; jede zweite Tiefe
+ausgelassen → *„keine Flankenspalte hat ein Loch: ist 32, soll 0"*. Die
+Prüfung zählt **71.447** Behauptungen (vorher 71.383).
+
+**Zwei Kopfnotizen waren durch diese Arbeit falsch geworden** und sind
+mitkorrigiert: `runtime/granit-feld.js` sagte *„keine gezeichnete
+Südflanke"*, und `runtime/kamera.js` begründete den unverschobenen
+Anker mit *„Der Blick bleibt exakt senkrecht"*. Der Anker wird
+weiterhin nicht verschoben — aber aus einem anderen Grund: Ein Versatz
+machte `bildNachFeld` mehrdeutig, und welches Feld man trifft, ist
+Regel und nicht Bild.
+
 ## 12.09.2026 — Die erste Anwendung der Freigabe fand eine Prüfung, die nichts mehr prüfte
 
 **Warum es diese Prüfung gab:** Die Dauerfreigabe (Eintrag darunter)

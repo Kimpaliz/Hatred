@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Der Stand vom 12.09.2026 ist nach `main` geführt; niemand schreibt. | 12.09.2026 |
+| `runtime/granit-feld.js`, `runtime/kamera.js`, `runtime/zeichnen.js`, `tests/pruefe-granit-feld.mjs`, `tests/pruefe-zeichnen.mjs`, `werkzeuge/miss-flanke.mjs` | Claude (Sitzung W10/W11) | W10 die Flanke (Zweig `bild/flanke`), danach W11 der Sockel (Zweig `bild/sockel`). | 12.09.2026 |
 
 ## Format
 

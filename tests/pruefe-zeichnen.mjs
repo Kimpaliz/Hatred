@@ -2,9 +2,12 @@
 
    ── Warum es das gibt ──────────────────────────────────────────────
 
-   Gemessen werden ausgegebene Pixel und Zeichenaufrufe. Alte Vorgaben
-   für Südflanken, Schachbrettboden und einzelne Treppen widersprechen
-   der senkrechten Granithöhle. Die bleibenden Verträge sind harte Pixel,
+   Gemessen werden ausgegebene Pixel und Zeichenaufrufe. Die Südflanke
+   ist seit W10 gefordert und nicht mehr verboten; geprüft wird sie
+   dort, wo sie entsteht — in `pruefe-granit-feld.mjs`. Ausgeschlossen
+   bleiben Schachbrettboden und einzelne Kacheltreppen: Beides
+   widerspricht der zusammenhängenden Granithöhle.
+   Die bleibenden Verträge sind harte Pixel,
    gleiche Bilder bei gleicher Zeit und ein Sichtnebel über allen Effekten.
    Sprites müssen ihre Farbe, Richtung und Anzahl auch im neuen Bild behalten.
 
