@@ -16,7 +16,7 @@ synchronisiert. Den Ablauf beschreibt [docs/AGENTEN.md](docs/AGENTEN.md).
 
 | Bereich | Besitzer | Ziel | Seit |
 | --- | --- | --- | --- |
-| frei | frei | Messlatte berichtigt, der Fels ist nicht mehr heller als der Boden; niemand schreibt. | 12.09.2026 |
+| frei | frei | Entscheidung E6 steht im Vertrag und in der Roadmap (W9–W14); niemand schreibt. | 12.09.2026 |
 
 ## Format
 

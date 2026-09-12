@@ -3,6 +3,64 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Entscheidung E6: Der Blick ist gekippt, das Feld wird 32
+
+**Janniks Befund, wörtlich:** *„Aktuell sind wände von böden und etagen
+auf denen man laufen kann unglaublich schlecht zu unterscheiden."* Dazu
+drei Bildschirmfotos aus *Battle Brothers* als Vorlage — Plateaus mit
+sichtbarer Erdkante, Figuren auf einem Sockel.
+
+**Die Diagnose:** Die Ursache stand in einem Satz unseres eigenen
+Spielvertrags, `docs/SPIEL.md`, Präzisierung vom 08.09.2026: *„Der Blick
+muss exakt senkrecht sein."* Von exakt oben hat eine Klippe keine Seite;
+der Vertrag ließ die Höhe deshalb nur als **einen** Bildpunkt Saum und
+Kontur an allen sechs Kanten zeigen. Auf einem 16 Bildpunkte breiten
+Feld ist das nichts. `runtime/granit-feld.js:274` setzte es wörtlich um:
+*„Licht kommt von oben; kein geometrischer Versatz und keine Flanke."*
+Die Vorlage macht das Gegenteil: Der Blick ist leicht gekippt, man sieht
+die Südseite von allem Höheren als eigene Fläche.
+
+**Der Entwurf, der die Entscheidung getragen hat:** dieselbe erzeugte
+Karte (Saat 4711) einmal heute und einmal mit gemalter Südflanke unter
+allem Höheren — 3.696 Flankenpunkte auf einem Ausschnitt von 20 × 14
+Feldern, dazu drei Beispiel-Sockel. Kein Spielcode, ein Bild zum
+Ansehen. Es hat gereicht.
+
+**Janniks Antwort, wörtlich:** *„1 ja / 2 später als versuch mit
+gekippter sicht. / 3 ja"*.
+
+**Was sich damit ändert:**
+
+- `docs/SPIEL.md`: Der Satz *„exakt senkrecht"* ist ersetzt durch *„Der
+  Blick ist leicht gekippt: Man sieht die Oberseite jedes Feldes und die
+  Südflanke von allem, was höher ist als sein Nachbar darunter."* Der
+  Absatz zu den vier Ebenen beschreibt jetzt die Flanke statt der
+  Konturen — mit dem alten Wortlaut in Klammern und dem gemessenen
+  Grund, warum er nicht trug.
+- Ein Feld wird **32** Bildpunkte breit statt 16 — im Bild. Ob die Welt
+  bei 16 bleiben kann (damit Zustandssumme und Netz unberührt bleiben),
+  ist die erste Frage an die Leserunde; die 16 wird in 10 Quelldateien
+  benutzt, und der Welterzeuger rechnet in Weltbildpunkten (`sektor
+  215`, `hoehenFrequenz 0.0075`). Wer die Zahl blind verdoppelt,
+  halbiert die Raumbreite in Feldern.
+- Parallaxe beim Kameraschwenk: vorgemerkt als Versuch mit Schalter,
+  keine Zusage. Der Rat war „nicht jetzt", aus drei Gründen: Die Figur
+  muss auf ihrem Feld anklickbar bleiben, Pixelgrafik verträgt keine
+  halben Bildpunkte, und die Vorlage kommt ohne aus.
+- `docs/ROADMAP.md`: W8 heißt jetzt *„Höhen zurück, mit Flanken"*, und
+  sechs Schritte kommen dazu — W9 Feld 32 (#34), W10 Flanke (#35), W11
+  Sockel (#36), W12 Figuren als Vollkörper im Pixelstil von 1990 (#37),
+  W13 freies Schwenken (#38), W14 Parallaxe-Versuch (#39). Die
+  Reihenfolge: erst das Feld, dann die Flanke — eine Flanke von 5–8
+  Bildpunkten ist auf 16 die halbe Feldhöhe, auf 32 ein Viertel, das
+  Verhältnis der Vorlage.
+- Vorgang #33 (Entscheidung E6) ist beantwortet und geschlossen.
+
+**Was nicht geändert wurde:** kein Quelltext. `runtime/`, `spiel/`,
+`netz/` und `tests/` sind unberührt. Dieser Eintrag schreibt eine
+Entscheidung auf; gebaut wird sie in W9 bis W14, jede mit eigener
+Abnahme und eigener Messung.
+
 ## 12.09.2026 — Massives Gestein wird nach innen dunkler, in vier Stufen
 
 **Janniks Auftrag** (Vorgang #25): *„massives gestein also das was nicht

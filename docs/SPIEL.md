@@ -17,10 +17,21 @@ Dazu drei Entscheidungen aus dem Gespräch vom 06.09.2026:
 | Wie fühlt sich ein Zug an? | **Aktionspunkte** |
 
 Präzisierung vom 08.09.2026: Die Grafik und Höhlenerzeugung sollen
-Scotophobia (Granithöhle) übernehmen. Der Blick muss exakt senkrecht
-sein, Treppen müssen zusammenpassen, Wände und Ebenen lesbar bleiben.
-Das zuvor gewählte Hexraster bleibt die Grundlage. Der frühere
-Kerkerlook mit einzelnen Wandblöcken ist damit abgelöst.
+Scotophobia (Granithöhle) übernehmen. Treppen müssen zusammenpassen,
+Wände und Ebenen lesbar bleiben. Das zuvor gewählte Hexraster bleibt
+die Grundlage. Der frühere Kerkerlook mit einzelnen Wandblöcken ist
+damit abgelöst.
+
+Präzisierung vom 12.09.2026 — sie ersetzt den Satz *„Der Blick muss
+exakt senkrecht sein"* aus der Präzisierung davor: **Der Blick ist leicht
+gekippt.** Man sieht die Oberseite jedes Feldes **und** die Südflanke
+von allem, was höher ist als sein Nachbar darunter — Etagenkanten wie
+massiver Fels. Janniks Wortlaut: *„Aktuell sind wände von böden und
+etagen auf denen man laufen kann unglaublich schlecht zu unterscheiden."*
+Vorlage sind die Plateaus mit sichtbarer Erdkante aus *Battle Brothers*.
+Dazu: **ein Feld ist 32 Bildpunkte breit** statt 16. Eine Parallaxe beim
+Kameraschwenk ist vorgemerkt, *„später als versuch mit gekippter
+sicht"*, und keine Zusage. Die Entscheidung steht als Vorgang #33.
 
 Die Übertragung von Quellformeln auf spielbare Rasterfelder beschreibt
 [GRANIT-RASTER.md](GRANIT-RASTER.md).
@@ -74,10 +85,16 @@ und trifft besser, aber hinauf kommt man nur über eine Rampe und das
 kostet doppelt. Wer oben steht, kann gestoßen werden.
 
 **Vier Ebenen** bleiben die taktische Vorgabe. Die Kamera verschiebt
-höhere Felder nicht. Unterschiedliche Materialhelligkeit, helle Säume
-auf der höheren Seite und dunkle Konturen auf der niedrigeren Seite
-zeigen die Höhe entlang aller sechs Feldkanten. Eine echte Verbindung
-über eine Treppe unterbricht diese Kontur.
+höhere Felder nicht. Die Höhe zeigt sich als **Flanke**: Unter jeder
+Kante, hinter der ein höheres Feld liegt, sieht man dessen nach Süden
+zeigende Seite als eigene Fläche aus eigenem Material — so, wie man ein
+Plateau von schräg oben sieht. Massiver Fels ist höher als jeder Boden
+und bekommt dieselbe Flanke. Eine echte Verbindung über eine Treppe
+unterbricht sie. (Bis zum 12.09.2026 stand hier: Säume und Konturen von
+einem Bildpunkt entlang aller sechs Kanten. Von exakt oben hat eine
+Klippe keine Seite — und ein Bildpunkt auf sechzehn ist nichts. Das war
+der gemessene Grund, warum Etagen und Wände nicht zu unterscheiden
+waren.)
 
 | Ebene | was sie ist |
 | --- | --- |
