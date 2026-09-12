@@ -106,6 +106,33 @@ function umgebung(karte, x, y) {
   return { hash, felder };
 }
 
+/* Wie viele Felder weit vom offenen Raum entfernt ein Felsfeld liegt.
+   Flutfüllung über die Felder des Rings: alles Offene ist Tiefe 0, sein
+   Felsnachbar Tiefe 1, und so weiter. Was der Ring nicht mehr erreicht,
+   ist Tiefe 4 oder tiefer — für das Bild dasselbe. */
+function felstiefe(karte, felder, mx, my) {
+  if (!fels(karte, mx, my)) return 0;
+  const drin = new Map();
+  for (const f of felder) drin.set(f.x + "," + f.y, f);
+  let welle = felder.filter((f) => f.h !== HINDERNIS.wand);
+  const gesehen = new Set(welle.map((f) => f.x + "," + f.y));
+  for (let tiefe = 1; tiefe <= NACHBAR_RINGE; tiefe++) {
+    const naechste = [];
+    for (const f of welle) {
+      for (const r of richtungen(f.y)) {
+        const nx = f.x + r.dx, ny = f.y + r.dy, k = nx + "," + ny;
+        if (gesehen.has(k) || !drin.has(k)) continue;
+        gesehen.add(k);
+        if (nx === mx && ny === my) return tiefe;
+        naechste.push(drin.get(k));
+      }
+    }
+    if (!naechste.length) break;
+    welle = naechste;
+  }
+  return NACHBAR_RINGE + 1;
+}
+
 function landschaft(karte, felder) {
   const waende = [], brueche = [], ufer = [];
   const bekannt = new Set(felder.map((f) => `${f.x},${f.y}`));
@@ -183,6 +210,31 @@ export function macheGranitFeld({ kasten, ton, ctx = null, kamera = null }) {
    schlägt dann an. Gemessen über zwölf Einstellungen ist 0,34 der
    dunkelste Wert, bei dem die Körnung noch trägt. */
 const FELS_KANTE = 0.34;    /* Fels an der Naht, gegen Boden dort 0,70      */
+
+/* ── Und wie er nach innen dunkler wird ─────────────────────────────
+   Janniks Wortlaut: *„von der seite aus die man sehen kann bis hin ins
+   tiefe gestein wird die textur davon immer dunkler pxliger."*
+
+   Gezählt wird in **Feldern**, nicht in Bildpunkten: Tiefe 1 ist die
+   Sichtseite, also ein Felsfeld mit offenem Nachbarn. Weiter als drei
+   Ringe schaut das Feld nicht — und das ist Absicht, nicht Faulheit:
+   Der Zwischenspeicher je Feld unterschreibt genau diese 37 Felder
+   (`nachbarRing`). Eine Tiefe, die weiter blickt, würde lautlos
+   veralten, sobald sich etwas außerhalb ändert. Alles ab vier Feldern
+   ist deshalb eine einzige Stufe — und die steht auf dem **alten**
+   Ruhewert 0,08, denn das tiefe Gestein war nie das Problem.
+
+   `FELS_STUFE` ist der Ruhewert je Tiefe. Der **zweite** Teil von
+   Janniks Satz — *„pxliger"* — steht hier bewusst **nicht**. Ein
+   Versuch, das Materialrauschen nach innen gröber zu rastern, war
+   gemessen wirkungslos: mittlere Krume je Tiefe 1,56 / 2,01 / 2,34 /
+   3,47 mit Rasterung gegen 1,56 / 2,04 / 2,53 / 3,24 ohne — bei Tiefe 3
+   sogar **feiner**. Die Ursache ist nicht das Raster, sondern der
+   Farbumfang: Tiefes Gestein steht bei RGB(10,10,10), und `farbByte`
+   rastet ohnehin auf Vielfache von 5. Da ist nichts mehr zu vergröbern.
+   Wer es will, muss dem Fels unten **mehr** Farbabstand geben statt
+   weniger — das ist eine eigene Arbeit und keine Zeile hier. */
+const FELS_STUFE = [0.22, 0.15, 0.11, 0.08];  /* Ruhewert bei Tiefe 1,2,3,4+ */
 const FELS_REST = 0.08;     /* tief im Gestein — unverändert gegenüber vorher */
 const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
 
@@ -192,6 +244,10 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
     const land = landschaft(karte, ring.felder);
     const pixel = new Uint32Array(breite * hoehe);
     const rollen = new Uint8Array(pixel.length);
+    /* Tiefe des Feldes, daraus sein Ruhewert. Einmal je Feld — die
+       Flutfüllung läuft nicht je Bildpunkt. */
+    const tiefe = fels(karte, x, y) ? felstiefe(karte, ring.felder, x, y) : 0;
+    const felsRuhe = FELS_STUFE[tiefe ? Math.min(FELS_STUFE.length, tiefe) - 1 : 0];
     const pb = breite + 2, ph = hoehe + 2;
     const proben = new Array(pb * ph);
     const abstaende = new Float32Array(pb * ph);
@@ -231,7 +287,7 @@ const FELS_TIEFE = 5.5;     /* Bildpunkte, über die es dorthin fällt        */
          Stelle, an der man die Wand erkennen soll. Gemessen war er in
          77,8 % der Grenzen der hellere von beiden. */
       const ao = istWand
-        ? FELS_REST + (FELS_KANTE - FELS_REST) * Math.exp(-Math.max(0, d) / FELS_TIEFE)
+        ? felsRuhe + (FELS_KANTE - felsRuhe) * Math.exp(-Math.max(0, d) / FELS_TIEFE)
         : 0.70 + 0.30 * Math.min(1, -d / 7);
       let faktor = relief * ao * (0.63 + ebene * 0.27);
       let r = s.r, g = s.g, b = s.b;

@@ -3,6 +3,92 @@
 Jede Änderung, oben, mit **Warum** und **Messung**. Ein Eintrag ohne
 Zahl ist eine Behauptung (Regel 4 und 11).
 
+## 12.09.2026 — Massives Gestein wird nach innen dunkler, in vier Stufen
+
+**Janniks Auftrag** (Vorgang #25): *„massives gestein also das was nicht
+bespielt werden kan. soll als solches erkennbar sein. von der seite aus
+die man sehen kann bis hin ins tiefe gestein wird die textur davon immer
+dunkler pxliger."*
+
+**Was fehlte:** Der Fels kannte keine Tiefe. Er wurde über den
+Wandabstand `d` in **Bildpunkten** dunkler — und `d` sättigt bei 28,
+also schon in der zweiten Feldreihe. Gemessen über die erzeugte Karte
+(Saat 4711) war die Helligkeit je Feldtiefe vorher
+
+| Tiefe | Felder | Helligkeit |
+| --- | --- | --- |
+| 1 | 207 | 62,58 |
+| 2 | 177 | 15,17 |
+| 3 | 158 | 7,58 |
+| 4+ | 780 | **7,59** |
+
+— also **nicht** monoton: Tiefe 4 war heller als Tiefe 3. Und Tiefe 1
+lag mit 62,58 fast auf Bodenhöhe; das war der Fehler aus dem Eintrag
+darüber, hier nach Tiefen aufgeschlüsselt.
+
+**Was jetzt da ist:** `felstiefe()` zählt in **Feldern** statt in
+Bildpunkten — eine Flutfüllung vom offenen Raum aus über die Felder des
+Nachbarrings. Daraus bekommt jedes Felsfeld einen eigenen Ruhewert:
+`FELS_STUFE = [0,22, 0,15, 0,11, 0,08]` für Tiefe 1, 2, 3 und tiefer.
+
+**Warum der Ring und nicht die ganze Karte:** Der Zwischenspeicher je
+Feld unterschreibt genau die 37 Felder des Rings (`nachbarRing`). Eine
+Tiefe, die weiter blickt, würde **lautlos veralten**, sobald sich etwas
+außerhalb ändert — und ein Bild, das stillschweigend falsch wird, ist
+schlimmer als eines, das gröber ist. Alles ab vier Feldern ist deshalb
+eine Stufe, und sie steht auf dem **alten** Wert 0,08: Das tiefe Gestein
+war nie das Problem.
+
+**Gemessen, nachher** (`node werkzeuge/miss-wandkontrast.mjs` und eine
+Flutfüllung über die ganze Karte):
+
+| Tiefe | Felder | Helligkeit |
+| --- | --- | --- |
+| 1 | 207 | **23,57** |
+| 2 | 177 | **15,26** |
+| 3 | 158 | **10,75** |
+| 4+ | 780 | **7,78** |
+
+**Streng monoton fallend über vier Stufen**, und **0 Felsfelder ohne
+Tiefe**. Damit ist die Abnahme von #25 erfüllt.
+
+**Die Abnahme von #24 bleibt erfüllt** — flach, Wände ein Feld dick:
+Vorzeichen 99,7 % (Schranke 95), Sprung −20,40 (negativ), Sprung durch
+Körnung 3,43 (Schranke 1,5), Körper-Luft +28,80 (Schranke 0).
+
+**Und es löst nebenbei den offenen Punkt aus dem Eintrag darüber.** Dort
+stand, dass Fels und Abgrund zusammenrücken (Abstand 4,46). Das ist
+beseitigt, und zwar beweisbar statt zufällig: Ein Abgrund zählt bei der
+Flutfüllung als **offen**. Ein Felsfeld neben einem Abgrund hat damit
+immer einen offenen Nachbarn und ist deshalb **Tiefe 1** — also der
+hellste Fels überhaupt. Nachgezählt über fünf Saaten: **56 von 56**
+Felsfeldern mit einem Abgrund als Nachbarn sind Tiefe 1, **0** sind
+tiefer. Der Abstand an dieser Stelle ist damit 23,57 gegen 6,44, also
+**17,13** statt 4,46. Tiefes Gestein steht weiterhin dicht am Abgrund
+(7,78 gegen 6,44), aber es liegt per Konstruktion nie neben einem.
+
+**Was ausdrücklich NICHT gebaut wurde, und warum:** der zweite Teil von
+Janniks Satz, *„pxliger"*. Ein Versuch, das Materialrauschen nach innen
+gröber zu rastern, war **gemessen wirkungslos**: mittlere Krume je Tiefe
+1,56 / 2,01 / 2,34 / 3,47 mit Rasterung gegen 1,56 / 2,04 / 2,53 / 3,24
+ohne — bei Tiefe 3 sogar **feiner**. Die Ursache ist nicht das Raster,
+sondern der Farbumfang: Tiefes Gestein steht bei RGB(10,10,10), und
+`farbByte` rastet ohnehin auf Vielfache von 5. Da ist nichts mehr zu
+vergröbern. Wer „pixeliger" will, muss dem Fels unten **mehr**
+Farbabstand geben statt weniger. Das ist eine eigene Arbeit; der Versuch
+ist wieder ausgebaut worden, statt als unbelegte Zeile stehen zu
+bleiben.
+
+**Laufzeit, abwechselnd gemessen** (Fehlerbuch C9), 2.240 Feldpuffer,
+vier Läufe je Stand, drei Paarungen. Mediane ohne Tiefe 1076,4 / 1112,5
+/ 1112,2 ms, mit Tiefe 1099,6 / 1097,6 / 1148,9 ms. Die Spannen
+überlappen vollständig (1070–1132 gegen 1084–1211); ein Aufschlag ist
+**nicht messbar** und liegt jedenfalls weit unter den erlaubten 30 %.
+Die Flutfüllung läuft einmal je Feld, nicht je Bildpunkt.
+
+**Was unberührt blieb:** `spiel/`, der Boden, Wasser, Treppen, die
+Höhenkonturen. Keine Prüfschwelle gesenkt.
+
 ## 12.09.2026 — Der Fels war heller als der Boden. Eine Zeile, und es war die falsche.
 
 **Janniks Auftrag:** *„gut erkennbare wände, dass ist unendlich wichtig
